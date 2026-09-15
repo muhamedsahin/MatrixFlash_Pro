@@ -9,6 +9,8 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_ARCHITECTURES native)
 
+find_package(CUDAToolkit REQUIRED)
+
 add_library(matrix_pro STATIC
 	src/cuda_utils.cu
 	src/matrix.cu
@@ -21,6 +23,7 @@ add_library(matrix_pro STATIC
 )
 
 target_include_directories(matrix_pro PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(matrix_pro PUBLIC CUDA::cublas)
 set_target_properties(matrix_pro PROPERTIES
 	CUDA_SEPARABLE_COMPILATION ON
 	CUDA_RESOLVE_DEVICE_SYMBOLS ON

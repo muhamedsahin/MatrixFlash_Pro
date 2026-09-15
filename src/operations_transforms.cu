@@ -3,12 +3,34 @@
 
 #include <cfloat>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <stdexcept>
+#include <vector>
 
 namespace matrix_pro {
 namespace {
 
 constexpr unsigned tile_size = 16;
+constexpr unsigned softmax_block = 256;
+
+__global__ void softmax_init_kernel(float* global_max, float* global_total) {
+    if (threadIdx.x == 0) {
+        *global_max = -FLT_MAX;
+        *global_total = 0.0f;
+    }
+}
+
+__device__ float atomicMaxf(float* address, float value) {
+    int* address_as_int = reinterpret_cast<int*>(address);
+    int old = *address_as_int, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_int, assumed,
+                        __float_as_int(fmaxf(value, __int_as_float(assumed))));
+    } while (assumed != old);
+    return __int_as_float(old);
+}
 
 __global__ void transpose_kernel(const float* input, float* output, std::size_t rows, std::size_t cols) {
     const auto col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -21,19 +43,47 @@ __global__ void relu_kernel(const float* input, float* output, std::size_t count
     if (index < count) output[index] = input[index] > 0.0f ? input[index] : 0.0f;
 }
 
-__global__ void softmax_kernel(const float* input, float* output, std::size_t count) {
-    __shared__ float shared_max;
-    __shared__ float shared_total;
-    if (threadIdx.x == 0) {
-        float maximum = -FLT_MAX;
-        for (std::size_t index = 0; index < count; ++index) maximum = fmaxf(maximum, input[index]);
-        shared_max = maximum;
-        float total = 0.0f;
-        for (std::size_t index = 0; index < count; ++index) total += expf(input[index] - maximum);
-        shared_total = total;
+__global__ void softmax_max_kernel(const float* input, std::size_t count, float* global_max) {
+    __shared__ float shared[softmax_block];
+    const auto tid = threadIdx.x;
+    float local = -FLT_MAX;
+    for (std::size_t index = blockIdx.x * blockDim.x + tid; index < count; index += gridDim.x * blockDim.x) {
+        local = fmaxf(local, input[index]);
     }
+    shared[tid] = local;
     __syncthreads();
-    for (std::size_t index = threadIdx.x; index < count; index += blockDim.x) output[index] = expf(input[index] - shared_max) / shared_total;
+    for (unsigned stride = softmax_block / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) shared[tid] = fmaxf(shared[tid], shared[tid + stride]);
+        __syncthreads();
+    }
+    if (tid == 0) atomicMaxf(global_max, shared[0]);
+}
+
+__global__ void softmax_sum_kernel(const float* input, float* output, std::size_t count,
+                                   float* global_max, float* global_total) {
+    __shared__ float shared[softmax_block];
+    const auto tid = threadIdx.x;
+    float local = 0.0f;
+    const float maximum = *global_max;
+    for (std::size_t index = blockIdx.x * blockDim.x + tid; index < count; index += gridDim.x * blockDim.x) {
+        const float value = expf(input[index] - maximum);
+        output[index] = value;
+        local += value;
+    }
+    shared[tid] = local;
+    __syncthreads();
+    for (unsigned stride = softmax_block / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) shared[tid] += shared[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0) atomicAdd(global_total, shared[0]);
+}
+
+__global__ void softmax_norm_kernel(float* output, std::size_t count, const float* global_total) {
+    const float total = *global_total;
+    for (std::size_t index = blockIdx.x * blockDim.x + threadIdx.x; index < count; index += gridDim.x * blockDim.x) {
+        output[index] /= total;
+    }
 }
 
 }
@@ -50,23 +100,40 @@ Matrix transpose(const Matrix& matrix) {
 
 Matrix relu(const Matrix& matrix) {
     Matrix output(matrix.rows(), matrix.cols());
-    relu_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(matrix.device_data(), output.device_data(), matrix.size());
+    relu_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+        matrix.device_data(), output.device_data(), matrix.size());
     checkCuda(cudaGetLastError(), "relu kernel launch");
     return output;
 }
 
 Matrix softmax(const Matrix& matrix) {
+    const std::size_t count = matrix.size();
+    if (count == 0) return Matrix(matrix.rows(), matrix.cols());
     Matrix output(matrix.rows(), matrix.cols());
-    softmax_kernel<<<1, 256>>>(matrix.device_data(), output.device_data(), matrix.size());
+
+    float* global_max = nullptr;
+    float* global_total = nullptr;
+    checkCuda(cudaMalloc(&global_max, sizeof(float)), "softmax alloc max");
+    checkCuda(cudaMalloc(&global_total, sizeof(float)), "softmax alloc total");
+    softmax_init_kernel<<<1, 32>>>(global_max, global_total);
+    checkCuda(cudaGetLastError(), "softmax init launch");
+
+    const unsigned grid = static_cast<unsigned>((count + softmax_block - 1) / softmax_block);
+    softmax_max_kernel<<<grid, softmax_block>>>(matrix.device_data(), count, global_max);
+    softmax_sum_kernel<<<grid, softmax_block>>>(matrix.device_data(), output.device_data(), count, global_max, global_total);
+    softmax_norm_kernel<<<grid, softmax_block>>>(output.device_data(), count, global_total);
     checkCuda(cudaGetLastError(), "softmax kernel launch");
+    checkCuda(cudaFree(global_max), "softmax free max");
+    checkCuda(cudaFree(global_total), "softmax free total");
     return output;
 }
 
 Matrix flatten(const Matrix& matrix) {
     Matrix copy = matrix;
     copy.download();
-    Matrix output(matrix.size(), 1, copy.data());
-    return output;
+    std::vector<float> values(copy.data().begin(), copy.data().end());
+    if (matrix.empty()) return Matrix(0, 1);
+    return Matrix(matrix.size(), 1, values);
 }
 
 Matrix slice(const Matrix& matrix, std::size_t row_start, std::size_t row_end,

@@ -2,6 +2,8 @@
 #include "matrix_pro/cuda_utils.hpp"
 
 #include <algorithm>
+#include <cstring>
+#include <fstream>
 #include <stdexcept>
 
 namespace matrix_pro {
@@ -67,6 +69,10 @@ void Matrix::download() {
     checkCuda(cudaMemcpy(host_data_.data(), device_data_.get(), size() * sizeof(float), cudaMemcpyDeviceToHost), "cudaMemcpy device to host");
 }
 
+void Matrix::synchronize() const {
+    matrix_pro::synchronize();
+}
+
 void Matrix::validate_index(std::size_t row, std::size_t col) const {
     if (row >= rows_ || col >= cols_) throw std::out_of_range("Matrix index out of range");
 }
@@ -85,4 +91,30 @@ void Matrix::validate_same_shape(const Matrix& other) const {
     if (rows_ != other.rows_ || cols_ != other.cols_) throw std::invalid_argument("Matrix shapes must match");
 }
 
+void Matrix::save(const std::string& filename) const {
+    Matrix copy = *this;
+    copy.download();
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) throw std::runtime_error("Could not open file for writing: " + filename);
+    const std::size_t rows = rows_, cols = cols_;
+    file.write(reinterpret_cast<const char*>(&rows), sizeof(rows));
+    file.write(reinterpret_cast<const char*>(&cols), sizeof(cols));
+    file.write(reinterpret_cast<const char*>(copy.data().data()), static_cast<std::streamsize>(size() * sizeof(float)));
+    if (!file) throw std::runtime_error("Failed to write matrix file: " + filename);
 }
+
+Matrix Matrix::load(const std::string& filename) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) throw std::runtime_error("Could not open file for reading: " + filename);
+    std::size_t rows = 0, cols = 0;
+    file.read(reinterpret_cast<char*>(&rows), sizeof(rows));
+    file.read(reinterpret_cast<char*>(&cols), sizeof(cols));
+    if (!file) throw std::runtime_error("Corrupt matrix header in file: " + filename);
+    std::vector<float> values(rows * cols);
+    file.read(reinterpret_cast<char*>(values.data()), static_cast<std::streamsize>(rows * cols * sizeof(float)));
+    if (!file) throw std::runtime_error("Truncated matrix data in file: " + filename);
+    return Matrix(rows, cols, values);
+}
+
+}
+

@@ -2,6 +2,8 @@
 #include "matrix_pro/cuda_utils.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <random>
 #include <stdexcept>
 
 namespace matrix_pro {
@@ -39,4 +41,37 @@ Matrix Matrix::identity(std::size_t size) {
     return result;
 }
 
+Matrix Matrix::random(std::size_t rows, std::size_t cols) {
+    Matrix result(rows, cols);
+    std::mt19937 generator(1337u);
+    std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
+    for (auto& value : result.host_data_) value = distribution(generator);
+    result.upload();
+    return result;
 }
+
+Matrix Matrix::uniform(std::size_t rows, std::size_t cols, float low, float high) {
+    Matrix result(rows, cols);
+    std::mt19937 generator(2024u);
+    std::uniform_real_distribution<float> distribution(low, high);
+    for (auto& value : result.host_data_) value = distribution(generator);
+    result.upload();
+    return result;
+}
+
+Matrix Matrix::randn(std::size_t rows, std::size_t cols) {
+    Matrix result(rows, cols);
+    std::mt19937 generator(42u);
+    std::normal_distribution<float> distribution(0.0f, 1.0f);
+    for (auto& value : result.host_data_) value = distribution(generator);
+    result.upload();
+    return result;
+}
+
+Matrix Matrix::glorot(std::size_t rows, std::size_t cols) {
+    const float limit = std::sqrt(6.0f / static_cast<float>(rows + cols));
+    return Matrix::uniform(rows, cols, -limit, limit);
+}
+
+}
+
