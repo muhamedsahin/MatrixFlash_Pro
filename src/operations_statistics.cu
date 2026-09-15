@@ -11,34 +11,7 @@ namespace {
 
 constexpr unsigned reduce_block = 256;
 
-// Aggregate buffer: [0]=sum, [1]=sumSq, [2]=l1, [3]=min, [4]=max
-__device__ float g_agg[5];
-__device__ float g_best_value;
-__device__ std::size_t g_best_index;
-
-__device__ float atomicMaxf(float* address, float value) {
-    int* address_as_int = reinterpret_cast<int*>(address);
-    int old = *address_as_int, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_int, assumed,
-                        __float_as_int(fmaxf(value, __int_as_float(assumed))));
-    } while (assumed != old);
-    return __int_as_float(old);
-}
-
-__device__ float atomicMinf(float* address, float value) {
-    int* address_as_int = reinterpret_cast<int*>(address);
-    int old = *address_as_int, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_int, assumed,
-                        __float_as_int(fminf(value, __int_as_float(assumed))));
-    } while (assumed != old);
-    return __int_as_float(old);
-}
-
-__global__ void reduce_kernel(const float* input, std::size_t count) {
+__global__ void reduce_partial_kernel(const float* input, std::size_t count, float* partial) {
     __shared__ float ssum[reduce_block];
     __shared__ float ssq[reduce_block];
     __shared__ float sl1[reduce_block];
@@ -56,6 +29,7 @@ __global__ void reduce_kernel(const float* input, std::size_t count) {
         local_min = fminf(local_min, value);
         local_max = fmaxf(local_max, value);
     }
+
     ssum[tid] = sum; ssq[tid] = sum_sq; sl1[tid] = sum_l1;
     smin[tid] = local_min; smax[tid] = local_max;
     __syncthreads();
@@ -70,16 +44,19 @@ __global__ void reduce_kernel(const float* input, std::size_t count) {
         }
         __syncthreads();
     }
+
     if (tid == 0) {
-        atomicAdd(&g_agg[0], ssum[0]);
-        atomicAdd(&g_agg[1], ssq[0]);
-        atomicAdd(&g_agg[2], sl1[0]);
-        atomicMinf(&g_agg[3], smin[0]);
-        atomicMaxf(&g_agg[4], smax[0]);
+        const std::size_t offset = static_cast<std::size_t>(blockIdx.x) * 5U;
+        partial[offset + 0] = ssum[0];
+        partial[offset + 1] = ssq[0];
+        partial[offset + 2] = sl1[0];
+        partial[offset + 3] = smin[0];
+        partial[offset + 4] = smax[0];
     }
 }
 
-__global__ void arg_reduce_kernel(const float* input, std::size_t count, int find_max) {
+__global__ void arg_partial_kernel(const float* input, std::size_t count, int find_max,
+                                  float* partial_values, std::size_t* partial_indices) {
     __shared__ float svalue[reduce_block];
     __shared__ std::size_t sindex[reduce_block];
 
@@ -94,6 +71,7 @@ __global__ void arg_reduce_kernel(const float* input, std::size_t count, int fin
             best_index = index;
         }
     }
+
     svalue[tid] = best;
     sindex[tid] = best_index;
     __syncthreads();
@@ -113,9 +91,10 @@ __global__ void arg_reduce_kernel(const float* input, std::size_t count, int fin
         }
         __syncthreads();
     }
+
     if (tid == 0) {
-        g_best_index = sindex[0];
-        g_best_value = svalue[0];
+        partial_values[blockIdx.x] = svalue[0];
+        partial_indices[blockIdx.x] = sindex[0];
     }
 }
 
@@ -144,14 +123,26 @@ float reduce_scalar(const Matrix& matrix, int which) {
         if (which == 4) return -FLT_MAX;
         return 0.0f;
     }
-    const float init[] = {0.0f, 0.0f, 0.0f, FLT_MAX, -FLT_MAX};
-    checkCuda(cudaMemcpyToSymbol(g_agg, init, sizeof(init), 0, cudaMemcpyHostToDevice), "reduce reset");
+
     const unsigned grid = static_cast<unsigned>((count + reduce_block - 1) / reduce_block);
-    reduce_kernel<<<grid, reduce_block>>>(matrix.device_data(), count);
-    checkCuda(cudaGetLastError(), "reduce kernel launch");
-    float host[5];
-    checkCuda(cudaMemcpyFromSymbol(host, g_agg, sizeof(host), 0, cudaMemcpyDeviceToHost), "reduce read");
-    return host[which];
+    float* partial = static_cast<float*>(allocate_device_memory(static_cast<std::size_t>(grid) * 5U * sizeof(float)));
+    reduce_partial_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, partial);
+    checkCuda(cudaGetLastError(), "reduce partial kernel launch");
+
+    std::vector<float> host_partial(static_cast<std::size_t>(grid) * 5U);
+    checkCuda(cudaMemcpy(host_partial.data(), partial, host_partial.size() * sizeof(float), cudaMemcpyDeviceToHost), "reduce partial read");
+    free_device_memory(partial);
+
+    float result[5] = {0.0f, 0.0f, 0.0f, FLT_MAX, -FLT_MAX};
+    for (std::size_t block = 0; block < static_cast<std::size_t>(grid); ++block) {
+        const std::size_t offset = block * 5U;
+        result[0] += host_partial[offset + 0];
+        result[1] += host_partial[offset + 1];
+        result[2] += host_partial[offset + 2];
+        result[3] = std::fmin(result[3], host_partial[offset + 3]);
+        result[4] = std::fmax(result[4], host_partial[offset + 4]);
+    }
+    return result[which];
 }
 
 float sum(const Matrix& matrix) { return reduce_scalar(matrix, 0); }
@@ -181,34 +172,86 @@ float stddev(const Matrix& matrix) { return std::sqrt(variance(matrix)); }
 
 std::size_t argmin(const Matrix& matrix) {
     if (matrix.empty()) throw std::invalid_argument("argmin undefined for empty matrix");
-    std::size_t result = 0;
-    checkCuda(cudaMemcpyToSymbol(g_best_index, &result, sizeof(result), 0, cudaMemcpyHostToDevice), "arg reset");
     const std::size_t count = matrix.size();
     const unsigned grid = static_cast<unsigned>((count + reduce_block - 1) / reduce_block);
-    arg_reduce_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, 0);
-    checkCuda(cudaGetLastError(), "argmin kernel launch");
-    checkCuda(cudaMemcpyFromSymbol(&result, g_best_index, sizeof(result), 0, cudaMemcpyDeviceToHost), "argmin read");
-    return result;
+
+    float* partial_values = static_cast<float*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(float)));
+    std::size_t* partial_indices = static_cast<std::size_t*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(std::size_t)));
+    arg_partial_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, 0, partial_values, partial_indices);
+    checkCuda(cudaGetLastError(), "argmin partial kernel launch");
+
+    std::vector<float> host_values(static_cast<std::size_t>(grid));
+    std::vector<std::size_t> host_indices(static_cast<std::size_t>(grid));
+    checkCuda(cudaMemcpy(host_values.data(), partial_values, host_values.size() * sizeof(float), cudaMemcpyDeviceToHost), "argmin values read");
+    checkCuda(cudaMemcpy(host_indices.data(), partial_indices, host_indices.size() * sizeof(std::size_t), cudaMemcpyDeviceToHost), "argmin indices read");
+    free_device_memory(partial_values);
+    free_device_memory(partial_indices);
+
+    std::size_t best_index = host_indices.front();
+    float best_value = host_values.front();
+    for (std::size_t i = 1; i < host_values.size(); ++i) {
+        if (host_values[i] < best_value || (host_values[i] == best_value && host_indices[i] < best_index)) {
+            best_index = host_indices[i];
+            best_value = host_values[i];
+        }
+    }
+    return best_index;
 }
 
 std::size_t argmax(const Matrix& matrix) {
     if (matrix.empty()) throw std::invalid_argument("argmax undefined for empty matrix");
-    std::size_t result = 0;
-    checkCuda(cudaMemcpyToSymbol(g_best_index, &result, sizeof(result), 0, cudaMemcpyHostToDevice), "arg reset");
     const std::size_t count = matrix.size();
     const unsigned grid = static_cast<unsigned>((count + reduce_block - 1) / reduce_block);
-    arg_reduce_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, 1);
-    checkCuda(cudaGetLastError(), "argmax kernel launch");
-    checkCuda(cudaMemcpyFromSymbol(&result, g_best_index, sizeof(result), 0, cudaMemcpyDeviceToHost), "argmax read");
-    return result;
+
+    float* partial_values = static_cast<float*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(float)));
+    std::size_t* partial_indices = static_cast<std::size_t*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(std::size_t)));
+    arg_partial_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, 1, partial_values, partial_indices);
+    checkCuda(cudaGetLastError(), "argmax partial kernel launch");
+
+    std::vector<float> host_values(static_cast<std::size_t>(grid));
+    std::vector<std::size_t> host_indices(static_cast<std::size_t>(grid));
+    checkCuda(cudaMemcpy(host_values.data(), partial_values, host_values.size() * sizeof(float), cudaMemcpyDeviceToHost), "argmax values read");
+    checkCuda(cudaMemcpy(host_indices.data(), partial_indices, host_indices.size() * sizeof(std::size_t), cudaMemcpyDeviceToHost), "argmax indices read");
+    free_device_memory(partial_values);
+    free_device_memory(partial_indices);
+
+    std::size_t best_index = host_indices.front();
+    float best_value = host_values.front();
+    for (std::size_t i = 1; i < host_values.size(); ++i) {
+        if (host_values[i] > best_value || (host_values[i] == best_value && host_indices[i] < best_index)) {
+            best_index = host_indices[i];
+            best_value = host_values[i];
+        }
+    }
+    return best_index;
+}
+
+__global__ void trace_kernel(const float* input, std::size_t rows, std::size_t cols, float* output) {
+    __shared__ float shared[reduce_block];
+    const auto tid = threadIdx.x;
+    float local = 0.0f;
+    for (std::size_t index = tid; index < rows; index += blockDim.x) {
+        const std::size_t row_index = index * cols + index;
+        local += input[row_index];
+    }
+    shared[tid] = local;
+    __syncthreads();
+    for (unsigned stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) shared[tid] += shared[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0) *output = shared[0];
 }
 
 float trace(const Matrix& matrix) {
     if (matrix.rows() != matrix.cols()) throw std::invalid_argument("Trace requires a square matrix");
     if (matrix.empty()) return 0.0f;
-    Matrix copy = matrix; copy.download();
+    float* device_result = static_cast<float*>(allocate_device_memory(sizeof(float)));
+    trace_kernel<<<1, reduce_block>>>(matrix.device_data(), matrix.rows(), matrix.cols(), device_result);
+    checkCuda(cudaGetLastError(), "trace kernel launch");
     float result = 0.0f;
-    for (std::size_t index = 0; index < matrix.rows(); ++index) result += copy.at(index, index);
+    checkCuda(cudaMemcpy(&result, device_result, sizeof(float), cudaMemcpyDeviceToHost), "trace read");
+    free_device_memory(device_result);
     return result;
 }
 

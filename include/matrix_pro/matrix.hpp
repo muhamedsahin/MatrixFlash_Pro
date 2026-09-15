@@ -19,7 +19,7 @@ public:
 	Matrix& operator=(const Matrix& other);
 	Matrix(Matrix&& other) noexcept = default;
 	Matrix& operator=(Matrix&& other) noexcept = default;
-	~Matrix() = default;
+	~Matrix();
 
 	std::size_t rows() const noexcept { return rows_; }
 	std::size_t cols() const noexcept { return cols_; }
@@ -112,8 +112,11 @@ private:
 	std::size_t cols_ = 0;
 	std::vector<float> host_data_;
 	std::unique_ptr<float, void (*)(float*)> device_data_{nullptr, nullptr};
+	bool host_pinned_ = false;
 
 	void allocate_device();
+	void ensure_host_pinned();
+	void release_host_pinned();
 	void validate_same_shape(const Matrix& other) const;
 	void validate_index(std::size_t row, std::size_t col) const;
 };

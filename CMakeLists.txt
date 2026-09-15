@@ -23,7 +23,7 @@ add_library(matrix_pro STATIC
 )
 
 target_include_directories(matrix_pro PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(matrix_pro PUBLIC CUDA::cublas)
+target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cusolver)
 set_target_properties(matrix_pro PROPERTIES
 	CUDA_SEPARABLE_COMPILATION ON
 	CUDA_RESOLVE_DEVICE_SYMBOLS ON

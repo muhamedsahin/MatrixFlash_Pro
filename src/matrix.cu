@@ -1,6 +1,8 @@
 #include "matrix_pro/matrix.hpp"
 #include "matrix_pro/cuda_utils.hpp"
 
+#include <cuda_runtime.h>
+
 #include <algorithm>
 #include <cstring>
 #include <fstream>
@@ -10,7 +12,7 @@ namespace matrix_pro {
 namespace {
 
 void release_device(float* pointer) {
-    if (pointer != nullptr) cudaFree(pointer);
+    if (pointer != nullptr) matrix_pro::free_device_memory(pointer);
 }
 
 }
@@ -18,13 +20,14 @@ void release_device(float* pointer) {
 Matrix::Matrix(std::size_t rows, std::size_t cols)
     : rows_(rows), cols_(cols), host_data_(rows * cols), device_data_(nullptr, release_device) {
     allocate_device();
-    upload();
+    ensure_host_pinned();
 }
 
 Matrix::Matrix(std::size_t rows, std::size_t cols, const std::vector<float>& values)
     : Matrix(rows, cols) {
     if (values.size() != size()) throw std::invalid_argument("Matrix data size does not match shape");
     host_data_ = values;
+    ensure_host_pinned();
     upload();
 }
 
@@ -36,15 +39,21 @@ Matrix::Matrix(std::initializer_list<std::initializer_list<float>> values)
         std::copy(row.begin(), row.end(), host_data_.begin() + row_index * cols_);
         ++row_index;
     }
+    ensure_host_pinned();
     upload();
 }
 
 Matrix::Matrix(const Matrix& other)
-    : Matrix(other.rows_, other.cols_) {
+    : rows_(other.rows_), cols_(other.cols_), host_data_(other.host_data_), device_data_(nullptr, release_device) {
+    allocate_device();
+    ensure_host_pinned();
     if (size() != 0) {
         checkCuda(cudaMemcpy(device_data_.get(), other.device_data_.get(), size() * sizeof(float), cudaMemcpyDeviceToDevice), "cudaMemcpy device to device");
     }
-    host_data_ = other.host_data_;
+}
+
+Matrix::~Matrix() {
+    release_host_pinned();
 }
 
 Matrix& Matrix::operator=(const Matrix& other) {
@@ -54,19 +63,43 @@ Matrix& Matrix::operator=(const Matrix& other) {
 
 void Matrix::allocate_device() {
     if (size() == 0) return;
-    float* pointer = nullptr;
-    checkCuda(cudaMalloc(&pointer, size() * sizeof(float)), "cudaMalloc");
-    device_data_.reset(pointer);
+    void* pointer = matrix_pro::allocate_device_memory(size() * sizeof(float));
+    device_data_.reset(static_cast<float*>(pointer));
+}
+
+void Matrix::ensure_host_pinned() {
+    if (host_pinned_ || host_data_.empty()) return;
+    const cudaError_t status = cudaHostRegister(host_data_.data(), host_data_.size() * sizeof(float), cudaHostRegisterDefault);
+    if (status == cudaSuccess) {
+        host_pinned_ = true;
+    } else if (status != cudaErrorHostMemoryAlreadyRegistered) {
+        throw std::runtime_error(std::string("cudaHostRegister failed: ") + cudaGetErrorString(status));
+    } else {
+        host_pinned_ = true;
+    }
+}
+
+void Matrix::release_host_pinned() {
+    if (!host_pinned_ || host_data_.empty()) return;
+    const cudaError_t status = cudaHostUnregister(host_data_.data());
+    if (status != cudaSuccess && status != cudaErrorHostMemoryNotRegistered) {
+        throw std::runtime_error(std::string("cudaHostUnregister failed: ") + cudaGetErrorString(status));
+    }
+    host_pinned_ = false;
 }
 
 void Matrix::upload() {
     if (size() == 0) return;
-    checkCuda(cudaMemcpy(device_data_.get(), host_data_.data(), size() * sizeof(float), cudaMemcpyHostToDevice), "cudaMemcpy host to device");
+    ensure_host_pinned();
+    checkCuda(cudaMemcpyAsync(device_data_.get(), host_data_.data(), size() * sizeof(float), cudaMemcpyHostToDevice, 0), "cudaMemcpy host to device");
+    checkCuda(cudaStreamSynchronize(0), "cudaStreamSynchronize after upload");
 }
 
 void Matrix::download() {
     if (size() == 0) return;
-    checkCuda(cudaMemcpy(host_data_.data(), device_data_.get(), size() * sizeof(float), cudaMemcpyDeviceToHost), "cudaMemcpy device to host");
+    ensure_host_pinned();
+    checkCuda(cudaMemcpyAsync(host_data_.data(), device_data_.get(), size() * sizeof(float), cudaMemcpyDeviceToHost, 0), "cudaMemcpy device to host");
+    checkCuda(cudaStreamSynchronize(0), "cudaStreamSynchronize after download");
 }
 
 void Matrix::synchronize() const {

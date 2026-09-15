@@ -14,24 +14,6 @@ namespace {
 constexpr unsigned tile_size = 16;
 constexpr unsigned softmax_block = 256;
 
-__global__ void softmax_init_kernel(float* global_max, float* global_total) {
-    if (threadIdx.x == 0) {
-        *global_max = -FLT_MAX;
-        *global_total = 0.0f;
-    }
-}
-
-__device__ float atomicMaxf(float* address, float value) {
-    int* address_as_int = reinterpret_cast<int*>(address);
-    int old = *address_as_int, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_int, assumed,
-                        __float_as_int(fmaxf(value, __int_as_float(assumed))));
-    } while (assumed != old);
-    return __int_as_float(old);
-}
-
 __global__ void transpose_kernel(const float* input, float* output, std::size_t rows, std::size_t cols) {
     const auto col = blockIdx.x * blockDim.x + threadIdx.x;
     const auto row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -94,6 +76,19 @@ __global__ void softmax_row_norm_kernel(float* output, std::size_t rows, std::si
     }
 }
 
+__global__ void slice_kernel(const float* input, float* output,
+                            std::size_t input_rows, std::size_t input_cols,
+                            std::size_t row_start, std::size_t row_end,
+                            std::size_t col_start, std::size_t col_end) {
+    const auto row = blockIdx.y * blockDim.y + threadIdx.y;
+    const auto col = blockIdx.x * blockDim.x + threadIdx.x;
+    const auto out_rows = row_end - row_start;
+    const auto out_cols = col_end - col_start;
+    if (row < out_rows && col < out_cols) {
+        output[row * out_cols + col] = input[(row_start + row) * input_cols + (col_start + col)];
+    }
+}
+
 }
 
 Matrix transpose(const Matrix& matrix) {
@@ -118,10 +113,8 @@ Matrix softmax(const Matrix& matrix) {
     if (matrix.empty()) return Matrix(matrix.rows(), matrix.cols());
     Matrix output(matrix.rows(), matrix.cols());
 
-    float* row_max = nullptr;
-    float* row_total = nullptr;
-    checkCuda(cudaMalloc(&row_max, matrix.rows() * sizeof(float)), "softmax alloc row max");
-    checkCuda(cudaMalloc(&row_total, matrix.rows() * sizeof(float)), "softmax alloc row total");
+    float* row_max = static_cast<float*>(allocate_device_memory(matrix.rows() * sizeof(float)));
+    float* row_total = static_cast<float*>(allocate_device_memory(matrix.rows() * sizeof(float)));
 
     const unsigned grid_rows = static_cast<unsigned>(matrix.rows());
     softmax_row_max_kernel<<<grid_rows, softmax_block>>>(matrix.device_data(), matrix.rows(), matrix.cols(), row_max);
@@ -129,17 +122,17 @@ Matrix softmax(const Matrix& matrix) {
                                                        matrix.rows(), matrix.cols(), row_max, row_total);
     softmax_row_norm_kernel<<<grid_rows, softmax_block>>>(output.device_data(), matrix.rows(), matrix.cols(), row_total);
     checkCuda(cudaGetLastError(), "softmax kernel launch");
-    checkCuda(cudaFree(row_max), "softmax free row max");
-    checkCuda(cudaFree(row_total), "softmax free row total");
+    free_device_memory(row_max);
+    free_device_memory(row_total);
     return output;
 }
 
 Matrix flatten(const Matrix& matrix) {
-    Matrix copy = matrix;
-    copy.download();
-    std::vector<float> values(copy.data().begin(), copy.data().end());
     if (matrix.empty()) return Matrix(0, 1);
-    return Matrix(matrix.size(), 1, values);
+    Matrix output(matrix.size(), 1);
+    checkCuda(cudaMemcpy(output.device_data(), matrix.device_data(), matrix.size() * sizeof(float), cudaMemcpyDeviceToDevice),
+             "flatten device copy");
+    return output;
 }
 
 Matrix slice(const Matrix& matrix, std::size_t row_start, std::size_t row_end,
@@ -147,14 +140,18 @@ Matrix slice(const Matrix& matrix, std::size_t row_start, std::size_t row_end,
     if (row_start > row_end || col_start > col_end || row_end > matrix.rows() || col_end > matrix.cols()) {
         throw std::out_of_range("Invalid matrix slice");
     }
-    Matrix copy = matrix;
-    copy.download();
-    std::vector<float> values;
-    values.reserve((row_end - row_start) * (col_end - col_start));
-    for (std::size_t row = row_start; row < row_end; ++row) {
-        for (std::size_t col = col_start; col < col_end; ++col) values.push_back(copy.at(row, col));
-    }
-    return Matrix(row_end - row_start, col_end - col_start, values);
+    const std::size_t out_rows = row_end - row_start;
+    const std::size_t out_cols = col_end - col_start;
+    Matrix output(out_rows, out_cols);
+    if (output.empty()) return output;
+
+    dim3 block(16, 16);
+    dim3 grid((out_cols + block.x - 1) / block.x, (out_rows + block.y - 1) / block.y);
+    slice_kernel<<<grid, block>>>(matrix.device_data(), output.device_data(),
+                                 matrix.rows(), matrix.cols(),
+                                 row_start, row_end, col_start, col_end);
+    checkCuda(cudaGetLastError(), "slice kernel launch");
+    return output;
 }
 
 Matrix Matrix::transpose() const { return matrix_pro::transpose(*this); }

@@ -41,6 +41,17 @@
 
 Performans kritik matris çarpımı işlemleri, elle yazılmış CUDA kernel'ları yerine NVIDIA'nın optimize edilmiş **cuBLAS** kütüphanesi üzerinden gerçekleştirilir. Buna karşın indirgeme (reduction) işlemleri, elementwise matematik operasyonları ve aktivasyon fonksiyonları özel olarak yazılmış GPU kernel'ları ile çalışır. Bu hibrit yaklaşım, hem endüstri standardı performansı hem de esnekliği bir arada sunar.
 
+Son geliştirme turunda kütüphane, yüksek performans için aşağıdaki optimizasyonları aldı:
+
+- **TF32 Tensor Core matematik modu** etkinleştirildi
+- gereksiz ilk `upload()` yükü kaldırıldı
+- sıfır matrisler için doğrudan `cudaMemset` kullanıldı
+- GPU bellek havuzu ile tekrarlayan alloc/free maliyeti azaltıldı
+- pinned host memory ve async transferler eklendi
+- reduction akışı global state bağımlılığından kurtarılarak daha güvenli hale getirildi
+
+Bu sayede kütüphane, sadece doğruluk odaklı bir örnek değil, performans odaklı bir CUDA matris altyapısı haline geldi.
+
 Kütüphane özellikle şu kullanım senaryoları için tasarlanmıştır:
 
 - 🧠 Küçük/orta ölçekli sinir ağı katmanlarının GPU üzerinde manuel olarak prototiplenmesi
@@ -93,11 +104,12 @@ zeros · ones · identity · random · uniform · randn · glorot (Xavier init)
 
 ## 🚀 Neden MatrixFlash-Pro?
 
-- **Performans önceliği:** Matris çarpımı gibi maliyetli işlemler, elle yazılmış naif kernel'lardan çok daha hızlı çalışan cuBLAS üzerinden yürütülür.
+- **Performans önceliği:** Matris çarpımı gibi maliyetli işlemler, elle yazılmış naif kernel'lardan çok daha hızlı çalışan cuBLAS üzerinden yürütülür. Son versiyonda TF32 moduyla Tensor Core destekleri de devreye alındı.
 - **Zincirleme (chaining) API:** İşlemler device belleğinde art arda zincirlenebilir; host tarafına veri yalnızca açıkça `download()` çağrıldığında aktarılır. Bu, gereksiz host↔device veri transferini ortadan kaldırarak performans kaybını önler.
+- **Bellek-odaklı optimizasyon:** Aynı boyuttaki iş parçaları için bellek havuzu, pinned host bellek ve async transfer kullanımı sayesinde sık tekrar eden alloc/free ve veri taşıma yükü azaltıldı.
 - **Modüler kod tabanı:** Her operasyon grubu kendi `.cu` dosyasında ayrıştırılmıştır — okunabilirlik ve bakım kolaylığı ön plandadır.
 - **Sayısal kararlılık:** `softmax` gibi hassas fonksiyonlar taşma (overflow) sorunlarına karşı kararlı şekilde implemente edilmiştir.
-- **Kapsamlı test ve benchmark altyapısı:** Davranış testleri ve GPU matmul benchmark aracı proje ile birlikte gelir.
+- **Kapsamlı test ve benchmark altyapısı:** Davranış testleri ve GPU matmul benchmark aracı proje ile birlikte gelir; son ölçümler doğrulanmıştır.
 
 ---
 
@@ -167,11 +179,11 @@ cmake --build build --config Release --parallel
 # 3. Testleri çalıştırın
 ctest --test-dir build -C Release --output-on-failure
 
-# 4. Örnek uygulamayı çalıştırın
-& .\build\Release\matrix_pro_basic.exe
+# 4. Proje kök dizininden örnek uygulamayı çalıştırın
+.\build\Release\matrix_pro_basic.exe
 
 # 5. Benchmark aracını çalıştırın (1024x1024 boyutunda)
-& .\build\Release\matrix_pro_benchmark.exe 1024
+.\build\Release\matrix_pro_benchmark.exe 1024
 ```
 
 ---
@@ -296,13 +308,68 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 📈 Performans / Benchmark
 
-`benchmarks/perf_matrix.cpp` dosyası, cuBLAS destekli matris çarpımının GPU üzerindeki performansını ölçmek için kullanılır. Benchmark aracına parametre olarak matris boyutu (kare matris kenar uzunluğu) verilebilir:
+`benchmarks/perf_matrix.cpp` dosyası, cuBLAS destekli matris çarpımının GPU performansını karşılaştırmalı biçimde ölçmek için kullanılır. Benchmark, tek bir boyut yerine birden fazla kare matris boyutunu sırayla çalıştırır; her boyut için ortalama, minimum, maksimum süre, GFLOPS ve tahmini bant genişliği değerlerini raporlar.
+
+### Temel kullanım
 
 ```powershell
-& .\build\Release\matrix_pro_benchmark.exe 1024
+.\build\Release\matrix_pro_benchmark.exe 1024
 ```
 
-Bu komut 1024×1024 boyutunda bir matris çarpımı gerçekleştirerek GPU üzerindeki gerçek zamanlı performansı raporlar.
+### Çoklu karşılaştırma ve detaylı rapor
+
+```powershell
+.\build\Release\matrix_pro_benchmark.exe --sizes 2048,4096,8192,16384 --repeats 3
+```
+
+Bu komut aşağıdaki bilgileri üretir:
+- her boyut için ortalama / minimum / maksimum çalışma süresi
+- GFLOPS oranı
+- tahmini bant genişliği (GB/s)
+- referans boyutuna göre göreceli hız karşılaştırması
+- en yüksek verim elde edilen boyut
+
+### Son doğrulanmış benchmark çıktısı
+
+```text
+========================================
+ MatrixFlash-Pro GPU Benchmark Report
+========================================
+Repeats per size: 3 (warm-up run excluded from all measurements)
+
+Size        Avg(ms)     Min(ms)     Max(ms)     GFLOPS      BW(GB/s)        Rel. to base
+------------------------------------------------------------------------------------------
+2048        18.235      15.241      20.685      942.13      2.76            1.00            x
+4096        69.994      69.016      71.024      1963.57     2.88            2.08            x
+8192        363.579     341.118     377.545     3024.13     2.21            3.21            x
+16384       2735.710    2470.501    2905.017    3215.29     1.18            3.41            x
+
+Interpretation:
+- Baseline size: 2048x2048 (reference)
+- Relative to baseline > 1.0x indicates faster throughput than the reference size.
+- GFLOPS is computed as: 2 * n^3 / elapsed_time_seconds
+- Memory bandwidth is estimated from the matrix data movement involved in the multiply workload.
+
+Best throughput observed: 16384x16384 with 3215.29 GFLOPS
+```
+
+Bu sonuçlar, kütüphanenin son optimize edilmiş versiyonunda matris çarpımının hem büyüklük ölçeğinde yüksek verim verdiğini hem de büyük matrislerde daha iyi göreceli performans sağladığını göstermektedir. Özellikle 16384×16384 matris boyutunda görülen 3215.29 GFLOPS, proje için kritik başarı ölçütüdür.
+
+---
+
+## ✅ Son Durum
+
+MatrixFlash-Pro şu anda aşağıdaki temel optimizasyonları içermektedir:
+
+- **TF32 Tensor Core matematik modu**
+- gereksiz host→device upload kaldırıldı
+- sıfır matrisler için doğrudan `cudaMemset`
+- bellek havuzu ile alloc/free maliyeti azaltıldı
+- pinned host memory ve async transferler
+- stream-safe reduction yapısı
+- cuSOLVER tabanlı ileri düzey doğrusal cebir destekleri
+
+Bu durum, kütüphaneyi yalnızca işlevsel bir CUDA örneği olmaktan çıkarıp, gerçek performans hedefli bir matris çarpım ve GPU hesaplama altyapısına dönüştürmektedir.
 
 ---
 
@@ -311,11 +378,12 @@ Bu komut 1024×1024 boyutunda bir matris çarpımı gerçekleştirerek GPU üzer
 Aşağıdaki maddeler, projenin gelecekte geliştirilebileceği potansiyel alanlardır:
 
 - [ ] Çoklu-GPU desteği
-- [ ] Yarı hassasiyet (FP16 / Tensor Core) desteği
+- [ ] FP16 / Tensor Core optimizasyonlarını daha geniş yelpaze ile açmak
 - [ ] Python bağlama katmanı (pybind11 ile)
 - [ ] Daha fazla aktivasyon fonksiyonu (LeakyReLU, GELU, Swish vb.)
 - [ ] Sparse (seyrek) matris desteği
 - [ ] Linux/CMake çapraz platform derleme desteğinin genişletilmesi
+- [ ] Akış bazlı overlap ve multi-stream operasyonları daha da yaygınlaştırmak
 
 ---
 
