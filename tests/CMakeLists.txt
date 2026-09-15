@@ -1,0 +1,7 @@
+add_executable(matrix_pro_test_matrix test_matrix.cpp)
+target_link_libraries(matrix_pro_test_matrix PRIVATE matrix_pro)
+add_test(NAME matrix_pro_test_matrix COMMAND matrix_pro_test_matrix)
+
+add_executable(matrix_pro_test_operations test_operations.cpp)
+target_link_libraries(matrix_pro_test_operations PRIVATE matrix_pro)
+add_test(NAME matrix_pro_test_operations COMMAND matrix_pro_test_operations)

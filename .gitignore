@@ -1,0 +1,10 @@
+build/
+.vs/
+*.user
+*.suo
+*.pdb
+*.obj
+*.lib
+*.exe
+benchmarks/results/*
+!benchmarks/results/.gitkeep
