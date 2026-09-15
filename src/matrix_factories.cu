@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <random>
 #include <stdexcept>
 
@@ -42,8 +43,12 @@ Matrix Matrix::identity(std::size_t size) {
 }
 
 Matrix Matrix::random(std::size_t rows, std::size_t cols) {
+    return Matrix::random(rows, cols, std::random_device{}());
+}
+
+Matrix Matrix::random(std::size_t rows, std::size_t cols, std::uint32_t seed) {
     Matrix result(rows, cols);
-    std::mt19937 generator(1337u);
+    std::mt19937 generator(seed);
     std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
     for (auto& value : result.host_data_) value = distribution(generator);
     result.upload();
@@ -51,8 +56,12 @@ Matrix Matrix::random(std::size_t rows, std::size_t cols) {
 }
 
 Matrix Matrix::uniform(std::size_t rows, std::size_t cols, float low, float high) {
+    return Matrix::uniform(rows, cols, low, high, std::random_device{}());
+}
+
+Matrix Matrix::uniform(std::size_t rows, std::size_t cols, float low, float high, std::uint32_t seed) {
     Matrix result(rows, cols);
-    std::mt19937 generator(2024u);
+    std::mt19937 generator(seed);
     std::uniform_real_distribution<float> distribution(low, high);
     for (auto& value : result.host_data_) value = distribution(generator);
     result.upload();
@@ -60,8 +69,12 @@ Matrix Matrix::uniform(std::size_t rows, std::size_t cols, float low, float high
 }
 
 Matrix Matrix::randn(std::size_t rows, std::size_t cols) {
+    return Matrix::randn(rows, cols, std::random_device{}());
+}
+
+Matrix Matrix::randn(std::size_t rows, std::size_t cols, std::uint32_t seed) {
     Matrix result(rows, cols);
-    std::mt19937 generator(42u);
+    std::mt19937 generator(seed);
     std::normal_distribution<float> distribution(0.0f, 1.0f);
     for (auto& value : result.host_data_) value = distribution(generator);
     result.upload();

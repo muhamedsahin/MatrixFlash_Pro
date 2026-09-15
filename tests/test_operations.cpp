@@ -69,12 +69,13 @@ int main() {
 			check(std::abs(cs.at(0, 1) - 2.0f) < 1e-3f, "col_sum");
 		}
 
-		// --- softmax sums to 1 ---
+		// --- softmax sums to 1 per row ---
 		{
 			Matrix m{{1.0f, -2.0f}, {3.0f, 4.0f}};
-			Matrix sm = m.flatten().softmax();
+			Matrix sm = m.softmax();
 			sm.download();
-			check(std::abs(host_sum(sm) - 1.0f) < 1e-4f, "softmax sum");
+			check(std::abs(sm.at(0, 0) + sm.at(0, 1) - 1.0f) < 1e-4f, "softmax row 0 sums to 1");
+			check(std::abs(sm.at(1, 0) + sm.at(1, 1) - 1.0f) < 1e-4f, "softmax row 1 sums to 1");
 		}
 
 		// --- elementwise math ---
@@ -115,8 +116,10 @@ int main() {
 
 		// --- factories ---
 		{
-			Matrix r = Matrix::random(4, 5);
-			check(r.rows() == 4 && r.cols() == 5, "random shape");
+			Matrix r1 = Matrix::random(4, 5);
+			Matrix r2 = Matrix::random(4, 5);
+			check(r1.rows() == 4 && r1.cols() == 5, "random shape");
+			check(r1.data() != r2.data(), "random values differ across calls");
 			Matrix g = Matrix::glorot(3, 3);
 			check(g.rows() == 3 && g.cols() == 3, "glorot shape");
 		}

@@ -96,8 +96,11 @@ public:
 	static Matrix ones(std::size_t rows, std::size_t cols);
 	static Matrix identity(std::size_t size);
 	static Matrix random(std::size_t rows, std::size_t cols);   // uniform [0,1)
+	static Matrix random(std::size_t rows, std::size_t cols, std::uint32_t seed);
 	static Matrix uniform(std::size_t rows, std::size_t cols, float low, float high);
+	static Matrix uniform(std::size_t rows, std::size_t cols, float low, float high, std::uint32_t seed);
 	static Matrix randn(std::size_t rows, std::size_t cols);   // standard normal
+	static Matrix randn(std::size_t rows, std::size_t cols, std::uint32_t seed);
 	static Matrix glorot(std::size_t rows, std::size_t cols);  // Xavier init
 
 	// --- persistence ---

@@ -167,12 +167,15 @@ float l2_norm(const Matrix& matrix) { return std::sqrt(reduce_scalar(matrix, 1))
 
 float variance(const Matrix& matrix) {
     if (matrix.empty()) throw std::invalid_argument("Variance is undefined for an empty matrix");
-    if (matrix.size() == 1) return 0.0f;
-    const float m = mean(matrix);
-    float acc = 0.0f;
-    Matrix copy = matrix; copy.download();
-    for (const float v : copy.data()) { const float d = v - m; acc += d * d; }
-    return acc / static_cast<float>(matrix.size() - 1);
+    const std::size_t count = matrix.size();
+    if (count == 1) return 0.0f;
+
+    const float total = sum(matrix);
+    const float sum_sq = reduce_scalar(matrix, 1);
+    const float mean_value = total / static_cast<float>(count);
+    const float mean_sq = mean_value * mean_value;
+    const float numerator = static_cast<float>(count) * sum_sq - total * total;
+    return numerator / (static_cast<float>(count) * static_cast<float>(count - 1));
 }
 float stddev(const Matrix& matrix) { return std::sqrt(variance(matrix)); }
 
