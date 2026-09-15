@@ -1,12 +1,18 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace matrix_pro {
+
+// Forward declarations for decomposition results (defined in operations.hpp).
+struct QRResult;
+struct SVDResult;
+struct EigenResult;
 
 class Matrix {
 public:
@@ -17,8 +23,8 @@ public:
 
 	Matrix(const Matrix& other);
 	Matrix& operator=(const Matrix& other);
-	Matrix(Matrix&& other) noexcept = default;
-	Matrix& operator=(Matrix&& other) noexcept = default;
+	Matrix(Matrix&& other) noexcept;
+	Matrix& operator=(Matrix&& other) noexcept;
 	~Matrix();
 
 	std::size_t rows() const noexcept { return rows_; }
@@ -54,6 +60,10 @@ public:
 	Matrix clamp(float low, float high) const;
 	Matrix sigmoid() const;
 	Matrix tanh() const;
+	Matrix leaky_relu(float negative_slope = 0.01f) const;
+	Matrix elu(float alpha = 1.0f) const;
+	Matrix gelu() const;
+	Matrix swish(float beta = 1.0f) const;
 	Matrix pow(float exponent) const;
 	Matrix add_scalar(float value) const;
 
@@ -65,8 +75,13 @@ public:
 	Matrix operator*(const Matrix& other) const;
 	Matrix operator*(float scalar) const;
 	Matrix elementwise_multiply(const Matrix& other) const;
+	Matrix& operator+=(const Matrix& other);
+	Matrix& operator-=(const Matrix& other);
+	Matrix& operator*=(float scalar);
+	Matrix& operator/=(float scalar);
 
 	Matrix outer_product(const Matrix& other) const;
+	Matrix kron(const Matrix& other) const;
 
 	// --- broadcast style (numPy-style: v matches rows OR cols) ---
 	Matrix add_row_vector(const Matrix& v) const;
@@ -86,10 +101,46 @@ public:
 	float stddev() const;
 	float l1_norm() const;
 	float l2_norm() const;
+	float frobenius_norm() const;
 	float abs_max() const;
 	float trace() const;
 	float determinant() const;
 	Matrix inverse() const;
+	float condition_number() const;
+	Matrix covariance() const;
+	Matrix correlation() const;
+
+	// --- logical & comparison operations ---
+	Matrix greater(float value) const;
+	Matrix greater(const Matrix& other) const;
+	Matrix less(float value) const;
+	Matrix less(const Matrix& other) const;
+	Matrix equal(float value) const;
+	Matrix equal(const Matrix& other) const;
+	Matrix not_equal(float value) const;
+	Matrix not_equal(const Matrix& other) const;
+	Matrix logical_and(const Matrix& other) const;
+	Matrix logical_or(const Matrix& other) const;
+	Matrix logical_not() const;
+	Matrix isnan() const;
+	Matrix isinf() const;
+	Matrix is_finite() const;
+	bool any() const;
+	bool all() const;
+	Matrix apply_mask(const Matrix& mask, float value) const;
+	Matrix filter_by_mask(const Matrix& mask) const;
+	static Matrix where(const Matrix& condition, const Matrix& true_value, const Matrix& false_value);
+	static Matrix where(const Matrix& condition, float true_value, float false_value);
+
+	// --- advanced linear algebra (cuSOLVER-accelerated) ---
+	Matrix solve(const Matrix& rhs) const;
+	QRResult qr() const;
+	SVDResult svd() const;
+	Matrix cholesky() const;
+	EigenResult eigen() const;
+	Matrix pinv() const;
+	std::size_t rank() const;
+	Matrix solve_least_squares(const Matrix& rhs) const;
 
 	// --- factories ---
 	static Matrix zeros(std::size_t rows, std::size_t cols);

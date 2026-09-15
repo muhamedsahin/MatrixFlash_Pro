@@ -89,7 +89,14 @@ exp · log · sqrt · abs · clamp · pow · add_scalar · sigmoid · tanh · ne
 ### 🎯 Aktivasyon Fonksiyonları
 - `relu`
 - `softmax` — çok bloklu ve **sayısal olarak kararlı** implementasyon
-- `sigmoid`, `tanh`
+- `sigmoid`, `tanh`, `leaky_relu`, `elu`, `gelu`, `swish`
+
+### 🧠 Makine Öğrenmesi Katmanı
+- `Variable` ile GPU üzerinde otomatik türev ve geri yayılım grafiği
+- `batch_norm`, `layer_norm` ve inverted `dropout`
+- NCHW `conv2d`, `max_pool2d`, `avg_pool2d`
+- cuDNN kuruluysa conv/pooling için cuDNN backend’i; yoksa CUDA kernel fallback’i
+- `Tensor` değerleri device belleğinde tutulur; yalnızca açık `download()` çağrısı host’a veri taşır
 
 ### 🎲 Matris Oluşturucular
 ```
@@ -133,6 +140,10 @@ MatrixFlash_Pro/
 │   ├── operations_transforms.cu     # transpose, relu, softmax, flatten, slice
 │   ├── operations_statistics.cu     # GPU indirgemeleri (sum/mean/min/max/...)
 │   ├── operations_advanced.cu       # determinant ve inverse hesaplamaları
+│   ├── operations_ml.cu              # aktivasyon, normalizasyon ve dropout
+│   ├── operations_conv.cu            # NCHW conv2d ve pooling, cuDNN/fallback
+│   ├── autograd.cu                   # Variable tabanlı otomatik türev grafiği
+│   ├── tensor.cu                     # GPU-resident ND Tensor yaşam döngüsü
 │   └── cuda_utils.cu                # CUDA hata kontrol mekanizması
 │
 ├── tests/                       # Davranış (behavior) testleri
@@ -276,7 +287,16 @@ int main() {
 <details>
 <summary><b>🔹 Dönüşümler ve Aktivasyonlar</b></summary>
 
-`transpose`, `flatten`, `slice`, `relu`, `softmax`, `sigmoid`, `tanh`
+`transpose`, `flatten`, `slice`, `relu`, `softmax`, `sigmoid`, `tanh`, `leaky_relu`, `elu`, `gelu`, `swish`
+
+</details>
+
+<details>
+<summary><b>🔹 Makine Öğrenmesi / CNN</b></summary>
+
+`Variable`, `backward`, `batch_norm`, `layer_norm`, `dropout`, `conv2d`, `max_pool2d`, `avg_pool2d`
+
+`conv2d` ve pooling girdileri NCHW düzeninde Tensor bekler. cuDNN bulunamazsa aynı API otomatik olarak CUDA kernel backend’ine düşer.
 
 </details>
 
@@ -368,6 +388,10 @@ MatrixFlash-Pro şu anda aşağıdaki temel optimizasyonları içermektedir:
 - pinned host memory ve async transferler
 - stream-safe reduction yapısı
 - cuSOLVER tabanlı ileri düzey doğrusal cebir destekleri
+- GPU üzerinde batch matmul ve ND Tensor desteği
+- FP16 Tensor Core ve double-accumulation matmul yolları
+- GPU compact mask filtreleme ve atomik `any/all`
+- Faz 7 ML çekirdekleri: autograd, norm, dropout, conv2d ve pooling
 
 Bu durum, kütüphaneyi yalnızca işlevsel bir CUDA örneği olmaktan çıkarıp, gerçek performans hedefli bir matris çarpım ve GPU hesaplama altyapısına dönüştürmektedir.
 
@@ -378,9 +402,12 @@ Bu durum, kütüphaneyi yalnızca işlevsel bir CUDA örneği olmaktan çıkarı
 Aşağıdaki maddeler, projenin gelecekte geliştirilebileceği potansiyel alanlardır:
 
 - [ ] Çoklu-GPU desteği
-- [ ] FP16 / Tensor Core optimizasyonlarını daha geniş yelpaze ile açmak
+- [x] FP16 / Tensor Core optimizasyonlarını daha geniş yelpaze ile açmak
 - [ ] Python bağlama katmanı (pybind11 ile)
-- [ ] Daha fazla aktivasyon fonksiyonu (LeakyReLU, GELU, Swish vb.)
+- [x] Daha fazla aktivasyon fonksiyonu (LeakyReLU, GELU, Swish vb.)
+- [x] Otomatik türev ve geri yayılım prototiplemesi
+- [x] BatchNorm, LayerNorm ve Dropout
+- [x] Conv2D ve Max/Average Pooling
 - [ ] Sparse (seyrek) matris desteği
 - [ ] Linux/CMake çapraz platform derleme desteğinin genişletilmesi
 - [ ] Akış bazlı overlap ve multi-stream operasyonları daha da yaygınlaştırmak

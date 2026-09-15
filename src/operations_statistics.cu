@@ -1,6 +1,8 @@
 #include "matrix_pro/operations.hpp"
 #include "matrix_pro/cuda_utils.hpp"
 
+#include <cublas_v2.h>
+
 #include <cmath>
 #include <cfloat>
 #include <limits>
@@ -99,11 +101,20 @@ __global__ void arg_partial_kernel(const float* input, std::size_t count, int fi
 }
 
 __global__ void row_sum_kernel(const float* input, float* output, std::size_t rows, std::size_t cols) {
-    for (std::size_t row = blockIdx.x * blockDim.x + threadIdx.x; row < rows; row += gridDim.x * blockDim.x) {
-        float sum = 0.0f;
-        for (std::size_t col = 0; col < cols; ++col) sum += input[row * cols + col];
-        output[row] = sum;
+    __shared__ float partial[reduce_block];
+    const auto row = static_cast<std::size_t>(blockIdx.x);
+    const auto tid = threadIdx.x;
+    float sum = 0.0f;
+    if (row < rows) {
+        for (std::size_t col = tid; col < cols; col += blockDim.x) sum += input[row * cols + col];
     }
+    partial[tid] = sum;
+    __syncthreads();
+    for (unsigned stride = reduce_block / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) partial[tid] += partial[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0 && row < rows) output[row] = partial[0];
 }
 
 __global__ void col_sum_kernel(const float* input, float* output, std::size_t rows, std::size_t cols) {
@@ -112,6 +123,28 @@ __global__ void col_sum_kernel(const float* input, float* output, std::size_t ro
         for (std::size_t row = 0; row < rows; ++row) sum += input[row * cols + col];
         output[col] = sum;
     }
+}
+
+__global__ void center_columns_kernel(const float* input, const float* means, float* output,
+                                      std::size_t rows, std::size_t cols) {
+    const auto index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (index < rows * cols) output[index] = input[index] - means[index % cols];
+}
+
+__global__ void covariance_to_correlation_kernel(const float* covariance, float* correlation,
+                                                 std::size_t dimensions) {
+    const auto index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (index >= dimensions * dimensions) return;
+    const auto row = index / dimensions;
+    const auto col = index % dimensions;
+    if (row == col) {
+        correlation[index] = 1.0f;
+        return;
+    }
+    const float variance_row = covariance[row * dimensions + row];
+    const float variance_col = covariance[col * dimensions + col];
+    correlation[index] = variance_row > 0.0f && variance_col > 0.0f
+        ? covariance[index] / sqrtf(variance_row * variance_col) : 0.0f;
 }
 
 }
@@ -126,11 +159,12 @@ float reduce_scalar(const Matrix& matrix, int which) {
 
     const unsigned grid = static_cast<unsigned>((count + reduce_block - 1) / reduce_block);
     float* partial = static_cast<float*>(allocate_device_memory(static_cast<std::size_t>(grid) * 5U * sizeof(float)));
-    reduce_partial_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, partial);
+    reduce_partial_kernel<<<grid, reduce_block, 0, compute_stream()>>>(matrix.device_data(), count, partial);
     checkCuda(cudaGetLastError(), "reduce partial kernel launch");
 
     std::vector<float> host_partial(static_cast<std::size_t>(grid) * 5U);
-    checkCuda(cudaMemcpy(host_partial.data(), partial, host_partial.size() * sizeof(float), cudaMemcpyDeviceToHost), "reduce partial read");
+    checkCuda(cudaMemcpyAsync(host_partial.data(), partial, host_partial.size() * sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "reduce partial read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "reduce partial synchronize");
     free_device_memory(partial);
 
     float result[5] = {0.0f, 0.0f, 0.0f, FLT_MAX, -FLT_MAX};
@@ -153,8 +187,9 @@ float mean(const Matrix& matrix) {
 float min(const Matrix& matrix) { return reduce_scalar(matrix, 3); }
 float max(const Matrix& matrix) { return reduce_scalar(matrix, 4); }
 float l1_norm(const Matrix& matrix) { return reduce_scalar(matrix, 2); }
-float abs_max(const Matrix& matrix) { return fabsf(reduce_scalar(matrix, 4)); }
 float l2_norm(const Matrix& matrix) { return std::sqrt(reduce_scalar(matrix, 1)); }
+float frobenius_norm(const Matrix& matrix) { return l2_norm(matrix); }
+float abs_max(const Matrix& matrix) { return fabsf(reduce_scalar(matrix, 4)); }
 
 float variance(const Matrix& matrix) {
     if (matrix.empty()) throw std::invalid_argument("Variance is undefined for an empty matrix");
@@ -177,13 +212,14 @@ std::size_t argmin(const Matrix& matrix) {
 
     float* partial_values = static_cast<float*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(float)));
     std::size_t* partial_indices = static_cast<std::size_t*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(std::size_t)));
-    arg_partial_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, 0, partial_values, partial_indices);
+    arg_partial_kernel<<<grid, reduce_block, 0, compute_stream()>>>(matrix.device_data(), count, 0, partial_values, partial_indices);
     checkCuda(cudaGetLastError(), "argmin partial kernel launch");
 
     std::vector<float> host_values(static_cast<std::size_t>(grid));
     std::vector<std::size_t> host_indices(static_cast<std::size_t>(grid));
-    checkCuda(cudaMemcpy(host_values.data(), partial_values, host_values.size() * sizeof(float), cudaMemcpyDeviceToHost), "argmin values read");
-    checkCuda(cudaMemcpy(host_indices.data(), partial_indices, host_indices.size() * sizeof(std::size_t), cudaMemcpyDeviceToHost), "argmin indices read");
+    checkCuda(cudaMemcpyAsync(host_values.data(), partial_values, host_values.size() * sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "argmin values read");
+    checkCuda(cudaMemcpyAsync(host_indices.data(), partial_indices, host_indices.size() * sizeof(std::size_t), cudaMemcpyDeviceToHost, compute_stream()), "argmin indices read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "argmin synchronize");
     free_device_memory(partial_values);
     free_device_memory(partial_indices);
 
@@ -205,13 +241,14 @@ std::size_t argmax(const Matrix& matrix) {
 
     float* partial_values = static_cast<float*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(float)));
     std::size_t* partial_indices = static_cast<std::size_t*>(allocate_device_memory(static_cast<std::size_t>(grid) * sizeof(std::size_t)));
-    arg_partial_kernel<<<grid, reduce_block>>>(matrix.device_data(), count, 1, partial_values, partial_indices);
+    arg_partial_kernel<<<grid, reduce_block, 0, compute_stream()>>>(matrix.device_data(), count, 1, partial_values, partial_indices);
     checkCuda(cudaGetLastError(), "argmax partial kernel launch");
 
     std::vector<float> host_values(static_cast<std::size_t>(grid));
     std::vector<std::size_t> host_indices(static_cast<std::size_t>(grid));
-    checkCuda(cudaMemcpy(host_values.data(), partial_values, host_values.size() * sizeof(float), cudaMemcpyDeviceToHost), "argmax values read");
-    checkCuda(cudaMemcpy(host_indices.data(), partial_indices, host_indices.size() * sizeof(std::size_t), cudaMemcpyDeviceToHost), "argmax indices read");
+    checkCuda(cudaMemcpyAsync(host_values.data(), partial_values, host_values.size() * sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "argmax values read");
+    checkCuda(cudaMemcpyAsync(host_indices.data(), partial_indices, host_indices.size() * sizeof(std::size_t), cudaMemcpyDeviceToHost, compute_stream()), "argmax indices read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "argmax synchronize");
     free_device_memory(partial_values);
     free_device_memory(partial_indices);
 
@@ -247,18 +284,19 @@ float trace(const Matrix& matrix) {
     if (matrix.rows() != matrix.cols()) throw std::invalid_argument("Trace requires a square matrix");
     if (matrix.empty()) return 0.0f;
     float* device_result = static_cast<float*>(allocate_device_memory(sizeof(float)));
-    trace_kernel<<<1, reduce_block>>>(matrix.device_data(), matrix.rows(), matrix.cols(), device_result);
+    trace_kernel<<<1, reduce_block, 0, compute_stream()>>>(matrix.device_data(), matrix.rows(), matrix.cols(), device_result);
     checkCuda(cudaGetLastError(), "trace kernel launch");
     float result = 0.0f;
-    checkCuda(cudaMemcpy(&result, device_result, sizeof(float), cudaMemcpyDeviceToHost), "trace read");
+    checkCuda(cudaMemcpyAsync(&result, device_result, sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "trace read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "trace synchronize");
     free_device_memory(device_result);
     return result;
 }
 
 Matrix row_sum(const Matrix& matrix) {
     Matrix output(matrix.rows(), 1);
-    const unsigned grid = matrix.rows() == 0 ? 1 : static_cast<unsigned>((matrix.rows() + 255) / 256);
-    row_sum_kernel<<<grid, 256>>>(matrix.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    const unsigned grid = matrix.rows() == 0 ? 1 : static_cast<unsigned>(matrix.rows());
+    row_sum_kernel<<<grid, reduce_block, 0, compute_stream()>>>(matrix.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "row sum kernel launch");
     return output;
 }
@@ -266,7 +304,7 @@ Matrix row_sum(const Matrix& matrix) {
 Matrix col_sum(const Matrix& matrix) {
     Matrix output(1, matrix.cols());
     const unsigned grid = matrix.cols() == 0 ? 1 : static_cast<unsigned>((matrix.cols() + 255) / 256);
-    col_sum_kernel<<<grid, 256>>>(matrix.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    col_sum_kernel<<<grid, 256, 0, compute_stream()>>>(matrix.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "col sum kernel launch");
     return output;
 }
@@ -281,9 +319,67 @@ float Matrix::variance() const { return matrix_pro::variance(*this); }
 float Matrix::stddev() const { return matrix_pro::stddev(*this); }
 float Matrix::l1_norm() const { return matrix_pro::l1_norm(*this); }
 float Matrix::l2_norm() const { return matrix_pro::l2_norm(*this); }
+float Matrix::frobenius_norm() const { return matrix_pro::frobenius_norm(*this); }
 float Matrix::abs_max() const { return matrix_pro::abs_max(*this); }
 float Matrix::trace() const { return matrix_pro::trace(*this); }
 Matrix Matrix::row_sum() const { return matrix_pro::row_sum(*this); }
 Matrix Matrix::col_sum() const { return matrix_pro::col_sum(*this); }
+
+float condition_number(const Matrix& matrix) {
+    if (matrix.empty()) return 1.0f;
+    const auto decomposition = svd(matrix);
+    const std::size_t minmn = std::min(matrix.rows(), matrix.cols());
+    float max_sigma = 0.0f;
+    float min_sigma = std::numeric_limits<float>::infinity();
+    for (std::size_t i = 0; i < minmn; ++i) {
+        const float sigma = decomposition.s.data()[i * minmn + i];
+        max_sigma = std::max(max_sigma, sigma);
+        min_sigma = std::min(min_sigma, sigma);
+    }
+    if (!std::isfinite(min_sigma) || min_sigma <= 0.0f) {
+        return std::numeric_limits<float>::infinity();
+    }
+    return max_sigma / min_sigma;
+}
+
+Matrix covariance(const Matrix& matrix) {
+    const std::size_t rows = matrix.rows();
+    const std::size_t cols = matrix.cols();
+    if (rows == 0 || cols == 0) return Matrix(rows, cols);
+
+    Matrix means = col_sum(matrix) * (1.0f / static_cast<float>(rows));
+    Matrix centered(rows, cols);
+    center_columns_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
+        matrix.device_data(), means.device_data(), centered.device_data(), rows, cols);
+    checkCuda(cudaGetLastError(), "center columns kernel launch");
+
+    Matrix result(cols, cols);
+    const float alpha = 1.0f / static_cast<float>(rows > 1 ? rows - 1 : 1);
+    const float beta = 0.0f;
+    const auto covariance_status = cublasSgemm(
+        cublas_handle(), CUBLAS_OP_N, CUBLAS_OP_T,
+        static_cast<int>(cols), static_cast<int>(cols), static_cast<int>(rows),
+        &alpha, centered.device_data(), static_cast<int>(cols),
+        centered.device_data(), static_cast<int>(cols),
+        &beta, result.device_data(), static_cast<int>(cols));
+    if (covariance_status != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("covariance cuBLAS GEMM failed");
+    return result;
+}
+
+Matrix correlation(const Matrix& matrix) {
+    Matrix cov = covariance(matrix);
+    const std::size_t dims = cov.rows();
+    Matrix result(dims, dims);
+    if (dims == 0) return result;
+
+    covariance_to_correlation_kernel<<<static_cast<unsigned>((dims * dims + 255) / 256), 256, 0, compute_stream()>>>(
+        cov.device_data(), result.device_data(), dims);
+    checkCuda(cudaGetLastError(), "correlation kernel launch");
+    return result;
+}
+
+float Matrix::condition_number() const { return matrix_pro::condition_number(*this); }
+Matrix Matrix::covariance() const { return matrix_pro::covariance(*this); }
+Matrix Matrix::correlation() const { return matrix_pro::correlation(*this); }
 
 }

@@ -82,7 +82,7 @@ __global__ void mul_col_vector_kernel(const float* matrix, const float* vector, 
 
 Matrix unary(const Matrix& matrix, UnaryOp op, float a = 0.0f, float b = 0.0f) {
     Matrix output(matrix.rows(), matrix.cols());
-    unary_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    unary_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), output.device_data(), matrix.size(), op, a, b);
     checkCuda(cudaGetLastError(), "unary kernel launch");
     return output;
@@ -95,7 +95,7 @@ Matrix add(const Matrix& left, const Matrix& right) {
         throw std::invalid_argument("Matrix shapes must match");
     }
     Matrix output(left.rows(), left.cols());
-    binary_kernel<<<static_cast<unsigned>((left.size() + 255) / 256), 256>>>(
+    binary_kernel<<<static_cast<unsigned>((left.size() + 255) / 256), 256, 0, compute_stream()>>>(
         left.device_data(), right.device_data(), output.device_data(), left.size(), BinaryOperation::add);
     checkCuda(cudaGetLastError(), "add kernel launch");
     return output;
@@ -106,7 +106,7 @@ Matrix subtract(const Matrix& left, const Matrix& right) {
         throw std::invalid_argument("Matrix shapes must match");
     }
     Matrix output(left.rows(), left.cols());
-    binary_kernel<<<static_cast<unsigned>((left.size() + 255) / 256), 256>>>(
+    binary_kernel<<<static_cast<unsigned>((left.size() + 255) / 256), 256, 0, compute_stream()>>>(
         left.device_data(), right.device_data(), output.device_data(), left.size(), BinaryOperation::subtract);
     checkCuda(cudaGetLastError(), "subtract kernel launch");
     return output;
@@ -117,7 +117,7 @@ Matrix elementwise_multiply(const Matrix& left, const Matrix& right) {
         throw std::invalid_argument("Matrix shapes must match");
     }
     Matrix output(left.rows(), left.cols());
-    binary_kernel<<<static_cast<unsigned>((left.size() + 255) / 256), 256>>>(
+    binary_kernel<<<static_cast<unsigned>((left.size() + 255) / 256), 256, 0, compute_stream()>>>(
         left.device_data(), right.device_data(), output.device_data(), left.size(), BinaryOperation::multiply);
     checkCuda(cudaGetLastError(), "elementwise multiply kernel launch");
     return output;
@@ -125,7 +125,7 @@ Matrix elementwise_multiply(const Matrix& left, const Matrix& right) {
 
 Matrix multiply(const Matrix& matrix, float scalar) {
     Matrix output(matrix.rows(), matrix.cols());
-    scalar_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    scalar_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), output.device_data(), matrix.size(), scalar);
     checkCuda(cudaGetLastError(), "scalar kernel launch");
     return output;
@@ -133,7 +133,7 @@ Matrix multiply(const Matrix& matrix, float scalar) {
 
 Matrix add_scalar(const Matrix& matrix, float value) {
     Matrix output(matrix.rows(), matrix.cols());
-    bias_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    bias_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), output.device_data(), matrix.size(), value);
     checkCuda(cudaGetLastError(), "add scalar kernel launch");
     return output;
@@ -152,7 +152,7 @@ Matrix negate(const Matrix& matrix) { return unary(matrix, UnaryOp::negate); }
 Matrix add_row_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.cols()) throw std::invalid_argument("Row vector length must equal column count");
     Matrix output(matrix.rows(), matrix.cols());
-    add_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    add_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "add row vector kernel launch");
     return output;
@@ -161,7 +161,7 @@ Matrix add_row_vector(const Matrix& matrix, const Matrix& vector) {
 Matrix add_col_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.rows()) throw std::invalid_argument("Column vector length must equal row count");
     Matrix output(matrix.rows(), matrix.cols());
-    add_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    add_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "add col vector kernel launch");
     return output;
@@ -170,7 +170,7 @@ Matrix add_col_vector(const Matrix& matrix, const Matrix& vector) {
 Matrix multiply_row_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.cols()) throw std::invalid_argument("Row vector length must equal column count");
     Matrix output(matrix.rows(), matrix.cols());
-    mul_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    mul_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "multiply row vector kernel launch");
     return output;
@@ -179,7 +179,7 @@ Matrix multiply_row_vector(const Matrix& matrix, const Matrix& vector) {
 Matrix multiply_col_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.rows()) throw std::invalid_argument("Column vector length must equal row count");
     Matrix output(matrix.rows(), matrix.cols());
-    mul_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    mul_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "multiply col vector kernel launch");
     return output;

@@ -5,3 +5,15 @@ add_test(NAME matrix_pro_test_matrix COMMAND matrix_pro_test_matrix)
 add_executable(matrix_pro_test_operations test_operations.cpp)
 target_link_libraries(matrix_pro_test_operations PRIVATE matrix_pro)
 add_test(NAME matrix_pro_test_operations COMMAND matrix_pro_test_operations)
+
+add_executable(matrix_pro_test_linalg test_linalg.cpp)
+target_link_libraries(matrix_pro_test_linalg PRIVATE matrix_pro)
+add_test(NAME matrix_pro_test_linalg COMMAND matrix_pro_test_linalg)
+
+add_executable(matrix_pro_test_batch test_batch.cpp)
+target_link_libraries(matrix_pro_test_batch PRIVATE matrix_pro)
+add_test(NAME matrix_pro_test_batch COMMAND matrix_pro_test_batch)
+
+add_executable(matrix_pro_test_ml test_ml.cpp)
+target_link_libraries(matrix_pro_test_ml PRIVATE matrix_pro)
+add_test(NAME matrix_pro_test_ml COMMAND matrix_pro_test_ml)

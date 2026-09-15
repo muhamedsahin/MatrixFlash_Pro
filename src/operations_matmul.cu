@@ -7,38 +7,6 @@
 namespace matrix_pro {
 namespace {
 
-struct CublasHandleGuard {
-    cublasHandle_t handle = nullptr;
-
-    CublasHandleGuard() {
-        if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) {
-            throw std::runtime_error("cuBLAS handle creation failed");
-        }
-
-        int device = 0;
-        cudaGetDevice(&device);
-        cudaDeviceProp props{};
-        cudaGetDeviceProperties(&props, device);
-        if (props.major >= 8) {
-            const cublasStatus_t math_status = cublasSetMathMode(handle, CUBLAS_TF32_TENSOR_OP_MATH);
-            if (math_status != CUBLAS_STATUS_SUCCESS) {
-                throw std::runtime_error("cuBLAS TF32 math mode setup failed");
-            }
-        }
-    }
-
-    ~CublasHandleGuard() {
-        if (handle != nullptr) {
-            cublasDestroy(handle);
-        }
-    }
-};
-
-cublasHandle_t& cublas_handle() {
-    static CublasHandleGuard handle;
-    return handle.handle;
-}
-
 __global__ void outer_product_kernel(const float* left, const float* right, float* output,
                                      std::size_t left_count, std::size_t right_count) {
     const auto col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -82,7 +50,7 @@ Matrix outer_product(const Matrix& left, const Matrix& right) {
     Matrix output(lc, rc);
     dim3 block(16, 16);
     dim3 grid((rc + 15) / 16, (lc + 15) / 16);
-    outer_product_kernel<<<grid, block>>>(left.device_data(), right.device_data(), output.device_data(), lc, rc);
+    outer_product_kernel<<<grid, block, 0, compute_stream()>>>(left.device_data(), right.device_data(), output.device_data(), lc, rc);
     checkCuda(cudaGetLastError(), "outer product kernel launch");
     return output;
 }

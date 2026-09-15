@@ -358,6 +358,78 @@ float det = a.determinant();  // 10.0`}
           Kare bir matrisin tersini hesaplar. Tersi ile çarpımı birim matrisi
           verir. Determinantı sıfır olan matrislerin tersi yoktur.
         </ApiEntry>
+        <ApiEntry
+          name="solve"
+          signature="Matrix solve(const Matrix& rhs) const"
+          returns="Matrix"
+          example={`Matrix x = a.solve(b);  // a * x = b`}
+        >
+          Ax = b doğrusal sistemini LU ayrıştırması (getrf + getrs) ile,
+          <code>inverse()</code> almadan çözer. Daha hızlı ve sayısal olarak
+          kararlıdır. <code>rhs</code> vektör veya birden çok sağ taraf olabilir.
+        </ApiEntry>
+        <ApiEntry
+          name="qr"
+          signature="QRResult qr() const"
+          returns="QRResult{q,r}"
+          example={`auto [q, r] = a.qr();  // a = q * r`}
+        >
+          İnce (thin) QR ayrıştırması (geqrf + orgqr). Ortogonalleştirme ve
+          en küçük kareler problemleri için kullanılır.
+        </ApiEntry>
+        <ApiEntry
+          name="svd"
+          signature="SVDResult svd() const"
+          returns="SVDResult{u,s,v}"
+          example={`auto res = a.svd();  // a = u * s * v^T`}
+        >
+          Tekil değer ayrıştırması (gesvd). PCA, boyut indirgeme ve düşük
+          ranklı yaklaşıklamanın temelidir.
+        </ApiEntry>
+        <ApiEntry
+          name="cholesky"
+          signature="Matrix cholesky() const"
+          returns="Matrix"
+          example={`Matrix l = a.cholesky();  // a = l * l^T`}
+        >
+          Pozitif tanımlı simetrik matrisler için Cholesky ayrıştırması (potrf).
+          Alt üçgensel L faktörünü döndürür.
+        </ApiEntry>
+        <ApiEntry
+          name="eigen"
+          signature="EigenResult eigen() const"
+          returns="EigenResult{eigenvalues,eigenvectors}"
+          example={`auto res = a.eigen();`}
+        >
+          Simetrik matrisler için özdeğer/özvektör ayrıştırması (syevd).
+          Özdeğerler köşegen, özvektörler sütunlar halinde döner.
+        </ApiEntry>
+        <ApiEntry
+          name="pinv"
+          signature="Matrix pinv() const"
+          returns="Matrix"
+          example={`Matrix p = a.pinv();  // Moore-Penrose`}
+        >
+          Kare olmayan matrislerin SVD tabanlı Moore-Penrose pseudo-tersini
+          hesaplar.
+        </ApiEntry>
+        <ApiEntry
+          name="rank"
+          signature="std::size_t rank() const"
+          returns="std::size_t"
+          example={`std::size_t r = a.rank();`}
+        >
+          SVD tekil değerleri üzerinden matrisin sayısal rankını döndürür.
+        </ApiEntry>
+        <ApiEntry
+          name="solve_least_squares"
+          signature="Matrix solve_least_squares(const Matrix& rhs) const"
+          returns="Matrix"
+          example={`Matrix x = a.solve_least_squares(b);`}
+        >
+          Aşırı/aşağı belirlenmiş sistemlerin SVD pseudo-tersi üzerinden en
+          küçük kareler çözümü (x = pinv(A) * b).
+        </ApiEntry>
       </div>
 
       {/* KALICILIK & YAŞAM DÖNGÜSÜ */}

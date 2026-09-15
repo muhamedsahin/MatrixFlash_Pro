@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <functional>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <sstream>
 #include <stdexcept>
@@ -10,6 +12,7 @@
 #include <vector>
 
 #include "matrix_pro/matrix.hpp"
+#include "matrix_pro/operations.hpp"
 
 namespace {
 
@@ -117,6 +120,68 @@ BenchmarkResult benchmark_size(std::size_t size, int repeats) {
     return BenchmarkResult{size, avg_ms, min_ms, max_ms, gflops, bandwidth_gbps, 1.0, 0.0};
 }
 
+// Build a symmetric positive definite matrix (diagonally dominant): n*I + 0.5*ones.
+matrix_pro::Matrix make_spd(std::size_t n) {
+    std::vector<float> data(n * n, 0.5f);
+    for (std::size_t i = 0; i < n; ++i) data[i * n + i] += static_cast<float>(n);
+    return matrix_pro::Matrix(n, n, data);
+}
+
+// Build a deterministic, near-random but invertible matrix.
+matrix_pro::Matrix make_general(std::size_t n) {
+    std::vector<float> data(n * n);
+    for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = 0; j < n; ++j)
+            data[i * n + j] = static_cast<float>(((i * n + j) * 2654435761u) % 10000u) / 1000.0f + 0.1f;
+    return matrix_pro::Matrix(n, n, data);
+}
+
+void benchmark_linalg(int repeats) {
+    using clock = std::chrono::high_resolution_clock;
+    const std::vector<std::size_t> sizes{128, 256};
+
+    std::cout << "\n===============================\n";
+    std::cout << " LAPACK-class Decompositions (avg ms)\n";
+    std::cout << "===============================\n";
+    std::cout << std::left << std::setw(14) << "Op"
+              << std::setw(12) << "128"
+              << std::setw(12) << "256"
+              << "\n";
+
+    auto time_op = [&](const std::function<void()>& fn) -> double {
+        double best = std::numeric_limits<double>::max();
+        for (int i = 0; i < repeats; ++i) {
+            const auto start = clock::now();
+            fn();
+            const double ms = std::chrono::duration<double, std::milli>(clock::now() - start).count();
+            best = std::min(best, ms);
+        }
+        return best;
+    };
+
+    const auto report = [&](const char* name, const std::function<void(std::size_t)>& fn) {
+        std::cout << std::left << std::setw(14) << name;
+        for (std::size_t s : sizes) {
+            std::cout << std::setw(12) << std::fixed << std::setprecision(3) << time_op([&] { fn(s); });
+        }
+        std::cout << "\n";
+    };
+
+    report("solve", [&](std::size_t n) {
+        matrix_pro::Matrix a = make_spd(n);
+        matrix_pro::Matrix b = make_spd(n);
+        a.solve(b); // timing only; result discarded
+    });
+    report("qr", [&](std::size_t n) { make_general(n).qr(); });
+    report("svd", [&](std::size_t n) { make_general(n).svd(); });
+    report("cholesky", [&](std::size_t n) { make_spd(n).cholesky(); });
+    report("eigen", [&](std::size_t n) { make_spd(n).eigen(); });
+    report("pinv", [&](std::size_t n) { make_general(n).pinv(); });
+    report("rank", [&](std::size_t n) { (void)make_general(n).rank(); });
+
+    std::cout << "Results are warm per-op; best-of-" << repeats << " timings.\n";
+}
+
 void print_report(std::vector<BenchmarkResult>& results, std::size_t baseline_size, int repeats) {
     const auto baseline_it = std::find_if(results.begin(), results.end(), [&](const BenchmarkResult& r) {
         return r.size == baseline_size;
@@ -222,5 +287,6 @@ int main(int argc, char** argv) {
 
     const std::size_t baseline_size = sizes.front();
     print_report(results, baseline_size, repeats);
+    benchmark_linalg(repeats);
     return 0;
 }

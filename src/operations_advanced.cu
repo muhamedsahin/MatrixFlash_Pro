@@ -15,27 +15,6 @@ inline void checkCusolver(cusolverStatus_t status, const char* operation) {
     }
 }
 
-struct CusolverHandleGuard {
-    cusolverDnHandle_t handle = nullptr;
-
-    CusolverHandleGuard() {
-        if (cusolverDnCreate(&handle) != CUSOLVER_STATUS_SUCCESS) {
-            throw std::runtime_error("cuSOLVER handle creation failed");
-        }
-    }
-
-    ~CusolverHandleGuard() {
-        if (handle != nullptr) {
-            cusolverDnDestroy(handle);
-        }
-    }
-};
-
-cusolverDnHandle_t& cusolver_handle() {
-    static CusolverHandleGuard handle;
-    return handle.handle;
-}
-
 __global__ void row_major_to_column_major_kernel(const float* in, float* out,
                                                 std::size_t rows, std::size_t cols) {
     const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -69,7 +48,7 @@ float determinant(const Matrix& matrix) {
     int* device_info = static_cast<int*>(allocate_device_memory(sizeof(int)));
 
     const unsigned blocks = static_cast<unsigned>((n * n + 255) / 256);
-    row_major_to_column_major_kernel<<<blocks, 256>>>(matrix.device_data(), device_matrix, n, n);
+    row_major_to_column_major_kernel<<<blocks, 256, 0, compute_stream()>>>(matrix.device_data(), device_matrix, n, n);
     checkCuda(cudaGetLastError(), "determinant conversion kernel launch");
 
     int lwork = 0;
@@ -81,7 +60,8 @@ float determinant(const Matrix& matrix) {
                                   static_cast<int>(n), device_work, device_ipiv, device_info), "determinant LU");
 
     int info = 0;
-    checkCuda(cudaMemcpy(&info, device_info, sizeof(int), cudaMemcpyDeviceToHost), "determinant info read");
+    checkCuda(cudaMemcpyAsync(&info, device_info, sizeof(int), cudaMemcpyDeviceToHost, compute_stream()), "determinant info read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "determinant info sync");
     if (info != 0) {
         free_device_memory(device_matrix);
         free_device_memory(device_work);
@@ -92,8 +72,9 @@ float determinant(const Matrix& matrix) {
 
     std::vector<float> host_matrix(n * n);
     std::vector<int> host_ipiv(n);
-    checkCuda(cudaMemcpy(host_matrix.data(), device_matrix, n * n * sizeof(float), cudaMemcpyDeviceToHost), "determinant matrix read");
-    checkCuda(cudaMemcpy(host_ipiv.data(), device_ipiv, n * sizeof(int), cudaMemcpyDeviceToHost), "determinant pivot read");
+    checkCuda(cudaMemcpyAsync(host_matrix.data(), device_matrix, n * n * sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "determinant matrix read");
+    checkCuda(cudaMemcpyAsync(host_ipiv.data(), device_ipiv, n * sizeof(int), cudaMemcpyDeviceToHost, compute_stream()), "determinant pivot read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "determinant result sync");
 
     float result = 1.0f;
     int sign = 1;
@@ -121,14 +102,14 @@ Matrix inverse(const Matrix& matrix) {
     int* device_info = static_cast<int*>(allocate_device_memory(sizeof(int)));
 
     const unsigned blocks = static_cast<unsigned>((n * n + 255) / 256);
-    row_major_to_column_major_kernel<<<blocks, 256>>>(matrix.device_data(), device_matrix, n, n);
+    row_major_to_column_major_kernel<<<blocks, 256, 0, compute_stream()>>>(matrix.device_data(), device_matrix, n, n);
     checkCuda(cudaGetLastError(), "inverse conversion kernel launch");
 
     const float one = 1.0f;
-    checkCuda(cudaMemset(device_rhs, 0, n * n * sizeof(float)), "inverse rhs zero fill");
+    checkCuda(cudaMemsetAsync(device_rhs, 0, n * n * sizeof(float), compute_stream()), "inverse rhs zero fill");
     for (std::size_t j = 0; j < n; ++j) {
         const std::size_t offset = j * n + j;
-        checkCuda(cudaMemcpy(device_rhs + offset, &one, sizeof(float), cudaMemcpyHostToDevice), "inverse rhs identity fill");
+        checkCuda(cudaMemcpyAsync(device_rhs + offset, &one, sizeof(float), cudaMemcpyHostToDevice, compute_stream()), "inverse rhs identity fill");
     }
 
     int lwork = 0;
@@ -139,7 +120,8 @@ Matrix inverse(const Matrix& matrix) {
     checkCusolver(cusolverDnSgetrf(cusolver_handle(), static_cast<int>(n), static_cast<int>(n), device_matrix,
                                   static_cast<int>(n), device_work, device_ipiv, device_info), "inverse LU");
     int info = 0;
-    checkCuda(cudaMemcpy(&info, device_info, sizeof(int), cudaMemcpyDeviceToHost), "inverse info read");
+    checkCuda(cudaMemcpyAsync(&info, device_info, sizeof(int), cudaMemcpyDeviceToHost, compute_stream()), "inverse info read");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "inverse info sync");
     if (info != 0) {
         free_device_memory(device_matrix);
         free_device_memory(device_rhs);
@@ -152,11 +134,12 @@ Matrix inverse(const Matrix& matrix) {
     checkCusolver(cusolverDnSgetrs(cusolver_handle(), CUBLAS_OP_N, static_cast<int>(n), static_cast<int>(n),
                                   device_matrix, static_cast<int>(n), device_ipiv, device_rhs, static_cast<int>(n),
                                   device_info), "inverse solve");
-    checkCuda(cudaMemcpy(&info, device_info, sizeof(int), cudaMemcpyDeviceToHost), "inverse info read after solve");
+    checkCuda(cudaMemcpyAsync(&info, device_info, sizeof(int), cudaMemcpyDeviceToHost, compute_stream()), "inverse info read after solve");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "inverse solve info sync");
     if (info != 0) throw std::runtime_error("Matrix inverse failed");
 
     Matrix output(n, n);
-    column_major_to_row_major_kernel<<<blocks, 256>>>(device_rhs, output.device_data(), n, n);
+    column_major_to_row_major_kernel<<<blocks, 256, 0, compute_stream()>>>(device_rhs, output.device_data(), n, n);
     checkCuda(cudaGetLastError(), "inverse conversion back kernel launch");
 
     free_device_memory(device_matrix);

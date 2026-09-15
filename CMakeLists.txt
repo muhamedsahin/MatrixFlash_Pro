@@ -10,6 +10,10 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_ARCHITECTURES native)
 
 find_package(CUDAToolkit REQUIRED)
+find_path(MATRIX_PRO_CUDNN_INCLUDE_DIR cudnn.h
+	HINTS "$ENV{CUDA_PATH}/include")
+find_library(MATRIX_PRO_CUDNN_LIBRARY cudnn
+	HINTS "$ENV{CUDA_PATH}/lib/x64" "$ENV{CUDA_PATH}/lib64")
 
 add_library(matrix_pro STATIC
 	src/cuda_utils.cu
@@ -20,13 +24,31 @@ add_library(matrix_pro STATIC
 	src/operations_transforms.cu
 	src/operations_statistics.cu
 	src/operations_advanced.cu
+	src/operations_linalg.cu
+	src/operations_masking.cu
+	src/operations_batch.cu
+	src/operations_extended.cu
+	src/operations_precision.cu
+	src/operations_ml.cu
+	src/operations_conv.cu
+	src/autograd.cu
+	src/tensor.cu
 )
 
-target_include_directories(matrix_pro PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cusolver)
-set_target_properties(matrix_pro PROPERTIES
-	CUDA_SEPARABLE_COMPILATION ON
-	CUDA_RESOLVE_DEVICE_SYMBOLS ON
+
+if (MATRIX_PRO_CUDNN_INCLUDE_DIR AND MATRIX_PRO_CUDNN_LIBRARY)
+	target_compile_definitions(matrix_pro PRIVATE MATRIX_PRO_HAS_CUDNN=1)
+	target_include_directories(matrix_pro PRIVATE ${MATRIX_PRO_CUDNN_INCLUDE_DIR})
+	target_link_libraries(matrix_pro PUBLIC ${MATRIX_PRO_CUDNN_LIBRARY})
+message(STATUS "MatrixFlash-Pro: cuDNN backend enabled")
+else()
+	message(STATUS "MatrixFlash-Pro: cuDNN not found; using CUDA convolution/pooling fallback")
+endif()
+
+target_include_directories(matrix_pro
+	PUBLIC
+		${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 add_executable(matrix_pro_basic examples/basic_gpu_usage.cpp)

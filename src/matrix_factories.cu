@@ -19,7 +19,7 @@ __global__ void fill_kernel(float* values, std::size_t count, float value) {
 
 void Matrix::fill(float value) {
     if (size() == 0) return;
-    fill_kernel<<<static_cast<unsigned>((size() + 255) / 256), 256>>>(device_data_.get(), size(), value);
+    fill_kernel<<<static_cast<unsigned>((size() + 255) / 256), 256, 0, compute_stream()>>>(device_data_.get(), size(), value);
     checkCuda(cudaGetLastError(), "fill kernel launch");
     synchronize();
     std::fill(host_data_.begin(), host_data_.end(), value);

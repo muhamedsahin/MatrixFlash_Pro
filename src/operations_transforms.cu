@@ -11,13 +11,20 @@
 namespace matrix_pro {
 namespace {
 
-constexpr unsigned tile_size = 16;
+constexpr unsigned tile_size = 32;
 constexpr unsigned softmax_block = 256;
 
 __global__ void transpose_kernel(const float* input, float* output, std::size_t rows, std::size_t cols) {
-    const auto col = blockIdx.x * blockDim.x + threadIdx.x;
-    const auto row = blockIdx.y * blockDim.y + threadIdx.y;
-    if (row < rows && col < cols) output[col * rows + row] = input[row * cols + col];
+    __shared__ float tile[tile_size][tile_size + 1];
+    const auto col = blockIdx.x * tile_size + threadIdx.x;
+    const auto row = blockIdx.y * tile_size + threadIdx.y;
+    if (row < rows && col < cols) tile[threadIdx.y][threadIdx.x] = input[row * cols + col];
+    __syncthreads();
+    const auto transposed_col = blockIdx.y * tile_size + threadIdx.x;
+    const auto transposed_row = blockIdx.x * tile_size + threadIdx.y;
+    if (transposed_row < cols && transposed_col < rows) {
+        output[transposed_row * rows + transposed_col] = tile[threadIdx.x][threadIdx.y];
+    }
 }
 
 __global__ void relu_kernel(const float* input, float* output, std::size_t count) {
@@ -96,14 +103,14 @@ Matrix transpose(const Matrix& matrix) {
     dim3 block(tile_size, tile_size);
     dim3 grid((matrix.cols() + tile_size - 1) / tile_size,
               (matrix.rows() + tile_size - 1) / tile_size);
-    transpose_kernel<<<grid, block>>>(matrix.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    transpose_kernel<<<grid, block, 0, compute_stream()>>>(matrix.device_data(), output.device_data(), matrix.rows(), matrix.cols());
     checkCuda(cudaGetLastError(), "transpose kernel launch");
     return output;
 }
 
 Matrix relu(const Matrix& matrix) {
     Matrix output(matrix.rows(), matrix.cols());
-    relu_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256>>>(
+    relu_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
         matrix.device_data(), output.device_data(), matrix.size());
     checkCuda(cudaGetLastError(), "relu kernel launch");
     return output;
@@ -117,10 +124,10 @@ Matrix softmax(const Matrix& matrix) {
     float* row_total = static_cast<float*>(allocate_device_memory(matrix.rows() * sizeof(float)));
 
     const unsigned grid_rows = static_cast<unsigned>(matrix.rows());
-    softmax_row_max_kernel<<<grid_rows, softmax_block>>>(matrix.device_data(), matrix.rows(), matrix.cols(), row_max);
-    softmax_row_sum_kernel<<<grid_rows, softmax_block>>>(matrix.device_data(), output.device_data(),
+    softmax_row_max_kernel<<<grid_rows, softmax_block, 0, compute_stream()>>>(matrix.device_data(), matrix.rows(), matrix.cols(), row_max);
+    softmax_row_sum_kernel<<<grid_rows, softmax_block, 0, compute_stream()>>>(matrix.device_data(), output.device_data(),
                                                        matrix.rows(), matrix.cols(), row_max, row_total);
-    softmax_row_norm_kernel<<<grid_rows, softmax_block>>>(output.device_data(), matrix.rows(), matrix.cols(), row_total);
+    softmax_row_norm_kernel<<<grid_rows, softmax_block, 0, compute_stream()>>>(output.device_data(), matrix.rows(), matrix.cols(), row_total);
     checkCuda(cudaGetLastError(), "softmax kernel launch");
     free_device_memory(row_max);
     free_device_memory(row_total);
@@ -130,7 +137,7 @@ Matrix softmax(const Matrix& matrix) {
 Matrix flatten(const Matrix& matrix) {
     if (matrix.empty()) return Matrix(0, 1);
     Matrix output(matrix.size(), 1);
-    checkCuda(cudaMemcpy(output.device_data(), matrix.device_data(), matrix.size() * sizeof(float), cudaMemcpyDeviceToDevice),
+    checkCuda(cudaMemcpyAsync(output.device_data(), matrix.device_data(), matrix.size() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream()),
              "flatten device copy");
     return output;
 }
@@ -147,7 +154,7 @@ Matrix slice(const Matrix& matrix, std::size_t row_start, std::size_t row_end,
 
     dim3 block(16, 16);
     dim3 grid((out_cols + block.x - 1) / block.x, (out_rows + block.y - 1) / block.y);
-    slice_kernel<<<grid, block>>>(matrix.device_data(), output.device_data(),
+    slice_kernel<<<grid, block, 0, compute_stream()>>>(matrix.device_data(), output.device_data(),
                                  matrix.rows(), matrix.cols(),
                                  row_start, row_end, col_start, col_end);
     checkCuda(cudaGetLastError(), "slice kernel launch");
