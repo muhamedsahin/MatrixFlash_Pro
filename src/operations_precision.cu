@@ -27,17 +27,6 @@ __global__ void double_accumulate_kernel(const float* left, const float* right, 
     output[index] = static_cast<float>(sum);
 }
 
-class CublasGuard {
-public:
-    CublasGuard() {
-        if (cublasCreate(&handle_) != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cublasCreate failed");
-    }
-    ~CublasGuard() { if (handle_ != nullptr) cublasDestroy(handle_); }
-    cublasHandle_t get() const { return handle_; }
-private:
-    cublasHandle_t handle_ = nullptr;
-};
-
 }
 
 Matrix matmul_half(const Matrix& left, const Matrix& right) {
@@ -55,11 +44,10 @@ Matrix matmul_half(const Matrix& left, const Matrix& right) {
         float_to_half_kernel<<<blocks_right, 256, 0, compute_stream()>>>(right.device_data(), right_half, right.size());
         checkCuda(cudaGetLastError(), "FP16 conversion kernel launch");
 
-        CublasGuard guard;
         const float alpha = 1.0f;
         const float beta = 0.0f;
         const auto status = cublasGemmEx(
-            guard.get(), CUBLAS_OP_N, CUBLAS_OP_N,
+            cublas_handle(), CUBLAS_OP_N, CUBLAS_OP_N,
             static_cast<int>(right.cols()), static_cast<int>(left.rows()), static_cast<int>(left.cols()),
             &alpha, right_half, CUDA_R_16F, static_cast<int>(right.cols()),
             left_half, CUDA_R_16F, static_cast<int>(left.cols()),

@@ -28,7 +28,7 @@ void Matrix::fill(float value) {
 Matrix Matrix::zeros(std::size_t rows, std::size_t cols) {
     Matrix result(rows, cols);
     if (result.size() != 0) {
-        checkCuda(cudaMemset(result.device_data_.get(), 0, result.size() * sizeof(float)), "cudaMemset for zero matrix");
+        checkCuda(cudaMemsetAsync(result.device_data_.get(), 0, result.size() * sizeof(float), compute_stream()), "cudaMemset for zero matrix");
     }
     return result;
 }
