@@ -1,0 +1,14 @@
+@PACKAGE_INIT@
+
+# MatrixFlash-Pro package configuration.
+# Provides the imported target matrix_pro::matrix_pro plus its CUDA backend
+# dependencies (cuBLAS / cuSOLVER, optionally cuDNN).
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(CUDAToolkit REQUIRED)
+set(Threads_FOUND TRUE)
+
+include("${CMAKE_CURRENT_LIST_DIR}/matrix_proTargets.cmake")
+
+check_required_components(matrix_pro)

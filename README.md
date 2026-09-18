@@ -78,25 +78,121 @@ Ayrıca eksen bazlı indirgemeler: `row_sum`, `col_sum`
 
 ### 🧮 Elementwise Matematiksel Operasyonlar
 ```
-exp · log · sqrt · abs · clamp · pow · add_scalar · sigmoid · tanh · negatif
+exp · log · sqrt · abs · clamp · pow · add_scalar · negate · divide · sigmoid · tanh
 ```
+Elementwise bölme hem matris-matris (`A / B`) hem skaler (`A / 2.0f`) biçiminde desteklenir.
 
 ### 📡 Yayınlama (Broadcasting)
 - `add_row_vector` — satır vektörünü tüm satırlara yayma
 - `add_col_vector` — sütun vektörünü tüm sütunlara yayma
 - `multiply_row_vector` / `multiply_col_vector`
+- `broadcast_add` / `broadcast_multiply` — genel 2B yayınlama; `(N, 1) ⊗ (1, M)` dahil her uyumlu şekil kombinasyonu
+
+### 🛡️ Hata Yönetimi, Bellek Modu ve Cihaz Kontrolü
+- **Tek hata tabanı:** kütüphanenin fırlattığı tüm istisnalar `matrix_pro::MatrixProError` (→ `std::runtime_error`) tabanından türer. Alt türler: `ShapeMismatchError`, `InvalidArgumentError`, `OutOfRangeError`, `CudaError`, `SolverError`, `IoError`. Böylece tek bir `catch (const matrix_pro::MatrixProError&)` ile tüm kütüphane hataları yakalanır, istenirse nedene özel türle ayrıştırılır.
+- **Cihaz seçimi (çoklu-GPU):** `device_count()`, `current_device()`, `set_device(int)` ve RAII `DeviceScope`. Bellek havuzu cihaz-etiketli olduğundan bloklar yanlış cihaza geri dönmez.
+- **Thread-safe yürütme:** her `(host thread, cihaz)` çifti kendi CUDA stream'i ve cuBLAS/cuSOLVER/cuDNN handle'ına sahiptir; bağımsız CPU thread'leri paylaşılan tek bir stream'e takılmaz.
+- **Device-resident mod:** `MemoryMode::device_only` ile host kopyası olmadan çalışılır; host tamponu yalnızca `download()` çağrıldığında talep üzerine oluşturulur (RAM tasarrufu, gereksiz kopyalama yok).
+
+```cpp
+#include "matrix_pro/core/matrix.hpp"
+
+matrix_pro::Matrix w(1024, 1024, matrix_pro::MemoryMode::device_only); // host kopyası yok
+w.fill(0.0f);                       // doğrudan cihaz üzerinde yaz
+matrix_pro::Matrix y = w + w;       // hesap GPU'da kalır
+y.download();                       // sadece gerekince host'a indir
+
+for (int d = 0; d < matrix_pro::device_count(); ++d) {
+    matrix_pro::DeviceScope scope(d); // kapsam sonunda önceki cihaza döner
+    // ... cihaz d üzerinde iş ...
+}
+```
+
+### 🔄 Host/Device Senkronizasyon Sözleşmesi (stale-mirror)
+GPU yazan **her** operasyon sonucu yalnızca device tamponuna yazar ve çıktının host aynasını
+"bayat" (`host_current() == false`) olarak işaretler. Kütüphane bu nedenle **asla sessizce bayat
+(sıfır) host verisi döndürmez**:
+
+- `at()` ve `const data()` bayat aynada **`InvalidArgumentError` fırlatır**; `download()` aynayı
+  tazeler ve sonrasında okuma güvenlidir. (`host_current()` ile bayatlığı sorgulayabilirsiniz.)
+- `device_only` modunda host aynası yoktur: `download()` çağrılana kadar `at()`/`data()` exception fırlatır.
+- Konvansiyonel kural: host tarafında değer değiştirdikten sonra (`at()`, non-const `data()`) cihaz
+  tarafını güncellemek için `upload()` çağırın; cihaz tarafı işlemler (`+`, `relu`, `matmul`, ...)
+  sonucu okumak için `download()` çağırın.
+
+```cpp
+Matrix a = Matrix::ones(2, 2);
+Matrix c = a + a;        // GPU'da hesaplandı; host aynası bayat
+// c.at(0, 0);           // ✗ InvalidArgumentError: host mirror is stale
+c.download();            // ✓ aynayı tazele
+float v = c.at(0, 0);    // 2.0
+```
+Bu sözleşme `Tensor` için de aynıdır; `reshape`/`concat`/`stack` gibi şekil operasyonları da her iki
+eksen için aynı politikayı izler.
 
 ### 🎯 Aktivasyon Fonksiyonları
-- `relu`
-- `softmax` — çok bloklu ve **sayısal olarak kararlı** implementasyon
+- `relu`, `softmax` — çok bloklu ve **sayısal olarak kararlı** implementasyon
 - `sigmoid`, `tanh`, `leaky_relu`, `elu`, `gelu`, `swish`
+- `softplus`, `mish`, `hardtanh`, `hardsigmoid`, `hardswish`, `selu`
+- `prelu` — `1×1` veya girdiyle aynı şekilli öğrenilebilir `alpha` parametresi
 
 ### 🧠 Makine Öğrenmesi Katmanı
-- `Variable` ile GPU üzerinde otomatik türev ve geri yayılım grafiği
+- `Variable` (Matrix) ve `VarTensor` (ND Tensor) ile GPU üzerinde otomatik türev ve geri yayılım grafiği
 - `batch_norm`, `layer_norm` ve inverted `dropout`
-- NCHW `conv2d`, `max_pool2d`, `avg_pool2d`
+- NCHW `conv2d`, `max_pool2d`, `avg_pool2d` — **forward ve backward** (im2col tabanlı, cuBLAS destekli)
 - cuDNN kuruluysa conv/pooling için cuDNN backend’i; yoksa CUDA kernel fallback’i
 - `Tensor` değerleri device belleğinde tutulur; yalnızca açık `download()` çağrısı host’a veri taşır
+
+### 🔁 Otomatik Türev (Autograd)
+`Variable` (Matrix) ve `VarTensor` (rank-N Tensor) için tam geri yayılım desteği.
+Graf, topolojik sıralı bir tape üzerinde çalışır ve tüm ara değerler GPU’da kalır.
+
+| Grup | Geri yayılımı desteklenen işlemler |
+|---|---|
+| **Aritmetik** | `add`, `subtract`, `elementwise_multiply`, `divide`, `matmul`, `multiply(scalar)`, `add_scalar`, `negate`, `pow` |
+| **Broadcast** | `add_row_vector`, `add_col_vector`, `multiply_row_vector`, `multiply_col_vector` (backward’da eksen boyunca sum-reduce) |
+| **Şekil** | `transpose`, `flatten`, `reshape`, `slice` (scatter-grad kernel’i ile) |
+| **Aktivasyon** | `relu`, `leaky_relu`, `elu`, `gelu`, `swish`, `sigmoid`, `tanh`, `softplus`, `mish`, `hardtanh`, `hardsigmoid`, `hardswish`, `selu`, `prelu` |
+| **Tensor/CNN** | `batch_matmul` (strided-batched GEMM), `conv2d` (girdi + ağırlık + bias), `max_pool2d` (argmax maskesi), `avg_pool2d` |
+
+### 🧩 Özel Operasyon (Custom Op) Altyapısı
+Kullanıcı, CUDA kernel yazmadan mevcut primitifleri kompoze ederek kendi fonksiyonunu tanımlayabilir:
+
+```cpp
+// Genel eleman-bazlı fonksiyon: forward + backward closure
+Variable custom_unary(const std::string& name,
+                      std::function<Matrix(const Matrix&)> forward,
+                      std::function<Matrix(const Matrix& grad_out, const Matrix& input, const Matrix& output)> backward) const;
+
+// Genel kayıp fonksiyonu: skaler loss döndürür, pred/target gradyanlarını üretir
+Variable custom_loss(const Variable& prediction, const Variable& target,
+                     std::function<float(const Matrix&, const Matrix&)> forward,
+                     std::function<Matrix(const Matrix&, const Matrix&)> backward);
+```
+
+`VarTensor` için de aynı `custom_unary` / `custom_loss` ikilisi (Tensor imzalarıyla) mevcuttur.
+Kendi CUDA kernel’inizi yazmak isterseniz, `Matrix -> Matrix` imzalı bir fonksiyonu `forward`/`backward`
+olarak vermeniz yeterlidir; ayrı bir plugin API’si gerekmez.
+
+### 📉 Kayıp (Loss) Fonksiyonları
+| Fonksiyon | Not |
+|---|---|
+| `mse_loss` | Ortalama karesel hata |
+| `mae_loss` | Ortalama mutlak hata; `\|d\| = 0` noktasında subgradient `0` |
+| `huber_loss(pred, target, delta)` | Smooth L1 |
+| `bce_with_logits_loss` | **Fused** sigmoid + BCE; `log(0)` patlamasına karşı kararlı |
+| `softmax_cross_entropy_loss` | **Fused** softmax + CE; tek geçişte skaler + gradyan |
+| `kl_divergence_loss` | `mean(t · (log t − log p))` |
+
+Tümü `Variable` (ve `custom_loss` üzerinden `VarTensor`) seviyesinde `1×1` skaler döndürür ve
+doğrudan `.backward()` ile zincirlenebilir.
+
+### 🧱 Şekil ve Yardımcı Operasyonlar
+- `reshape(rows, cols)` — genel yeniden şekillendirme (`flatten` bunun özel durumu)
+- `concat({A, B, ...}, axis)` — satır (0) veya sütun (1) ekseninde birleştirme
+- `stack({A, B, ...})` — matrisleri `(n, r*c)` biçiminde üst üste yığma
+- `one_hot(indices, classes)` — GPU üzerinde tek-sıcak kodlama
+- `slice_scatter(grad, like, ...)` — slice geri yayılımı için scatter kernel’i
 
 ### 🎲 Matris Oluşturucular
 ```
@@ -106,6 +202,8 @@ zeros · ones · identity · random · uniform · randn · glorot (Xavier init)
 ### 💾 Kalıcı Veri Desteği
 - `matrix.save("dosya")` ile matrisi diske yazma
 - `Matrix::load("dosya")` ile diskten geri yükleme
+- Dosya biçimi **magic number (`MFMP`) + sürüm alanı** ile sürümlenmiştir; sürümsüz (legacy) eski
+  dosyalar geriye dönük olarak okunabilir
 
 ---
 
@@ -129,7 +227,9 @@ MatrixFlash_Pro/
 │
 ├── include/matrix_pro/
 │   ├── matrix.hpp              # Genel (public) Matrix API tanımı
+│   ├── tensor.hpp              # GPU-resident ND Tensor tanımı
 │   ├── operations.hpp          # GPU operasyon fonksiyon imzaları
+│   ├── autograd.hpp            # Variable ve VarTensor (otomatik türev) API'si
 │   └── cuda_utils.hpp          # CUDA hata kontrolü ve senkronizasyon yardımcıları
 │
 ├── src/
@@ -139,12 +239,24 @@ MatrixFlash_Pro/
 │   ├── operations_matmul.cu         # cuBLAS matris çarpımı + outer_product
 │   ├── operations_transforms.cu     # transpose, relu, softmax, flatten, slice
 │   ├── operations_statistics.cu     # GPU indirgemeleri (sum/mean/min/max/...)
+│   ├── operations_shape.cu          # divide, genel broadcast (add/sub/mul/div), reshape, concat/stack, one_hot
+│   ├── operations_view.cu           # zero-copy MatrixView: transpose/slice/reshape/as_strided + materialize
+│   ├── operations_inplace.cu        # in-place varyantlar: add_/relu_/broadcast_add_ ...
+│   ├── operations_indexing.cu       # index_select/gather/scatter_add/embedding (+backward)
+│   ├── operations_sparse.cu         # CSR sparse: from_dense/from_coo, spmv, sparse_matmul
+│   ├── operations_streams.cu        # stream havuzu (4 stream) + warp-shuffle async argmax/argmin
+│   ├── operations_fused.cu          # fused kernel'ler: sigmoid*mul, relu+add, (x+y)*z, scale+bias, bias+gelu
+│   ├── operations_rng.cu            # Philox device RNG: randn_gpu/uniform_gpu/dropout_gpu + rng_seed
+│   ├── operations_dtype.cu          # dtype soyutlaması: DType, TypedBuffer, sum_f64, fp16 pack/unpack
+│   ├── operations_activation.cu     # softplus, mish, hard* ve selu/prelu aktivasyonları
+│   ├── operations_loss.cu           # fused BCE-with-logits ve softmax cross-entropy
+│   ├── operations_conv_backward.cu  # conv2d / pooling geri yayılım ve tensor yardımcıları
 │   ├── operations_advanced.cu       # determinant ve inverse hesaplamaları
 │   ├── operations_ml.cu              # aktivasyon, normalizasyon ve dropout
 │   ├── operations_conv.cu            # NCHW conv2d ve pooling, cuDNN/fallback
-│   ├── autograd.cu                   # Variable tabanlı otomatik türev grafiği
+│   ├── autograd.cu                   # Variable/VarTensor otomatik türev grafiği + loss'lar
 │   ├── tensor.cu                     # GPU-resident ND Tensor yaşam döngüsü
-│   └── cuda_utils.cu                # CUDA hata kontrol mekanizması
+│   └── cuda_utils.cu                # CUDA hata kontrol mekanizması ve bellek havuzu
 │
 ├── tests/                       # Davranış (behavior) testleri
 ├── benchmarks/
@@ -204,7 +316,7 @@ ctest --test-dir build -C Release --output-on-failure
 Aşağıdaki örnek, temel kullanımdan ileri düzey özelliklere kadar kütüphanenin API'sini göstermektedir:
 
 ```cpp
-#include "matrix_pro/matrix.hpp"
+#include "matrix_pro/core/matrix.hpp"
 
 using matrix_pro::Matrix;
 
@@ -266,14 +378,14 @@ int main() {
 <details>
 <summary><b>🔹 Elementwise ve Skaler İşlemler</b></summary>
 
-`exp`, `log`, `sqrt`, `abs`, `clamp`, `pow`, `add_scalar`, `sigmoid`, `tanh`, negatif alma, toplama/çıkarma, Hadamard (elementwise) çarpım
+`exp`, `log`, `sqrt`, `abs`, `clamp`, `pow`, `add_scalar`, `negate`, bölme (`/` matris ve skaler), toplama/çıkarma, Hadamard (elementwise) çarpım
 
 </details>
 
 <details>
 <summary><b>🔹 Yayınlama (Broadcasting)</b></summary>
 
-`add_row_vector`, `add_col_vector`, `multiply_row_vector`, `multiply_col_vector`
+`add_row_vector`, `add_col_vector`, `multiply_row_vector`, `multiply_col_vector`, `broadcast_add`, `broadcast_multiply`
 
 </details>
 
@@ -285,18 +397,36 @@ int main() {
 </details>
 
 <details>
-<summary><b>🔹 Dönüşümler ve Aktivasyonlar</b></summary>
+<summary><b>🔹 Dönüşümler, Şekil ve Aktivasyonlar</b></summary>
 
-`transpose`, `flatten`, `slice`, `relu`, `softmax`, `sigmoid`, `tanh`, `leaky_relu`, `elu`, `gelu`, `swish`
+`transpose`, `flatten`, `reshape`, `slice`, `concat`, `stack`, `one_hot`, `relu`, `softmax`, `sigmoid`, `tanh`, `leaky_relu`, `elu`, `gelu`, `swish`, `softplus`, `mish`, `hardtanh`, `hardsigmoid`, `hardswish`, `selu`, `prelu`
+
+</details>
+
+<details>
+<summary><b>🔹 Otomatik Türev (Variable / VarTensor)</b></summary>
+
+`Variable` (Matrix) ve `VarTensor` (ND Tensor): `value`, `grad`, `requires_grad`, `zero_grad`, `backward`
+
+Geri yayılımı desteklenen işlemler: `add`, `subtract`, `elementwise_multiply`, `divide`, `matmul`, `batch_matmul`, `multiply`, `add_scalar`, `negate`, `pow`, `add_row_vector`, `add_col_vector`, `multiply_row_vector`, `multiply_col_vector`, `transpose`, `flatten`, `reshape`, `slice`, tüm aktivasyonlar, `conv2d`, `max_pool2d`, `avg_pool2d`
+
+Özel operasyonlar: `custom_unary(name, forward, backward)`, `custom_loss(prediction, target, forward, backward)`
+
+</details>
+
+<details>
+<summary><b>🔹 Kayıp (Loss) Fonksiyonları</b></summary>
+
+`mse_loss`, `mae_loss`, `huber_loss`, `bce_with_logits_loss`, `softmax_cross_entropy_loss`, `kl_divergence_loss`
 
 </details>
 
 <details>
 <summary><b>🔹 Makine Öğrenmesi / CNN</b></summary>
 
-`Variable`, `backward`, `batch_norm`, `layer_norm`, `dropout`, `conv2d`, `max_pool2d`, `avg_pool2d`
+`Variable`, `VarTensor`, `backward`, `batch_norm`, `layer_norm`, `dropout`, `conv2d`, `max_pool2d`, `avg_pool2d`
 
-`conv2d` ve pooling girdileri NCHW düzeninde Tensor bekler. cuDNN bulunamazsa aynı API otomatik olarak CUDA kernel backend’ine düşer.
+`conv2d` ve pooling girdileri NCHW düzeninde Tensor bekler. cuDNN bulunamazsa aynı API otomatik olarak CUDA kernel backend’ine düşer. Tüm CNN operatörleri geri yayılım destekler.
 
 </details>
 
@@ -310,7 +440,7 @@ int main() {
 <details>
 <summary><b>🔹 Kalıcılık (Persistence)</b></summary>
 
-`matrix.save("dosya_yolu")` / `Matrix::load("dosya_yolu")`
+`matrix.save("dosya_yolu")` / `Matrix::load("dosya_yolu")` — `MFMP` magic number + sürüm alanlı biçim; legacy dosyalar geriye dönük okunur.
 
 </details>
 
@@ -384,16 +514,29 @@ MatrixFlash-Pro şu anda aşağıdaki temel optimizasyonları içermektedir:
 - **TF32 Tensor Core matematik modu**
 - gereksiz host→device upload kaldırıldı
 - sıfır matrisler için doğrudan `cudaMemset`
-- bellek havuzu ile alloc/free maliyeti azaltıldı
+- bellek havuzu boyut-sınıfı (power-of-two size-class) bucketing ile alloc/free maliyeti azaltıldı
 - pinned host memory ve async transferler
-- stream-safe reduction yapısı
+- stream-safe reduction yapısı (`abs_max` dahil tüm indirgemeler tek GPU geçişi)
 - cuSOLVER tabanlı ileri düzey doğrusal cebir destekleri
 - GPU üzerinde batch matmul ve ND Tensor desteği
 - FP16 Tensor Core ve double-accumulation matmul yolları
 - GPU compact mask filtreleme ve atomik `any/all`
 - Faz 7 ML çekirdekleri: autograd, norm, dropout, conv2d ve pooling
+- **Tam autograd kapsamı:** `Variable` + `VarTensor`; aritmetik, broadcast, şekil, 14 aktivasyon ve CNN operatörlerinin geri yayılımı
+- **Kayıp fonksiyonları:** fused BCE-with-logits ve softmax cross-entropy dahil 6 hazır loss
+- **Custom-op altyapısı:** `custom_unary` / `custom_loss` ile CUDA kernel yazmadan özel fonksiyon tanımı
+- Şekil yardımcıları: genel `reshape`, `concat`, `stack`, `one_hot`, genel `broadcast_add/subtract/multiply/divide`, elementwise `divide`
+- **Zero-copy view'lar:** `MatrixView` ile kopyasız `transpose_view` / `slice_view` / `reshape_view` / `as_strided_view` + `materialize`
+- **In-place operasyonlar:** `add_/sub_/mul_/div_/relu_/sigmoid_/tanh_/clamp_/gelu_/swish_...` + `broadcast_add_/broadcast_multiply_`
+- **İndeksleme:** `index_select` / `gather`, `scatter_add`, `embedding` + `embedding_backward`
+- **Fused kernel'ler:** tek geçişte `fused_sigmoid_mul`, `fused_relu_add`, `fused_add_mul`, `fused_scale_bias`, `fused_bias_gelu` (+ generic `fused_binary/ternary`)
+- **Stream havuzu + async argmax:** 4'lü pool (`pool_stream` / `launch_on_pool`), `__shfl_down_sync` + `float4` tabanlı `argmax_async` / `argmin_async` (pinned host slot + callback)
+- **Philox device RNG:** `rng_seed` + `randn_gpu` / `uniform_gpu` / `dropout_gpu` (xorshift yerine sayaç-tabanlı, istatistiksel kalite)
+- **Dtype soyutlaması:** `DType` enum, `TypedBuffer<T>`, fp64 referans `sum_f64` / `mean_f64` / `l2_norm_f64`, fp16 `pack_f16` / `unpack_f16`
+- **Sparse CSR:** `SparseCSR::from_dense` / `from_coo`, `spmv`, `sparse_matmul`
+- Sürümlenmiş dosya biçimi (magic number + versiyon) ve geriye dönük `save/load` uyumluluğu
 
-Bu durum, kütüphaneyi yalnızca işlevsel bir CUDA örneği olmaktan çıkarıp, gerçek performans hedefli bir matris çarpım ve GPU hesaplama altyapısına dönüştürmektedir.
+Bu durum, kütüphaneyi yalnızca işlevsel bir CUDA örneği olmaktan çıkarıp, gerçek performans hedefli bir matris çarpım, GPU hesaplama ve otomatik türev altyapısına dönüştürmektedir.
 
 ---
 
@@ -401,16 +544,24 @@ Bu durum, kütüphaneyi yalnızca işlevsel bir CUDA örneği olmaktan çıkarı
 
 Aşağıdaki maddeler, projenin gelecekte geliştirilebileceği potansiyel alanlardır:
 
-- [ ] Çoklu-GPU desteği
+- [ ] Çoklu-GPU desteği (temel altyapı hazır: `device_count` / `set_device` / `DeviceScope` ve cihaz-başına handle; parametre paylaşımı henüz yok)
+- [x] Tutarlı hata hiyerarşisi (`MatrixProError` tabanı + alt türler)
+- [x] Thread başına CUDA context (çok-threadli kullanım güvenliği)
+- [x] `device_only` bellek modu (host kopyası olmadan çalışma)
 - [x] FP16 / Tensor Core optimizasyonlarını daha geniş yelpaze ile açmak
 - [ ] Python bağlama katmanı (pybind11 ile)
 - [x] Daha fazla aktivasyon fonksiyonu (LeakyReLU, GELU, Swish vb.)
 - [x] Otomatik türev ve geri yayılım prototiplemesi
 - [x] BatchNorm, LayerNorm ve Dropout
 - [x] Conv2D ve Max/Average Pooling
-- [ ] Sparse (seyrek) matris desteği
+- [x] Konvolüsyon ve pooling için geri yayılım (CNN eğitimi)
+- [x] ND Tensor (`VarTensor`) üzerinde autograd ve `batch_matmul` gradyanı
+- [x] Hazır kayıp fonksiyonları (MSE, MAE, Huber, BCE, Cross-Entropy, KL)
+- [x] Genel amaçlı custom-op / custom-loss altyapısı
+- [x] Sparse (seyrek) matris desteği (CSR: `from_dense` / `from_coo`, `spmv`, `sparse_matmul`)
 - [ ] Linux/CMake çapraz platform derleme desteğinin genişletilmesi
-- [ ] Akış bazlı overlap ve multi-stream operasyonları daha da yaygınlaştırmak
+- [x] Akış bazlı overlap ve multi-stream operasyonları (4'lü stream havuzu + `launch_on_pool` + async argmax/argmin)
+- [ ] Optimizer katmanı (SGD, Adam) ve parametre güncelleme API'si
 
 ---
 

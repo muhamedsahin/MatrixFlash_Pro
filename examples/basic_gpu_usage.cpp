@@ -1,6 +1,18 @@
+// ============================================================================
+//  MatrixFlash-Pro — smallest end-to-end example
+//  ---------------------------------------------------------------------------
+//  Build and run:
+//     cmake --build --preset release --target matrix_pro_basic
+//     ./build/Release/matrix_pro_basic
+//
+//  The umbrella header below exposes every public module of the library.
+//  Including the granular headers instead (e.g. <matrix_pro/ops/product.hpp>)
+//  keeps compile times down in larger projects.
+// ============================================================================
+
 #include <iostream>
 
-#include "matrix_pro/matrix.hpp"
+#include "matrix_pro/matrix_pro.hpp"
 
 int main() {
 	using matrix_pro::Matrix;

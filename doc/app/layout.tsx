@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
+import { LanguageProvider } from '@/lib/language-context'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -16,20 +17,21 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'MatrixFlash-Pro — CUDA Tabanlı Yüksek Performanslı Matris Kütüphanesi',
+  title: 'MatrixFlash-Pro — CUDA-Accelerated C++17 Matrix & Tensor Library',
   description:
-    'Tiled CUDA matris çarpımı, GPU üzerinde çalışan dönüşümler ve aktivasyon fonksiyonları. Modern C++17 ile yazılmış, okunabilir ve hızlı matris işlem kütüphanesi.',
-  generator: 'v0.app',
+    'cuBLAS GEMM, TF32 Tensor Cores, Autograd tape engine, cuSOLVER linalg, sparse CSR, fused kernels, and async stream pool.',
   keywords: [
     'CUDA',
-    'CUDA kernels',
-    'matris',
-    'matrix',
+    'cuBLAS',
+    'cuSOLVER',
+    'Autograd',
+    'Tensor',
+    'Matrix',
     'GPU',
     'C++17',
     'MatrixFlash-Pro',
-    'derin öğrenme',
-    'doğrusal cebir',
+    'Deep Learning',
+    'Linear Algebra',
   ],
   authors: [{ name: 'Muhammed Fatih Şahin' }],
 }
@@ -46,8 +48,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans antialiased">
-        {children}
+      <body className="font-sans antialiased selection:bg-primary/20 selection:text-primary">
+        <LanguageProvider>{children}</LanguageProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
