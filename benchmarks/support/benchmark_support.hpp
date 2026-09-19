@@ -78,10 +78,10 @@ const BenchmarkInfo& conv_benchmark();
 const BenchmarkInfo& precision_benchmark();
 const BenchmarkInfo& sparse_benchmark();
 const BenchmarkInfo& training_benchmark();
+const BenchmarkInfo& comparison_benchmark();
 
 // Every known workload, in run order.
 std::vector<BenchmarkInfo> all_benchmarks();
-
 // --- measurement primitives -------------------------------------------------
 // Runs `warmup` untimed calls, then `repeats` CUDA-event-timed calls and
 // returns the statistics of the timed samples (device time in milliseconds).

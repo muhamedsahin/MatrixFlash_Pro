@@ -1,0 +1,341 @@
+{
+  "slug": "examples",
+  "meta": {
+    "eyebrow": { "tr": "PRATİK ÖRNEKLER", "en": "PRACTICAL EXAMPLES" },
+    "title": { "tr": "Çalıştırılabilir Örnekler", "en": "Runnable Examples" },
+    "description": {
+      "tr": "En küçük uçtan uca programdan çoklu stream pipeline'ına kadar yedi tam örnek. Her örnek depoda `examples/` altında durur ve `matrix_pro` hedefine bağlı bağımsız bir CMake hedefidir.",
+      "en": "Seven complete examples, from the smallest end-to-end program to a multi-stream pipeline. Every example lives under `examples/` in the repository and is a standalone CMake target linked against `matrix_pro`."
+    }
+  },
+  "sections": [
+    {
+      "id": "basic",
+      "title": { "tr": "Temel GPU Kullanımı", "en": "Basic GPU Usage" },
+      "intro": {
+        "tr": "Depodaki `basic_gpu_usage.cpp` dosyasının birebir kendisi: kütüphanenin en küçük uçtan uca kullanımı ve şemsiye başlık için derleme zamanı duman testi.",
+        "en": "The literal content of `basic_gpu_usage.cpp` from the repository: the smallest end-to-end use of the library and a compile-time smoke test for the umbrella header."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "examples/basic_gpu_usage.cpp",
+          "code": "#include <iostream>\n\n#include \"matrix_pro/matrix_pro.hpp\"\n\nint main() {\n    using matrix_pro::Matrix;\n\n    const Matrix left{{1.0f, 2.0f}, {3.0f, 4.0f}};\n    const Matrix right = Matrix::identity(2);\n    Matrix result = (left * right).relu();\n    result.download();\n    std::cout << result.at(0, 0) << ' ' << result.at(1, 1) << '\\n';\n    return 0;\n}"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "filename": "terminal",
+          "code": "cmake --build --preset release --target matrix_pro_basic\n./build/Release/matrix_pro_basic\n\n# 1 4"
+        },
+        {
+          "type": "list",
+          "items": [
+            { "tr": "`const Matrix` olması önemli değildir: `operator*` yeni bir çıktı üretir, girdileri değiştirmez.", "en": "`const Matrix` is irrelevant here: `operator*` produces a new output and never modifies its inputs." },
+            { "tr": "`Matrix::identity(2)` cihazda üretilir, bu yüzden host'a yalnızca sonuç döner.", "en": "`Matrix::identity(2)` is generated on the device, so only the result travels back to the host." },
+            { "tr": "`relu()` zincirinin ardından `download()` çağrılmadan `at()` kullanılamaz (fail-fast).", "en": "After the `relu()` chain, `at()` cannot be used until `download()` is called (fail-fast)." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": { "tr": "Derleme süresini düşürün", "en": "Reduce compile time" },
+          "text": {
+            "tr": "Şemsiye başlık yerine yalnızca ihtiyacınız olan alt başlığı dahil edin: `#include \"matrix_pro/ops/product.hpp\"` bu örneğin tüm ihtiyacını karşılar ve derlemeyi belirgin biçimde hızlandırır.",
+            "en": "Instead of the umbrella header, include only the granular header you need: `#include \"matrix_pro/ops/product.hpp\"` covers this example entirely and speeds the build up noticeably."
+          }
+        }
+      ]
+    },
+    {
+      "id": "high-perf",
+      "title": { "tr": "Yüksek Performans & Fused", "en": "High Performance & Fused" },
+      "intro": {
+        "tr": "`high_performance_demo.cpp` beş tekniği sırayla gösterir: cihaza özel matrisler, kalıcı tamponlar üzerinde cuBLAS GEMM döngüsü, fused/yerinde çekirdekler, kopyasız görünümler ve asenkron redüksiyonlar.",
+        "en": "`high_performance_demo.cpp` walks through five techniques in order: device-only matrices, a cuBLAS GEMM loop over resident buffers, fused/in-place kernels, zero-copy views and asynchronous reductions."
+      },
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            { "title": { "tr": "Cihaza özel matrisler", "en": "Device-only matrices" }, "text": { "tr": "Host aynası yok: gizli PCIe trafiği yok, RAM yarıya iner.", "en": "No host mirror: no hidden PCIe traffic and half the RAM." } },
+            { "title": { "tr": "GEMM döngüsü", "en": "GEMM loop" }, "text": { "tr": "Kalıcı tamponlar üzerinde tekrarlanan çarpım; sürdürülebilir verim ölçülür.", "en": "Repeated multiplication over resident buffers to measure sustained throughput." } },
+            { "title": { "tr": "Fused & in-place", "en": "Fused & in-place" }, "text": { "tr": "Zincir yerine tek çekirdek; tahsis yerine tampon yeniden kullanımı.", "en": "One kernel instead of a chain; buffer reuse instead of allocation." } },
+            { "title": { "tr": "Zero-copy görünümler", "en": "Zero-copy views" }, "text": { "tr": "Transpose/slice belleğe hiç dokunmadan yapılır.", "en": "Transpose/slice without touching memory at all." } },
+            { "title": { "tr": "Asenkron redüksiyon", "en": "Async reduction" }, "text": { "tr": "Stream havuzuyla pinned host belleğe argmax; pipeline durmaz.", "en": "Stream-pool argmax into pinned host memory; the pipeline never stalls." } }
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "examples/high_performance_demo.cpp (özet)",
+          "code": "using matrix_pro::Matrix;\nusing matrix_pro::MemoryMode;\n\nconst std::size_t size = 512;\n\n// 1) Cihaza ozel tamponlar: host aynasi yok\nMatrix a(size, size, MemoryMode::device_only);\nMatrix b(size, size, MemoryMode::device_only);\nMatrix c(size, size, MemoryMode::device_only);\n\n// 2) cuBLAS GEMM dongusu (kalici tamponlar)\nfor (int i = 0; i < 100; ++i) {\n    c = multiply(a, b);\n}\n\n// 3) Fused / yerinde: tek cekirdek, tahsis yok\nMatrix h = fused_bias_gelu(c, Matrix::zeros(1, size));\nrelu_(h);\nadd_scalar_(h, 0.5f);\n\n// 4) Kopyasiz gorunum: transpose hic bellek dokunmadan\nMatrixView t = transpose_view(h);\n\n// 5) Asenkron argmax (pinned host yuvasi)\nstd::size_t* slot = static_cast<std::size_t*>(pin_host(sizeof(std::size_t)));\nargmax_async(h, slot);\nsynchronize_pool();\nunpin_host(slot);"
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": { "tr": "Ölçüm disiplini", "en": "Measurement discipline" },
+          "text": {
+            "tr": "Demo, her ölçümün etrafında `matrix_pro::synchronize()` çağırır. GPU çekirdekleri asenkron başladığı için senkronizasyon olmadan ölçülen süre **çekirdek süresi değil, başlatma süresidir**. Kendi benchmark'ınızda da aynısını yapın.",
+            "en": "The demo calls `matrix_pro::synchronize()` around every measurement. Because GPU kernels launch asynchronously, timing without synchronization measures the **launch overhead, not the kernel time**. Do the same in your own benchmarks."
+          }
+        }
+      ]
+    },
+    {
+      "id": "autograd-mlp",
+      "title": { "tr": "Autograd ile MLP Eğitimi", "en": "MLP Training with Autograd" },
+      "intro": {
+        "tr": "`autograd_mlp_demo.cpp` sentetik bir sınıflandırma görevinde iki katmanlı bir MLP eğitir. İleri geçiş, fused kayıp ve geri geçişin tamamı GPU'da çalışır; host yalnızca basılan kayıp değerini görür.",
+        "en": "`autograd_mlp_demo.cpp` trains a two-layer MLP on a synthetic classification task. The forward pass, the fused loss and the backward pass all run on the GPU; the host only observes the printed loss value."
+      },
+      "blocks": [
+        {
+          "type": "math",
+          "display": true,
+          "tex": "\\begin{aligned} h &= \\mathrm{ReLU}(X W_1 + b_1) \\\\ z &= h W_2 + b_2 \\\\ L &= \\mathrm{softmax\\text{-}cross\\text{-}entropy}(z, Y) \\end{aligned}"
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "examples/autograd_mlp_demo.cpp (özet)",
+          "code": "using matrix_pro::Matrix;\nusing matrix_pro::Variable;\n\nconst std::size_t samples = 256, features = 64, hidden = 128, classes = 10;\n\n// Agirliklarin host tarafi (SGD yerinde guncellenir)\nMatrix w1_plain = Matrix::glorot(features, hidden);\nMatrix b1_plain = Matrix::zeros(1, hidden);\nMatrix w2_plain = Matrix::glorot(hidden, classes);\nMatrix b2_plain = Matrix::zeros(1, classes);\n\nVariable x(inputs, false);        // girdi: gradyan gerekmez\nVariable y(targets, false);       // one-hot hedef\n\nconst float lr = 0.05f;\nfor (int step = 0; step < 60; ++step) {\n    // 1) Parametreleri tape'e bagla\n    Variable w1(w1_plain, true), b1(b1_plain, true);\n    Variable w2(w2_plain, true), b2(b2_plain, true);\n\n    // 2) Ileri gecis (tamami GPU'da)\n    Variable h = x.matmul(w1).add(b1).relu();\n    Variable z = h.matmul(w2).add(b2);\n    Variable loss = softmax_cross_entropy_loss(z, y);   // fused\n\n    // 3) Geri gecis: gradyanlar birikir\n    loss.backward();\n\n    // 4) SGD: gradyani oku ve yerinde uygula (tahsis yok)\n    broadcast_add_(w1_plain, multiply(w1.grad(), -lr));\n    broadcast_add_(b1_plain, multiply(b1.grad(), -lr));\n    broadcast_add_(w2_plain, multiply(w2.grad(), -lr));\n    broadcast_add_(b2_plain, multiply(b2.grad(), -lr));\n\n    if (step % 10 == 0) {\n        std::cout << \"step \" << step\n                  << \" loss \" << mean(loss.value()) << '\\n';\n    }\n}"
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": { "tr": "zero_grad() unutulursa", "en": "If you forget zero_grad()" },
+          "text": {
+            "tr": "Backward geçişi gradyanları **biriktirir**. Bir adımda `zero_grad()` atlanırsa o adımın gradyanı önceki adımların üzerine eklenir ve optimizasyon sessizce bozulur — hata mesajı almazsınız, sadece kayıp yakınsamaz.",
+            "en": "The backward pass **accumulates** gradients. Skip `zero_grad()` for one step and that step's gradient is added on top of the previous ones, silently corrupting the optimization — there is no error message, the loss simply stops converging."
+          }
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": { "tr": "Fused kayıp gradyanı da verir", "en": "The fused loss also yields the gradient" },
+          "text": {
+            "tr": "`softmax_cross_entropy_loss` softmax'ı ve negatif log-likelihood'ı tek çekirdekte birleştirir. Softmax'ı ayrı çalıştırıp sonra `log()` almak log-sum-exp kararlılığını kaybettirir ve büyük logitlerde kayıp `inf` olur.",
+            "en": "`softmax_cross_entropy_loss` merges softmax and negative log-likelihood in one kernel. Running softmax separately and then taking `log()` loses the log-sum-exp stability and makes the loss `inf` on large logits."
+          }
+        }
+      ]
+    },
+    {
+      "id": "cnn",
+      "title": { "tr": "2D CNN (Conv2D & MaxPool)", "en": "2D CNN (Conv2D & MaxPool)" },
+      "intro": {
+        "tr": "Rank-4 NCHW tensörler üzerinde çapraz-korelasyon konvolüsyonu ve havuzlama. cuDNN bulunuyorsa arka uç ona delege edilir; API ve sonuçlar her iki yolda aynıdır. Ters geçiş, maksimum konumlarını ileri girdiden yeniden bulur — indeks tamponu saklamanız gerekmez.",
+        "en": "Cross-correlation convolution and pooling over rank-4 NCHW tensors. When cuDNN is present the backend delegates to it; the API and results are identical on both paths. The backward pass re-locates the maxima from the forward input — no index buffer has to be stored."
+      },
+      "blocks": [
+        {
+          "type": "figure",
+          "data": [
+            ["1", "2", "0", "1"],
+            ["0", "3", "1", "2"],
+            ["1", "1", "4", "0"],
+            ["2", "0", "1", "3"]
+          ],
+          "caption": {
+            "tr": "4x4 tek kanallı girdi; 2x2 max-pool her 2x2 pencereden en büyük değeri seçer.",
+            "en": "A 4x4 single-channel input; 2x2 max-pool picks the largest value from every 2x2 window."
+          },
+          "highlight": [[1, 1], [2, 2]],
+          "accent": "primary"
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "cnn_forward.cpp",
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\n\nusing matrix_pro::Tensor;\n\nint main() {\n    // NCHW batch: 8 ornek, 3 kanal, 32x32\n    Tensor x({8, 3, 32, 32});\n    Tensor w({16, 3, 3, 3});     // 16 filtre, 3x3\n    Tensor b({16});\n\n    // Dolgu 1 -> uzamsal boyut korunur\n    Tensor conv = conv2d(x, w, b, /*stride=*/1, /*padding=*/1);\n    // 32x32 -> 16x16\n    Tensor pool = max_pool2d(conv, /*kernel_size=*/2, /*stride=*/2);\n\n    std::cout << pool.shape()[1] << 'x'\n              << pool.shape()[2] << 'x'\n              << pool.shape()[3] << '\\n';   // 16x16x16\n    return 0;\n}"
+        },
+        {
+          "type": "h3",
+          "text": { "tr": "Elle geri geçiş", "en": "Manual backward pass" }
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "cnn_backward.cpp",
+          "code": "Tensor x({4, 1, 8, 8});\nTensor w({2, 1, 3, 3});\nTensor b({2});\n\nTensor conv = conv2d(x, w, b, 1, 1);\nTensor pool = max_pool2d(conv, 2, 2);\n\n// Yukari akis gradyani (ornek: sifir)\nTensor grad(pool.shape());\n\n// Havuzlamanin tersi: maksimum konumlari ileri girdiden bulunur\nTensor dConv = max_pool2d_backward(grad, conv, 2, 2);\n\n// Konvolusyonun tersi: agirlik, girdi ve yanlilik gradyanlari\nTensor dW = conv2d_weight_backward(dConv, x, w, 1, 1);\nTensor dX = conv2d_input_backward(dConv, x, w, 1, 1);\nTensor dB = conv2d_bias_backward(dConv);"
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": { "tr": "VarTensor ile otomatik bağlama", "en": "Automatic wiring with VarTensor" },
+          "text": {
+            "tr": "Elle backward çağırmak yerine `VarTensor` kullanın: `x.conv2d(w, b, 1, 1).max_pool2d(2, 2)` farklılaştırılabilir bir blok üretir ve `backward()` çağrısı ağırlık gradyanlarını otomatik toplar.",
+            "en": "Instead of calling the backward functions by hand, use `VarTensor`: `x.conv2d(w, b, 1, 1).max_pool2d(2, 2)` yields a differentiable block, and `backward()` collects the weight gradients automatically."
+          }
+        }
+      ]
+    },
+    {
+      "id": "sparse",
+      "title": { "tr": "Seyrek Matris & Embedding", "en": "Sparse Matmul & Embedding" },
+      "intro": {
+        "tr": "CSR desteği iki klasik iş yükü için tasarlandı: seyrek ağırlıklı katmanlar ve embedding tabloları. Desen **donmuştur**: kurulumdan sonra `nnz` değişmez, yalnızca değerler güncellenir.",
+        "en": "CSR support was designed for two classic workloads: sparsely weighted layers and embedding tables. The pattern is **frozen**: `nnz` never changes after construction, only the values are updated."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "sparse_demo.cpp",
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\n\nusing matrix_pro::Matrix;\nusing matrix_pro::SparseCSR;\n\nint main() {\n    // 1) Yogun bir agirlik matrisini seyreklige cevir\n    Matrix dense = Matrix::randn(4096, 4096);\n    // |v| <= 0.5 olan girisler atilir\n    SparseCSR sp = SparseCSR::from_dense(dense, /*threshold=*/0.5f);\n\n    std::cout << \"nnz: \" << sp.nnz()\n              << \" sparsity: \" << sp.sparsity() << '\\n';\n\n    // 2) Seyrek x yogun: maliyet nnz ile dogrusal\n    Matrix x = Matrix::randn(4096, 128);\n    Matrix y = sparse_matmul(sp, x);       // (4096 x 128)\n\n    // 3) Klasik spmv\n    Matrix v = Matrix::ones(4096, 1);\n    Matrix Av = spmv(sp, v);               // (4096 x 1)\n\n    return 0;\n}"
+        },
+        {
+          "type": "h3",
+          "text": { "tr": "Embedding tablosu (desen sabit)", "en": "Embedding table (frozen pattern)" }
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "embedding_demo.cpp",
+          "code": "const std::size_t vocab = 50000, dim = 128;\n\nMatrix table = Matrix::randn(vocab, dim);\nMatrix tokens{{12.0f, 7.0f, 12.0f}};      // (1 x 3) indeks\n\n// Ileri gecis: sozluk aramasi\nMatrix embedded = embedding(table, tokens);          // (3 x 128)\n\n// Geri gecis: yinelenen token (12) iki kez toplanir\nMatrix grad = Matrix::ones(3, dim);\nMatrix dTable = embedding_backward(grad, tokens, vocab);\n\n// Elde edilen gradyandan donmus bir desen kurulabilir:\n// SparseCSR pattern = SparseCSR::from_dense(dTable, 1e-6f);\n// sonrasinda sparse_outer_accumulate(pattern, a, b) deseni bozmaz."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": { "tr": "Yapı, değerden ayrıdır", "en": "Structure is separate from values" },
+          "text": {
+            "tr": "`sparse_outer_accumulate` yalnızca **var olan** girişleri güncellemekle yükümlüdür; yeni bir sıfırdan-farklı eleman oluşursa desen onu tutmaz ve gradyan kaybolur. Bu yüzden deseni olası tüm güncellemeleri kapsayacak biçimde bir kez kurun.",
+            "en": "`sparse_outer_accumulate` only updates **existing** entries; if a new non-zero element appears, the pattern does not hold it and that gradient is lost. Build the pattern once so that it covers every possible update."
+          }
+        }
+      ]
+    },
+    {
+      "id": "view",
+      "title": { "tr": "Zero-Copy MatrixView", "en": "Zero-Copy MatrixView" },
+      "intro": {
+        "tr": "Görünümler cihaz belleğinde hiç kopya yapmadan transpose, dilim ve reshape sağlar. Karşılığında **yaşam süresi disiplini** ister: ana matris, görünümden uzun yaşamalıdır.",
+        "en": "Views provide transpose, slicing and reshape on device memory with zero copies. In exchange they demand **lifetime discipline**: the parent matrix must outlive the view."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "view_demo.cpp",
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\n\nusing matrix_pro::Matrix;\n\nint main() {\n    Matrix x = Matrix::randn(512, 128);\n\n    // Kopyasiz gorunumler\n    MatrixView t = transpose_view(x);                 // (128 x 512)\n    MatrixView s = slice_view(x, 0, 64, 8, 72);       // (64 x 64)\n\n    std::cout << \"contiguous(t): \" << t.contiguous()\n              << \" elems(s): \" << s.size() << '\\n';\n\n    // Gercekten yogun bir tampon gerekiyorsa: tek kopya\n    Matrix dense = materialize(s);\n\n    // Iki gorunumu dogrudan birlestir\n    Matrix combined = add_views(dense, transpose_view(materialize(t)));\n\n    // t ve s, x'in cihaz tamponuna isaret eder:\n    // x bu noktadan sonra bozulmamalidir.\n    return 0;\n}"
+        },
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "İşlem", "en": "Operation" },
+            { "tr": "Kopya", "en": "Copies" },
+            { "tr": "Not", "en": "Note" }
+          ],
+          "rows": [
+            [
+              { "tr": "`transpose_view(x)`", "en": "`transpose_view(x)`" },
+              { "tr": "0", "en": "0" },
+              { "tr": "Stride'lar takas edilir; `contiguous()` false olur", "en": "Strides are swapped; `contiguous()` becomes false" }
+            ],
+            [
+              { "tr": "`slice_view(x, ...)`", "en": "`slice_view(x, ...)`" },
+              { "tr": "0", "en": "0" },
+              { "tr": "Satır adımı ana matrisin `cols()` değerinde kalır", "en": "The row stride stays at the parent's `cols()`" }
+            ],
+            [
+              { "tr": "`reshape_view(x, r, c)`", "en": "`reshape_view(x, r, c)`" },
+              { "tr": "0", "en": "0" },
+              { "tr": "Yalnızca contiguous matrislerde geçerli", "en": "Valid for contiguous matrices only" }
+            ],
+            [
+              { "tr": "`as_strided_view(...)`", "en": "`as_strided_view(...)`" },
+              { "tr": "0", "en": "0" },
+              { "tr": "Offset + özel stride'lar; sınır denetimi yapılır", "en": "Offset plus custom strides; bounds are validated" }
+            ],
+            [
+              { "tr": "`materialize(v)`", "en": "`materialize(v)`" },
+              { "tr": "1", "en": "1" },
+              { "tr": "Yoğun, sahiplenen bir `Matrix` üretir", "en": "Produces a dense, owning `Matrix`" }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": { "tr": "Sarkan görünüm", "en": "Dangling view" },
+          "text": {
+            "tr": "`MatrixView` ana tamponu canlı tutmaz. `x` kapsam dışına çıkarsa görünüm geçersiz; `x = Matrix(...)` gibi bir atama tamponu taşırsa görünüm serbest bırakılmış belleğe işaret eder. Uzun ömürlü kullanım için `materialize()` ile sahiplenen bir kopya alın.",
+            "en": "A `MatrixView` does not keep the parent buffer alive. If `x` leaves scope the view is invalid; an assignment like `x = Matrix(...)` moves the buffer and the view ends up pointing at freed memory. For long-lived use, take an owning copy with `materialize()`."
+          }
+        }
+      ]
+    },
+    {
+      "id": "streams",
+      "title": { "tr": "Çoklu Stream & Asenkron Pipeline", "en": "Multi-Stream Async Pipeline" },
+      "intro": {
+        "tr": "Bağımsız işler (örneğin iki ağırlık güncellemesi veya iki farklı çıkarım kolu) tek stream'de sıraya girer. Havuz, 4 ek stream ile bu işleri örtüştürür; asenkron redüksiyonlar ise pipeline'ı hiç durdurmaz.",
+        "en": "Independent work (say, two weight updates or two inference branches) is serialized on a single stream. The pool overlaps that work across 4 extra streams, and asynchronous reductions never stall the pipeline."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "streams_demo.cpp",
+          "code": "#include \"matrix_pro/streams/stream_pool.hpp\"\n\nusing matrix_pro::Matrix;\n\n// Iki bagimsiz kol: iki farkli batch'in ileri+geri gecisi\nMatrix a = Matrix::randn(2048, 512);\nMatrix b = Matrix::randn(2048, 512);\nMatrix w = Matrix::glorot(512, 512);\nMatrix ga = Matrix::randn(512, 512);\nMatrix gb = Matrix::randn(512, 512);\n\nconst float lr = 0.01f;\n\ncudaEvent_t done_a = make_event();\ncudaEvent_t done_b = make_event();\n\n// Iki guncelleme ortusur: ayni anda cihazda\nlaunch_on_pool(0, [&](cudaStream_t s) {\n    (void)s;\n    broadcast_add_(w, multiply(ga, -lr));\n}, done_a);\n\nlaunch_on_pool(1, [&](cudaStream_t s) {\n    (void)s;\n    Matrix w2 = w;                    // ikinci kol kendi kopyasinda calisir\n    broadcast_add_(w2, multiply(gb, -lr));\n}, done_b);\n\nsynchronize_pool();\ndestroy_event(done_a);\ndestroy_event(done_b);"
+        },
+        {
+          "type": "h3",
+          "text": { "tr": "Asenkron argmax: pipeline durmaz", "en": "Async argmax: the pipeline never stalls" }
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "async_reduction.cpp",
+          "code": "Matrix logits = Matrix::randn(8192, 1000);\n\n// Page-locked host slot: stream callback buraya yazar\nstd::size_t* slot = static_cast<std::size_t*>(pin_host(sizeof(std::size_t)));\n\nargmax_async(logits, slot, [](std::size_t idx) {\n    // Deger hazir oldugunda cagrilir; cagiran thread bloke edilmedi\n    std::cout << \"predicted class: \" << idx << '\\n';\n});\n\n// Buradaki is devam eder: pipeline beklemez\nMatrix probs = softmax(logits);\n\nsynchronize_pool();\nunpin_host(slot);"
+        },
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "Araç", "en": "Tool" },
+            { "tr": "Ne bekler", "en": "What it waits for" },
+            { "tr": "Ne beklemez", "en": "What it does not wait for" }
+          ],
+          "rows": [
+            [
+              { "tr": "`compute_stream()`", "en": "`compute_stream()`" },
+              { "tr": "Varsayılan iş akışı", "en": "The default work stream" },
+              { "tr": "Havuz stream'lerini", "en": "The pool streams" }
+            ],
+            [
+              { "tr": "`synchronize()`", "en": "`synchronize()`" },
+              { "tr": "Yalnızca `compute_stream()`", "en": "Only `compute_stream()`" },
+              { "tr": "Havuz stream'lerini", "en": "The pool streams" }
+            ],
+            [
+              { "tr": "`synchronize_pool()`", "en": "`synchronize_pool()`" },
+              { "tr": "Havuz stream'leri (4 slot)", "en": "The pool streams (4 slots)" },
+              { "tr": "`compute_stream()`", "en": "`compute_stream()`" }
+            ],
+            [
+              { "tr": "`synchronize_all_devices()`", "en": "`synchronize_all_devices()`" },
+              { "tr": "Bu thread'in dokunduğu tüm cihazlar", "en": "Every device this thread has touched" },
+              { "tr": "Diğer thread'lerin stream'lerini", "en": "Streams owned by other threads" }
+            ],
+            [
+              { "tr": "`argmax_async` callback", "en": "`argmax_async` callback" },
+              { "tr": "Kendi redüksiyonunun bitmesini", "en": "Its own reduction only" },
+              { "tr": "Çağıran thread'i", "en": "The calling thread" }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": { "tr": "Bağlam (context) paylaşımı", "en": "Context sharing" },
+          "text": {
+            "tr": "Her (host thread, cihaz) çifti kendi stream ve tutamaç setini alır. Havuz stream'i bir thread'de oluşturulup başka bir thread'den kullanılmamalıdır; iş yüklerini `launch_on_pool` ile aynı thread'den yayınlayın.",
+            "en": "Each (host thread, device) pair gets its own stream and handle set. A pool stream created on one thread should not be used from another; dispatch your work with `launch_on_pool` from the same thread."
+          }
+        }
+      ]
+    }
+  ]
+}

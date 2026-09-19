@@ -1,6 +1,7 @@
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
 import { Hero } from '@/components/landing/hero'
+import { Quickstart } from '@/components/landing/quickstart'
 import { ModuleExplorer } from '@/components/interactive/module-explorer'
 import { PipelineDemo } from '@/components/landing/pipeline-demo'
 import { Features } from '@/components/landing/features'
@@ -14,12 +15,10 @@ export default function HomePage() {
       <SiteNav />
       <main className="space-y-4">
         <Hero />
-
-        {/* Interactive Module Explorer Section */}
+        <Quickstart />
         <section className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <ModuleExplorer />
         </section>
-
         <PipelineDemo />
         <Features />
         <Architecture />
@@ -30,3 +29,4 @@ export default function HomePage() {
     </div>
   )
 }
+

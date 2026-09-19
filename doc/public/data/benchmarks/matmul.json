@@ -1,0 +1,117 @@
+{
+  "library": "MatrixFlash-Pro",
+  "timestamp": "2026-09-17T23:44:11",
+  "device": {
+    "name": "NVIDIA GeForce RTX 3070 Laptop GPU",
+    "index": 0,
+    "compute_capability": "8.6",
+    "sm_count": 40,
+    "memory_bytes": 8589410304
+  },
+  "results": [
+    {
+      "bench": "matmul",
+      "case": "256x256",
+      "size": 256,
+      "ms_mean": 0.045568,
+      "ms_median": 0.045568,
+      "ms_min": 0.014336,
+      "ms_max": 0.076800,
+      "ms_stddev": 0.031232,
+      "throughput": 736.3595,
+      "unit": "GFLOPS",
+      "note": "square, cuBLAS fp32"
+    },
+    {
+      "bench": "matmul",
+      "case": "128x256x256",
+      "size": 256,
+      "ms_mean": 0.046592,
+      "ms_median": 0.046592,
+      "ms_min": 0.014336,
+      "ms_max": 0.078848,
+      "ms_stddev": 0.032256,
+      "throughput": 360.0879,
+      "unit": "GFLOPS",
+      "note": "rectangular M x K x N"
+    },
+    {
+      "bench": "matmul",
+      "case": "512x512",
+      "size": 512,
+      "ms_mean": 0.178688,
+      "ms_median": 0.178688,
+      "ms_min": 0.052224,
+      "ms_max": 0.305152,
+      "ms_stddev": 0.126464,
+      "throughput": 1502.2579,
+      "unit": "GFLOPS",
+      "note": "square, cuBLAS fp32"
+    },
+    {
+      "bench": "matmul",
+      "case": "256x512x512",
+      "size": 512,
+      "ms_mean": 0.049152,
+      "ms_median": 0.049152,
+      "ms_min": 0.024576,
+      "ms_max": 0.073728,
+      "ms_stddev": 0.024576,
+      "throughput": 2730.6666,
+      "unit": "GFLOPS",
+      "note": "rectangular M x K x N"
+    },
+    {
+      "bench": "matmul",
+      "case": "1024x1024",
+      "size": 1024,
+      "ms_mean": 1.484800,
+      "ms_median": 1.484800,
+      "ms_min": 1.313792,
+      "ms_max": 1.655808,
+      "ms_stddev": 0.171008,
+      "throughput": 1446.3117,
+      "unit": "GFLOPS",
+      "note": "square, cuBLAS fp32"
+    },
+    {
+      "bench": "matmul",
+      "case": "512x1024x1024",
+      "size": 1024,
+      "ms_mean": 2.104832,
+      "ms_median": 2.104832,
+      "ms_min": 1.061888,
+      "ms_max": 3.147776,
+      "ms_stddev": 1.042944,
+      "throughput": 510.1319,
+      "unit": "GFLOPS",
+      "note": "rectangular M x K x N"
+    },
+    {
+      "bench": "matmul",
+      "case": "2048x2048",
+      "size": 2048,
+      "ms_mean": 5.006336,
+      "ms_median": 5.006336,
+      "ms_min": 3.282944,
+      "ms_max": 6.729728,
+      "ms_stddev": 1.723392,
+      "throughput": 3431.6252,
+      "unit": "GFLOPS",
+      "note": "square, cuBLAS fp32"
+    },
+    {
+      "bench": "matmul",
+      "case": "1024x2048x2048",
+      "size": 2048,
+      "ms_mean": 4.791296,
+      "ms_median": 4.791296,
+      "ms_min": 4.747264,
+      "ms_max": 4.835328,
+      "ms_stddev": 0.044032,
+      "throughput": 1792.8207,
+      "unit": "GFLOPS",
+      "note": "rectangular M x K x N"
+    }
+  ]
+}

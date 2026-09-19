@@ -1,7 +1,10 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
+import { Space_Grotesk, JetBrains_Mono, Sora } from 'next/font/google'
 import { LanguageProvider } from '@/lib/language-context'
+import { IntroOverlay } from '@/components/intro-overlay'
+import { ScrollProgressBar } from '@/components/scroll-progress-bar'
+import { HudFrame } from '@/components/hud-frame'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -13,6 +16,12 @@ const spaceGrotesk = Space_Grotesk({
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains-mono',
+  display: 'swap',
+})
+
+const sora = Sora({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-sora',
   display: 'swap',
 })
 
@@ -47,9 +56,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="tr" className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="tr"
+      className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${sora.variable}`}
+    >
       <body className="font-sans antialiased selection:bg-primary/20 selection:text-primary">
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          <IntroOverlay />
+          <ScrollProgressBar />
+          <HudFrame />
+          {children}
+        </LanguageProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

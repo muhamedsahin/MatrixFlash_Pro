@@ -458,6 +458,45 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 📈 Performans / Benchmark
 
+> 📊 **Yeni: benzer araçlarla karşılaştırma sayfası** — aynı makinede ölçülmüş
+> MatrixFlash-Pro vs ham cuBLAS vs naive CUDA çekirdeği vs CPU tabloları +
+> interaktif grafik: `doc/app/docs/performans/page.tsx`
+> (`/docs/performans`), veri: `doc/public/data/benchmarks/comparison.json`,
+> kaynak: `benchmarks/bench_comparison.cu`.
+
+### Karşılaştırma benchmark'ı (önerilen)
+
+```powershell
+cmake --preset release
+cmake --build --preset release --target matrix_pro_bench_comparison
+.\build\benchmarks\Release\matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json
+python tools/sync_benchmark_data.py
+```
+
+### Son doğrulanmış karşılaştırma (RTX 3070 Laptop, 19.09.2026)
+
+| Vaka | mflash (ms / GFLOPS) | ham cuBLAS (ms / GFLOPS) | naive GPU (ms / GFLOPS) | CPU naive (ms / GFLOPS) |
+|---|---|---|---|---|
+| 256×256 ✅ | 0.041 / 819 | 0.032 / 1040 | 0.050 / 676 | 15.02 / 2.23 |
+| 512×512 ✅ | 0.345 / 779 | 0.052 / 5140 | 0.300 / 896 | 105.83 / 2.54 |
+| 1024×1024 ✅ | 0.751 / 2859 | 0.195 / 11038 | 2.230 / 963 | atlandı (O(n³)) |
+| 2048×2048 ✅ | 3.049 / 5635 | 1.238 / 13877 | atlandı (O(n³)) | atlandı (O(n³)) |
+
+| MLP adımı (batch=64) | mlp-full (ms) | mlp-fwd (ms) | bant maliyeti |
+|---|---|---|---|
+| h=256 ✅ | 1.745 | 1.278 | 1.4× |
+| h=512 ✅ | 2.078 | 1.364 | 1.5× |
+| h=1024 ✅ | 2.951 | 1.323 | 2.2× |
+| h=2048 ✅ | 4.152 | 1.693 | 2.5× |
+
+Okuma notu: GPU süreleri CUDA-event medyanı, CPU süreleri wall-clock medyanıdır.
+`mflash` çıktıyı tahsis eder (gerçek maliyet); ham cuBLAS tahsissizdir.
+CPU naive yalnızca `n <= 512` koşar. PyTorch / ArrayFire / Eigen / OpenBLAS
+değerleri bu makinede ölçülmedi; doküman sayfasında 📖 referans rozetiyle ayrı
+tablodadır.
+
+### Eski tekil workload çalıştırıcıları
+
 `benchmarks/perf_matrix.cpp` dosyası, cuBLAS destekli matris çarpımının GPU performansını karşılaştırmalı biçimde ölçmek için kullanılır. Benchmark, tek bir boyut yerine birden fazla kare matris boyutunu sırayla çalıştırır; her boyut için ortalama, minimum, maksimum süre, GFLOPS ve tahmini bant genişliği değerlerini raporlar.
 
 ### Temel kullanım

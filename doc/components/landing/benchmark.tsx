@@ -15,18 +15,15 @@ export function Benchmark() {
     { value: '4 Stream', label: { tr: 'Eş Zamanlı İşlem Havuzu', en: 'Concurrent Stream Pool' } },
   ]
 
-  const benchCode = `# Benchmark aracını Release modunda derle ve çalıştır
-cmake --build --preset release --target matrix_pro_benchmark
-& .\\build\\Release\\matrix_pro_benchmark.exe 2048
-
-# cuBLAS GEMM, Tiled kernel ve TF32 Tensor Core
-# gerçek zamanlı TFLOPS değerlerini raporlar.`
+  const benchCode = `# Karsilastirma benchmark'ini derle ve calistir
+cmake --build --preset release --target matrix_pro_bench_comparison
+./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json`
 
   const comparisonData = [
-    { name: 'CPU Multi-Core (AVX2/OpenMP)', time: '412.0 ms', speedup: '1x (Referans)', width: 10, color: 'from-zinc-500 to-zinc-400' },
-    { name: 'Naive GPU Global Memory Kernel', time: '58.4 ms', speedup: '7.0x', width: 28, color: 'from-amber-500 to-amber-400' },
-    { name: 'MatrixFlash Shared-Memory Tiled', time: '14.2 ms', speedup: '29.0x', width: 62, color: 'from-cyan-500 to-cyan-400' },
-    { name: 'MatrixFlash-Pro cuBLAS + TF32 Tensor Cores', time: '3.6 ms', speedup: '114.4x', width: 100, color: 'from-emerald-500 to-primary' },
+    { name: 'CPU tek-thread naive (256x256, olculdu)', time: '15.02 ms', speedup: '1x (Referans)', width: 6, color: 'from-zinc-500 to-zinc-400' },
+    { name: 'Naive GPU global-memory kernel (1024x1024, olculdu)', time: '2.23 ms', speedup: '~50x', width: 30, color: 'from-amber-500 to-amber-400' },
+    { name: 'MatrixFlash-Pro operator* (1024x1024, olculdu)', time: '0.75 ms', speedup: '~141x', width: 68, color: 'from-cyan-500 to-cyan-400' },
+    { name: 'Ham cuBLAS tahsissiz (1024x1024, olculdu)', time: '0.19 ms', speedup: '~545x', width: 100, color: 'from-emerald-500 to-primary' },
   ]
 
   return (
@@ -98,8 +95,14 @@ cmake --build --preset release --target matrix_pro_benchmark
                 ))}
               </div>
 
-              <div className="mt-6 pt-4 border-t border-border/50">
+              <div className="mt-6 pt-4 border-t border-border/50 space-y-3">
                 <CodeBlock code={benchCode} filename="benchmark.ps1" />
+                <a
+                  href="/docs/performans"
+                  className="inline-flex items-center gap-2 font-mono text-xs font-bold text-primary hover:underline"
+                >
+                  Detayli karsilastirma tablosu + interaktif grafik: /docs/performans
+                </a>
               </div>
             </div>
           </Reveal>

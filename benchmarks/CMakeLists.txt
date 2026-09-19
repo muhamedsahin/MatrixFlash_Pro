@@ -24,6 +24,7 @@ add_library(matrix_pro_bench_support STATIC
 	bench_precision.cpp
 	bench_sparse.cpp
 	bench_training.cpp
+	bench_comparison.cu
 )
 target_link_libraries(matrix_pro_bench_support PUBLIC matrix_pro Threads::Threads)
 target_include_directories(matrix_pro_bench_support PUBLIC
@@ -42,6 +43,7 @@ set(MATRIX_PRO_BENCHES
 	precision
 	sparse
 	training
+	comparison
 )
 
 foreach(bench IN LISTS MATRIX_PRO_BENCHES)

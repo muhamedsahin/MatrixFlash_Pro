@@ -132,7 +132,8 @@ std::vector<BenchmarkInfo> all_benchmarks() {
             conv_benchmark(),
             precision_benchmark(),
             sparse_benchmark(),
-            training_benchmark()};
+            training_benchmark(),
+            comparison_benchmark()};
 }
 
 // ============================================================================

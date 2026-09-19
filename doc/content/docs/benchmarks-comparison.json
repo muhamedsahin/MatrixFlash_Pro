@@ -1,0 +1,504 @@
+{
+  "slug": "benchmarks-comparison",
+  "meta": {
+    "eyebrow": {
+      "tr": "PERFORMANS KARSILASTIRMA",
+      "en": "PERFORMANCE COMPARISON"
+    },
+    "title": {
+      "tr": "MatrixFlash-Pro vs Benzer Araclar",
+      "en": "MatrixFlash-Pro vs Similar Tools"
+    },
+    "description": {
+      "tr": "Ayni makinede olculmus GEMM ve MLP baz cizgileri: MatrixFlash-Pro, ham cuBLAS, naive CUDA cekirdegi, tek-thread CPU ve autograd bant maliyeti.",
+      "en": "Same-machine GEMM and MLP baselines: MatrixFlash-Pro, raw cuBLAS, a naive CUDA kernel, single-thread CPU and the autograd tape cost."
+    }
+  },
+  "sections": [
+    {
+      "id": "metodoloji",
+      "title": {
+        "tr": "Metodoloji ve Adillik Kurallari",
+        "en": "Methodology and Fairness Rules"
+      },
+      "intro": {
+        "tr": "Tum 'olculdu' satirlari RTX 3070 Laptop GPU (CC 8.6, 8 GiB) uzerinde, release preset ile alindi. GPU: CUDA-event medyan, CPU: chrono wall-clock medyan. Her vaka 3 warmup + 10 tekrar.",
+        "en": "Every 'measured' row comes from an RTX 3070 Laptop GPU (CC 8.6, 8 GiB), release preset. GPU: CUDA-event median, CPU: chrono wall-clock median. Each case: 3 warmup + 10 repeats."
+      },
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            {
+              "tr": "Olculdu: ayni makinede bu repo ile tekrar uretilebilir.",
+              "en": "Measured: reproducible on the same machine with this repo."
+            },
+            {
+              "tr": "Referans (harici): PyTorch / ArrayFire / OpenBLAS degerleri literaturdendir.",
+              "en": "Reference (external): PyTorch / ArrayFire / OpenBLAS figures are from the literature."
+            },
+            {
+              "tr": "mflash operator*: ciktiyi tahsis eder (gercek maliyet).",
+              "en": "mflash operator*: allocates its output (real cost)."
+            },
+            {
+              "tr": "raw cuBLAS: onceden tahsisli tamponda kosar (saf cekirdek hizi).",
+              "en": "raw cuBLAS: runs on pre-allocated buffers (pure kernel speed)."
+            },
+            {
+              "tr": "CPU naive yalnizca n <= 512 icin kosar.",
+              "en": "CPU naive runs only for n <= 512."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": {
+            "tr": "Sayilari dogru okuyun",
+            "en": "Read the numbers correctly"
+          },
+          "text": {
+            "tr": "GFLOPS yuksek-iyi, ms dusuk-iyi metriktir. Ham cuBLAS satirindaki asiri yuksek GFLOPS, tahsissiz mikro-benchmark etkisidir.",
+            "en": "GFLOPS is higher-is-better, ms is lower-is-better. The very high GFLOPS on the raw cuBLAS row is the allocation-free micro-benchmark effect."
+          }
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "filename": "terminal",
+          "code": "cmake --preset release\ncmake --build --preset release --target matrix_pro_bench_comparison\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json\npython tools/sync_benchmark_data.py"
+        }
+      ]
+    },
+    {
+      "id": "gemm",
+      "title": {
+        "tr": "GEMM: Kare Matris Carpimi (olculdu)",
+        "en": "GEMM: Square Matmul (measured)"
+      },
+      "intro": {
+        "tr": "RTX 3070 Laptop, 19.09.2026 olcumu. mflash = Matrix::operator*, raw-cuBLAS = onceden tahsisli cublasGemmEx, naive-gpu = ilk-deneme cekirdegi, cpu-naive = tek-thread uclu dongu.",
+        "en": "RTX 3070 Laptop, measured 2026-09-19. mflash = Matrix::operator*, raw-cuBLAS = pre-allocated cublasGemmEx, naive-gpu = first-attempt kernel, cpu-naive = single-thread triple loop."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            {
+              "tr": "Vaka (NxN)",
+              "en": "Case (NxN)"
+            },
+            {
+              "tr": "mflash (ms / GFLOPS)",
+              "en": "mflash (ms / GFLOPS)"
+            },
+            {
+              "tr": "ham cuBLAS (ms / GFLOPS)",
+              "en": "raw cuBLAS (ms / GFLOPS)"
+            },
+            {
+              "tr": "naive GPU (ms / GFLOPS)",
+              "en": "naive GPU (ms / GFLOPS)"
+            },
+            {
+              "tr": "CPU naive (ms / GFLOPS)",
+              "en": "CPU naive (ms / GFLOPS)"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "tr": "256x256 olculdu",
+                "en": "256x256 measured"
+              },
+              {
+                "tr": "0.041 ms / 819 GFLOPS",
+                "en": "0.041 ms / 819 GFLOPS"
+              },
+              {
+                "tr": "0.032 ms / 1040 GFLOPS",
+                "en": "0.032 ms / 1040 GFLOPS"
+              },
+              {
+                "tr": "0.050 ms / 676 GFLOPS",
+                "en": "0.050 ms / 676 GFLOPS"
+              },
+              {
+                "tr": "15.02 ms / 2.23 GFLOPS",
+                "en": "15.02 ms / 2.23 GFLOPS"
+              }
+            ],
+            [
+              {
+                "tr": "512x512 olculdu",
+                "en": "512x512 measured"
+              },
+              {
+                "tr": "0.345 ms / 779 GFLOPS",
+                "en": "0.345 ms / 779 GFLOPS"
+              },
+              {
+                "tr": "0.052 ms / 5140 GFLOPS",
+                "en": "0.052 ms / 5140 GFLOPS"
+              },
+              {
+                "tr": "0.300 ms / 896 GFLOPS",
+                "en": "0.300 ms / 896 GFLOPS"
+              },
+              {
+                "tr": "105.83 ms / 2.54 GFLOPS",
+                "en": "105.83 ms / 2.54 GFLOPS"
+              }
+            ],
+            [
+              {
+                "tr": "1024x1024 olculdu",
+                "en": "1024x1024 measured"
+              },
+              {
+                "tr": "0.751 ms / 2859 GFLOPS",
+                "en": "0.751 ms / 2859 GFLOPS"
+              },
+              {
+                "tr": "0.195 ms / 11038 GFLOPS",
+                "en": "0.195 ms / 11038 GFLOPS"
+              },
+              {
+                "tr": "2.230 ms / 963 GFLOPS",
+                "en": "2.230 ms / 963 GFLOPS"
+              },
+              {
+                "tr": "atlandi (O(n3) host)",
+                "en": "skipped (O(n3) host)"
+              }
+            ],
+            [
+              {
+                "tr": "2048x2048 olculdu",
+                "en": "2048x2048 measured"
+              },
+              {
+                "tr": "3.049 ms / 5635 GFLOPS",
+                "en": "3.049 ms / 5635 GFLOPS"
+              },
+              {
+                "tr": "1.238 ms / 13877 GFLOPS",
+                "en": "1.238 ms / 13877 GFLOPS"
+              },
+              {
+                "tr": "atlandi (O(n3) thread)",
+                "en": "skipped (O(n3) threads)"
+              },
+              {
+                "tr": "atlandi (O(n3) host)",
+                "en": "skipped (O(n3) host)"
+              }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": {
+            "tr": "Tablo ne soyluyor",
+            "en": "What the table says"
+          },
+          "text": {
+            "tr": "CPU'ya karsi ~300-1100x hizlanma. Naive GPU cekirdegine karsi 1024'te ~3x. mflash ile ham cuBLAS farki cogunlukla cikti tahsisi + wrapper maliyetidir.",
+            "en": "300-1100x over CPU. About 3x over the naive GPU kernel at 1024. The mflash vs raw cuBLAS gap is mostly output allocation + wrapper cost."
+          }
+        }
+      ]
+    },
+    {
+      "id": "mlp-tape",
+      "title": {
+        "tr": "Egitim Adimi: Autograd Bant Maliyeti (olculdu)",
+        "en": "Training Step: Autograd Tape Cost (measured)"
+      },
+      "intro": {
+        "tr": "2 katmanli MLP (256 giris, 10 sinif, batch=64). mlp-full = ileri + geri, mlp-fwd = yalnizca ileri.",
+        "en": "2-layer MLP (256 inputs, 10 classes, batch=64). mlp-full = forward + backward, mlp-fwd = forward only."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            {
+              "tr": "Gizli genislik",
+              "en": "Hidden width"
+            },
+            {
+              "tr": "mlp-full (ms / samples/s)",
+              "en": "mlp-full (ms / samples/s)"
+            },
+            {
+              "tr": "mlp-fwd (ms / samples/s)",
+              "en": "mlp-fwd (ms / samples/s)"
+            },
+            {
+              "tr": "Bant maliyeti",
+              "en": "Tape cost"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "tr": "h=256",
+                "en": "h=256"
+              },
+              {
+                "tr": "1.745 ms / 36678",
+                "en": "1.745 ms / 36678"
+              },
+              {
+                "tr": "1.278 ms / 50080",
+                "en": "1.278 ms / 50080"
+              },
+              {
+                "tr": "1.4x",
+                "en": "1.4x"
+              }
+            ],
+            [
+              {
+                "tr": "h=512",
+                "en": "h=512"
+              },
+              {
+                "tr": "2.078 ms / 30796",
+                "en": "2.078 ms / 30796"
+              },
+              {
+                "tr": "1.364 ms / 46922",
+                "en": "1.364 ms / 46922"
+              },
+              {
+                "tr": "1.5x",
+                "en": "1.5x"
+              }
+            ],
+            [
+              {
+                "tr": "h=1024",
+                "en": "h=1024"
+              },
+              {
+                "tr": "2.951 ms / 21686",
+                "en": "2.951 ms / 21686"
+              },
+              {
+                "tr": "1.323 ms / 48375",
+                "en": "1.323 ms / 48375"
+              },
+              {
+                "tr": "2.2x",
+                "en": "2.2x"
+              }
+            ],
+            [
+              {
+                "tr": "h=2048",
+                "en": "h=2048"
+              },
+              {
+                "tr": "4.152 ms / 15413",
+                "en": "4.152 ms / 15413"
+              },
+              {
+                "tr": "1.693 ms / 37799",
+                "en": "1.693 ms / 37799"
+              },
+              {
+                "tr": "2.5x",
+                "en": "2.5x"
+              }
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "Bant maliyeti 1.4-2.5x araligindadir. Cikarim yolunda Variable degil Matrix kullanin.",
+            "en": "The tape cost is in the 1.4-2.5x range. Use Matrix, not Variable, on the inference path."
+          }
+        }
+      ]
+    },
+    {
+      "id": "harici-referans",
+      "title": {
+        "tr": "Harici Referanslar (olculmedi)",
+        "en": "External References (not measured)"
+      },
+      "intro": {
+        "tr": "Asagidaki satirlar bu makinede olculmemistir; kaba baglam icin literatur degerleridir.",
+        "en": "The rows below were NOT measured on this machine; literature figures for rough context."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            {
+              "tr": "Arac",
+              "en": "Tool"
+            },
+            {
+              "tr": "Islem",
+              "en": "Operation"
+            },
+            {
+              "tr": "Kaba deger",
+              "en": "Rough figure"
+            },
+            {
+              "tr": "Kaynak",
+              "en": "Source"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "tr": "PyTorch (CUDA) referans",
+                "en": "PyTorch (CUDA) reference"
+              },
+              {
+                "tr": "torch.mm fp32, benzer Ampere GPU",
+                "en": "torch.mm fp32, similar Ampere GPU"
+              },
+              {
+                "tr": "cuBLAS tabanli; ham-cuBLAS bandinda",
+                "en": "cuBLAS-based; in raw-cuBLAS band"
+              },
+              {
+                "tr": "pytorch.org/docs",
+                "en": "pytorch.org/docs"
+              }
+            ],
+            [
+              {
+                "tr": "ArrayFire (CUDA) referans",
+                "en": "ArrayFire (CUDA) reference"
+              },
+              {
+                "tr": "matmul fp32, benzer Ampere GPU",
+                "en": "matmul fp32, similar Ampere GPU"
+              },
+              {
+                "tr": "cuBLAS tabanli",
+                "en": "cuBLAS-based"
+              },
+              {
+                "tr": "arrayfire.org/docs",
+                "en": "arrayfire.org/docs"
+              }
+            ],
+            [
+              {
+                "tr": "Eigen (CPU) referans",
+                "en": "Eigen (CPU) reference"
+              },
+              {
+                "tr": "cok-thread MatrixXf carpimi",
+                "en": "multi-thread MatrixXf product"
+              },
+              {
+                "tr": "10-30 GFLOPS bandi",
+                "en": "10-30 GFLOPS band"
+              },
+              {
+                "tr": "eigen.tuxfamily.org",
+                "en": "eigen.tuxfamily.org"
+              }
+            ],
+            [
+              {
+                "tr": "OpenBLAS (CPU) referans",
+                "en": "OpenBLAS (CPU) reference"
+              },
+              {
+                "tr": "sgemm cok-thread",
+                "en": "sgemm multi-thread"
+              },
+              {
+                "tr": "10-40 GFLOPS bandi",
+                "en": "10-40 GFLOPS band"
+              },
+              {
+                "tr": "openblas.net",
+                "en": "openblas.net"
+              }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": {
+            "tr": "Eigen neden olculmedi",
+            "en": "Why Eigen is not measured"
+          },
+          "text": {
+            "tr": "Eigen basligi derleme aninda bulunursa bench otomatik olcer. Bu makinede kurulu degildi.",
+            "en": "The bench measures Eigen automatically when the header is visible at build time. It was not installed here."
+          }
+        }
+      ]
+    },
+    {
+      "id": "nasil-tekrarlanir",
+      "title": {
+        "tr": "Nasil Tekrarlanir",
+        "en": "How to Reproduce"
+      },
+      "intro": {
+        "tr": "Tek komutla ayni CSV/JSON'u uretin, sonra doc verisini senkronlayin.",
+        "en": "Produce the same CSV/JSON with one command, then sync the doc data."
+      },
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            {
+              "title": {
+                "tr": "Karsilastirma benchmarkini derleyin",
+                "en": "Build the comparison benchmark"
+              },
+              "text": {
+                "tr": "cmake --preset release + target matrix_pro_bench_comparison.",
+                "en": "cmake --preset release + target matrix_pro_bench_comparison."
+              }
+            },
+            {
+              "title": {
+                "tr": "Olcumu alin",
+                "en": "Run the measurement"
+              },
+              "text": {
+                "tr": "--sizes 256,512,1024,2048 --repeats 10 --warmup 3 ile calistirin.",
+                "en": "Run with --sizes 256,512,1024,2048 --repeats 10 --warmup 3."
+              }
+            },
+            {
+              "title": {
+                "tr": "Doc verisini senkronlayin",
+                "en": "Sync the doc data"
+              },
+              "text": {
+                "tr": "python tools/sync_benchmark_data.py calistirin.",
+                "en": "Run python tools/sync_benchmark_data.py."
+              }
+            }
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "filename": "terminal",
+          "code": "cmake --preset release\ncmake --build --preset release --target matrix_pro_bench_comparison\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json\npython tools/sync_benchmark_data.py"
+        }
+      ]
+    }
+  ]
+}
