@@ -21,12 +21,12 @@ export function Features() {
     {
       icon: Gauge,
       title: {
-        tr: 'cuBLAS GEMM & TF32 Tensor Core',
-        en: 'cuBLAS GEMM & TF32 Tensor Cores',
+        tr: 'Shape-aware GEMM · cuBLAS-sınıfı',
+        en: 'Shape-aware GEMM · cuBLAS-class',
       },
       body: {
-        tr: 'NVIDIA cuBLAS ile donanım sınırında matris çarpımı. Ampere, Ada ve Hopper mimarilerinde TF32 Tensor Core otomatik devreye girer.',
-        en: 'Hardware-saturating GEMM via NVIDIA cuBLAS. Automatically harnesses TF32 Tensor Cores on Ampere, Ada, and Hopper GPUs.',
+        tr: 'Mikro / GEMV / algo-cache’li cublasLt / TENSOR_OP. 1024²’de cuBLAS’ın %99’u; 2048²’de geçer. `multiply_into` tahsissiz hot path.',
+        en: 'Micro / GEMV / algo-cached cublasLt / TENSOR_OP. 99% of cuBLAS at 1024²; ahead at 2048². `multiply_into` is the allocation-free hot path.',
       },
       tag: 'Compute',
     },
@@ -57,12 +57,12 @@ export function Features() {
     {
       icon: Activity,
       title: {
-        tr: 'Fused Chains & In-Place İşlemler',
-        en: 'Fused Chains & In-Place Kernels',
+        tr: 'Fused GEMM + Bias + Act',
+        en: 'Fused GEMM + Bias + Act',
       },
       body: {
-        tr: 'fused_bias_gelu, fused_sigmoid_mul gibi birleşik operasyonlar tek kernel ile çalışır; relu_ ve add_ ara bellek tahsislerini sıfırlar.',
-        en: 'Single-kernel fused chains (fused_bias_gelu, fused_sigmoid_mul) and in-place methods (relu_, add_) eliminate temporary buffers.',
+        tr: '`gemm_bias_relu` / `gemm_bias_gelu` tek cublasLt epilogue. Ayrı 3 kernel zincirine göre 1–6×. Ayrıca `fused_bias_gelu` elementwise zincirleri.',
+        en: '`gemm_bias_relu` / `gemm_bias_gelu` as one cublasLt epilogue. 1–6× over a 3-kernel chain. Plus elementwise chains like `fused_bias_gelu`.',
       },
       tag: 'Optimization',
     },

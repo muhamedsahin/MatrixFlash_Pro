@@ -1,17 +1,253 @@
 {
   "slug": "matrix-course",
   "meta": {
-    "eyebrow": { "tr": "ÜNİVERSİTE DÜZEYİ MATRİS DERSİ", "en": "UNIVERSITY-LEVEL MATRIX COURSE" },
-    "title": { "tr": "Lineer Cebirden Derin Öğrenmeye", "en": "From Linear Algebra to Deep Learning" },
+    "eyebrow": {
+      "tr": "SIFIRDAN ÜNİVERSİTEYE MATRİS DERSİ",
+      "en": "MATRIX COURSE FROM ZERO TO UNIVERSITY"
+    },
+    "title": {
+      "tr": "Matris Nedir? Lineer Cebirden Derin Öğrenmeye",
+      "en": "What Is a Matrix? From Linear Algebra to Deep Learning"
+    },
     "description": {
-      "tr": "Vektör uzaylarından SVD'ye, matris kalkülüsünden backprop türetimine ve GPU nümeriğine kadar 14 bölümlük bir kurs. Her bölüm kütüphanenin gerçek API'siyle bağlanır.",
-      "en": "A 14-part course spanning vector spaces to the SVD, matrix calculus to the backprop derivation, and GPU numerics. Every chapter connects back to the library's real API."
+      "tr": "Önce günlük dilde matris: tablo, piksel, fiyat listesi. Sonra vektör uzayları, çarpım, determinant, rank, özdeğer, SVD ve en küçük kareler. Her bölüm MatrixFlash-Pro API'sine bağlanır.",
+      "en": "First matrices in plain language: tables, pixels, price lists. Then vector spaces, products, determinants, rank, eigenvalues, SVD and least squares. Every chapter links to the MatrixFlash-Pro API."
     }
   },
   "sections": [
     {
+      "id": "bolum-0",
+      "title": {
+        "tr": "0. Matris Nedir? (Sıfırdan)",
+        "en": "0. What Is a Matrix? (From Zero)"
+      },
+      "intro": {
+        "tr": "Matris, sayılardan oluşan bir **dikdörtgen tablodur**. Excel sayfası, telefon fotoğrafındaki pikseller, bir sınıftaki not listesi — hepsi matrisi andırır. Bu bölüm hiç matematik geçmişi olmadan başlar.",
+        "en": "A matrix is a **rectangular table of numbers**. A spreadsheet, the pixels in a phone photo, a class grade list — all look like matrices. This chapter starts with zero math background."
+      },
+      "blocks": [
+        {
+          "type": "p",
+          "text": {
+            "tr": "Günlük hayatta sürekli tablolar kullanırız: satırlar bir kişiyi, sütunlar bir özelliği (yaş, not, fiyat) tutar. Matematikte bu tabloya **matris** denir ve her kutuya bir **eleman** denir.",
+            "en": "We use tables every day: rows hold one person, columns hold one feature (age, grade, price). In math that table is a **matrix**, and each cell is an **entry**."
+          }
+        },
+        {
+          "type": "figure",
+          "data": [
+            [
+              "2",
+              "5",
+              "1"
+            ],
+            [
+              "0",
+              "3",
+              "8"
+            ]
+          ],
+          "caption": {
+            "tr": "2 satır × 3 sütunluk bir matris. Okunuş: 'ikiye üç matris'.",
+            "en": "A 2-row × 3-column matrix. Spoken: 'a two-by-three matrix'."
+          },
+          "accent": "accent"
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "tr": "**Satır (row):** soldan sağa giden yatay çizgi.",
+              "en": "**Row:** the horizontal line left → right."
+            },
+            {
+              "tr": "**Sütun (column):** yukarıdan aşağı giden dikey çizgi.",
+              "en": "**Column:** the vertical line top → bottom."
+            },
+            {
+              "tr": "**Şekil (shape):** `(satır sayısı, sütun sayısı)` — örn. `(2, 3)`.",
+              "en": "**Shape:** `(rows, cols)` — e.g. `(2, 3)`."
+            },
+            {
+              "tr": "**İndeks:** `A[i, j]` = i. satır, j. sütundaki sayı (genelde 0'dan başlar).",
+              "en": "**Index:** `A[i, j]` = number in row i, column j (usually 0-based)."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": {
+            "tr": "Gerçek dünya örnekleri",
+            "en": "Real-world examples"
+          },
+          "text": {
+            "tr": "Gri bir fotoğraf: her piksel bir sayı → matris. RGB fotoğraf: üç matris (kırmızı, yeşil, mavi). Ses spektrogramı, tavsiye sistemindeki puan tablosu, sinir ağındaki ağırlıklar — hepsi matris.",
+            "en": "A grayscale photo: each pixel is a number → a matrix. An RGB photo: three matrices. Audio spectrograms, recommender score tables, neural network weights — all matrices."
+          }
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": {
+            "tr": "Kütüphanede",
+            "en": "In the library"
+          },
+          "text": {
+            "tr": "`Matrix a(2, 3);` 2×3 boş matris açar. `a.at(0, 1) = 5;` ilk satırın ikinci elemanını yazar. GPU'da hesap için `upload()` / sonuç için `download()`.",
+            "en": "`Matrix a(2, 3);` creates a 2×3 matrix. `a.at(0, 1) = 5;` writes the second entry of the first row. Use `upload()` before GPU work and `download()` to read results on the host."
+          }
+        }
+      ]
+    },
+    {
+      "id": "bolum-0b",
+      "title": {
+        "tr": "0b. Toplama, Skaler Çarpma, Basit Kurallar",
+        "en": "0b. Addition, Scalar Multiply, Simple Rules"
+      },
+      "intro": {
+        "tr": "İki matrisi toplamak için **aynı şekilde** olmaları gerekir. Bir sayıyla çarpma (skaler) ise her kutuyu o sayıyla çarpmaktır — tıpkı her fiyata %10 zam yapmak gibi.",
+        "en": "To add two matrices they must have the **same shape**. Multiplying by a number (a scalar) multiplies every entry — like raising every price by 10%."
+      },
+      "blocks": [
+        {
+          "type": "math",
+          "display": true,
+          "tex": "(A + B)_{ij} = A_{ij} + B_{ij}, \\qquad (cA)_{ij} = c \\, A_{ij}"
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "Örnek: `[[1, 2], [3, 4]] + [[10, 0], [0, 1]] = [[11, 2], [3, 5]]`. Şekil uymuyorsa işlem tanımsızdır — kütüphane `ShapeMismatchError` fırlatır.",
+            "en": "Example: `[[1, 2], [3, 4]] + [[10, 0], [0, 1]] = [[11, 2], [3, 5]]`. If shapes disagree the op is undefined — the library throws `ShapeMismatchError`."
+          }
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "tr": "**Elementwise çarpım (`*` değil, `elementwise_multiply`):** aynı konumdaki kutular çarpılır (Hadamard).",
+              "en": "**Elementwise product (not matmul):** multiply matching cells (Hadamard product)."
+            },
+            {
+              "tr": "**Matris çarpımı (`A * B`):** tamamen farklı kural — bir sonraki başlangıç bölümü ve Bölüm 2.",
+              "en": "**Matrix product (`A * B`):** a different rule — next beginner chapter and Chapter 2."
+            }
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "beginner_add.cpp",
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\nusing namespace matrix_pro;\n\nMatrix a{{1, 2}, {3, 4}};\nMatrix b{{10, 0}, {0, 1}};\nMatrix c = a + b;          // [[11, 2], [3, 5]]\nMatrix d = a * 2.0f;       // her eleman × 2\nc.download(); d.download();"
+        }
+      ]
+    },
+    {
+      "id": "bolum-0c",
+      "title": {
+        "tr": "0c. Matris × Vektör: En Sezgisel Çarpım",
+        "en": "0c. Matrix × Vector: The Most Intuitive Product"
+      },
+      "intro": {
+        "tr": "Bir matrisi bir vektörle çarpmak, vektörün her bileşenini matrisin **sütunlarıyla karıştırmaktır**. Düşün: 3 ürünün fiyatı (vektör) × her müşterinin aldığı adet tablosu (matris) → müşteri başına toplam tutar.",
+        "en": "Multiplying a matrix by a vector mixes the vector's components with the matrix **columns**. Think: prices of 3 products (vector) × how many each customer bought (matrix) → total per customer."
+      },
+      "blocks": [
+        {
+          "type": "math",
+          "display": true,
+          "tex": "A x = x_1 a_{:1} + x_2 a_{:2} + \\cdots + x_n a_{:n}"
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "`A` boyutu `m×n`, `x` boyutu `n×1` ise sonuç `m×1` vektördür. İç boyutlar (`n`) eşleşmek zorundadır — tıpkı fişteki ürün sayısıyla fiyat listesinin eşleşmesi gibi.",
+            "en": "If `A` is `m×n` and `x` is `n×1`, the result is `m×1`. The inner sizes (`n`) must match — like matching product counts to a price list."
+          }
+        },
+        {
+          "type": "figure",
+          "data": [
+            [
+              "2",
+              "0"
+            ],
+            [
+              "1",
+              "3"
+            ]
+          ],
+          "caption": {
+            "tr": "2×2 matris. Vektör `[1, 4]` ile çarpım: `1·[2,1] + 4·[0,3] = [2, 13]`.",
+            "en": "2×2 matrix. Times vector `[1, 4]`: `1·[2,1] + 4·[0,3] = [2, 13]`."
+          },
+          "accent": "primary"
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": {
+            "tr": "Neden GPU?",
+            "en": "Why GPU?"
+          },
+          "text": {
+            "tr": "Binlerce satır × binlerce sütun olduğunda bu karışımlar trilyonlarca çarpma ister. MatrixFlash-Pro bunu NVIDIA GPU + cuBLAS ile saniyenin kesirinde yapar (bkz. Performans sayfası).",
+            "en": "With thousands of rows and columns these mixes need trillions of multiplies. MatrixFlash-Pro does that in a fraction of a second on an NVIDIA GPU via cuBLAS (see the Performance page)."
+          }
+        }
+      ]
+    },
+    {
+      "id": "bolum-0d",
+      "title": {
+        "tr": "0d. Matris × Matris: Kapıyı Açan İşlem",
+        "en": "0d. Matrix × Matrix: The Door-Opening Op"
+      },
+      "intro": {
+        "tr": "İki matrisi çarpmak, 'önce bir dönüşüm, sonra diğeri' demektir. Boyut kuralı basit: `(m×K) · (K×n) → (m×n)`. Ortadaki `K` eşleşmezse çarpım yapılamaz.",
+        "en": "Multiplying two matrices means 'apply one transform, then the other'. The size rule is simple: `(m×K)·(K×n)→(m×n)`. If the middle `K` disagrees, the product is illegal."
+      },
+      "blocks": [
+        {
+          "type": "math",
+          "display": true,
+          "tex": "(AB)_{ij} = \\sum_{k=1}^{K} A_{ik} B_{kj}"
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "Her sonuç kutusu bir **nokta çarpımdır**: A'nın bir satırı ile B'nin bir sütunu. Bu yüzden toplam iş `2·m·K·n` flopluktur — kütüphanenin GFLOPS ölçümünün kaynağı.",
+            "en": "Every output cell is a **dot product**: one row of A with one column of B. Total work is `2·m·K·n` flops — the source of the library's GFLOPS numbers."
+          }
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "beginner_matmul.cpp",
+          "code": "Matrix A{{1, 2, 3}, {4, 5, 6}};      // 2×3\nMatrix B{{7, 8}, {9, 10}, {11, 12}}; // 3×2\nMatrix C = A * B;   // 2×2, GPU GEMM\n// veya tahsissiz hot path:\nMatrix Out(2, 2, MemoryMode::device_only);\nmultiply_into(A, B, Out);"
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": {
+            "tr": "Sıradaki yol",
+            "en": "Where next"
+          },
+          "text": {
+            "tr": "Sezgi tamamsa Bölüm 1'den itibaren üniversite düzeyine geçersin: vektör uzayları, rank, özdeğer, SVD. Hiçbir şey kaçmaz — sadece dil biraz daha resmi olur.",
+            "en": "Once the intuition clicks, Chapter 1 onward is university level: vector spaces, rank, eigenvalues, SVD. Nothing is skipped — the language just gets more formal."
+          }
+        }
+      ]
+    },
+    {
       "id": "bolum-1",
-      "title": { "tr": "1. Vektör Uzayları ve Matris Cebiri", "en": "1. Vector Spaces and Matrix Algebra" },
+      "title": {
+        "tr": "1. Vektör Uzayları ve Matris Cebiri",
+        "en": "1. Vector Spaces and Matrix Algebra"
+      },
       "intro": {
         "tr": "Bir matris, iki vektör uzayı arasındaki **lineer dönüşümün** koordinat temsilidir. Bu bakış açısı, çarpımın neden satır-sütun nokta çarpımı olarak tanımlandığını ve neden boyutların uyuşması gerektiğini tek başına açıklar.",
         "en": "A matrix is the coordinate representation of a **linear map** between two vector spaces. This single viewpoint explains why the product is defined as a row-column dot product and why the dimensions have to agree."
@@ -32,8 +268,16 @@
         {
           "type": "figure",
           "data": [
-            ["a₁₁", "a₁₂", "a₁₃"],
-            ["a₂₁", "a₂₂", "a₂₃"]
+            [
+              "a₁₁",
+              "a₁₂",
+              "a₁₃"
+            ],
+            [
+              "a₂₁",
+              "a₂₂",
+              "a₂₃"
+            ]
           ],
           "caption": {
             "tr": "2x3 matris: iki çıkış boyutu, üç girdi boyutu. Kolon sayısı girdi, satır sayısı çıkış uzayının boyutudur.",
@@ -44,15 +288,27 @@
         {
           "type": "list",
           "items": [
-            { "tr": "**Kolon uzayı**: `{A x : x ∈ ℝⁿ}` — dönüşümün ulaşabildiği tüm vektörler.", "en": "**Column space**: `{A x : x ∈ ℝⁿ}` — every vector the map can reach." },
-            { "tr": "**Sıfır uzayı**: `{x : A x = 0}` — dönüşümün yok ettiği yönler.", "en": "**Null space**: `{x : A x = 0}` — the directions the map annihilates." },
-            { "tr": "**Rank**: kolon uzayının boyutu; aynı zamanda lineer bağımsız kolon sayısı.", "en": "**Rank**: the dimension of the column space; equivalently the number of linearly independent columns." }
+            {
+              "tr": "**Kolon uzayı**: `{A x : x ∈ ℝⁿ}` — dönüşümün ulaşabildiği tüm vektörler.",
+              "en": "**Column space**: `{A x : x ∈ ℝⁿ}` — every vector the map can reach."
+            },
+            {
+              "tr": "**Sıfır uzayı**: `{x : A x = 0}` — dönüşümün yok ettiği yönler.",
+              "en": "**Null space**: `{x : A x = 0}` — the directions the map annihilates."
+            },
+            {
+              "tr": "**Rank**: kolon uzayının boyutu; aynı zamanda lineer bağımsız kolon sayısı.",
+              "en": "**Rank**: the dimension of the column space; equivalently the number of linearly independent columns."
+            }
           ]
         },
         {
           "type": "callout",
           "variant": "info",
-          "title": { "tr": "Kütüphanede karşılığı", "en": "In the library" },
+          "title": {
+            "tr": "Kütüphanede karşılığı",
+            "en": "In the library"
+          },
           "text": {
             "tr": "`rank(A)` sayısal rankı SVD üzerinden verir; `pinv(A)` rank-yetersiz durumda bile çözüm üretir. Her ikisi de `matrix_pro/ops/linalg.hpp` içindedir.",
             "en": "`rank(A)` reports the numerical rank through the SVD, and `pinv(A)` produces a solution even in rank-deficient cases. Both live in `matrix_pro/ops/linalg.hpp`."
@@ -62,7 +318,10 @@
     },
     {
       "id": "bolum-2",
-      "title": { "tr": "2. Matris Çarpımı ve Bileşke Dönüşümler", "en": "2. Matrix Products and Composition" },
+      "title": {
+        "tr": "2. Matris Çarpımı ve Bileşke Dönüşümler",
+        "en": "2. Matrix Products and Composition"
+      },
       "intro": {
         "tr": "`A B` çarpımı \"önce `B`, sonra `A`\" dönüşümünün temsilidir. Bu yüzden sıra önemlidir ve `A B ≠ B A` genel kuraldır; boyut kısıtı `(m x K)(K x n)` de aynı gerçekten doğar.",
         "en": "The product `A B` represents the map \"first `B`, then `A`\". That is why order matters and `A B ≠ B A` is the general rule; the dimensional constraint `(m x K)(K x n)` follows from the same fact."
@@ -83,30 +342,75 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Özellik", "en": "Property" },
-            { "tr": "Matris hâli", "en": "Matrix form" },
-            { "tr": "Dönüşüm yorumu", "en": "Map interpretation" }
+            {
+              "tr": "Özellik",
+              "en": "Property"
+            },
+            {
+              "tr": "Matris hâli",
+              "en": "Matrix form"
+            },
+            {
+              "tr": "Dönüşüm yorumu",
+              "en": "Map interpretation"
+            }
           ],
           "rows": [
             [
-              { "tr": "Birleşme", "en": "Associativity" },
-              { "tr": "`(AB)C = A(BC)`", "en": "`(AB)C = A(BC)`" },
-              { "tr": "Bileşke doğal olarak birleşir", "en": "Composition is naturally associative" }
+              {
+                "tr": "Birleşme",
+                "en": "Associativity"
+              },
+              {
+                "tr": "`(AB)C = A(BC)`",
+                "en": "`(AB)C = A(BC)`"
+              },
+              {
+                "tr": "Bileşke doğal olarak birleşir",
+                "en": "Composition is naturally associative"
+              }
             ],
             [
-              { "tr": "Değişme **yok**", "en": "**No** commutativity" },
-              { "tr": "`AB ≠ BA`", "en": "`AB ≠ BA`" },
-              { "tr": "Dönüşüm sırası sonucu değiştirir", "en": "Order changes the result" }
+              {
+                "tr": "Değişme **yok**",
+                "en": "**No** commutativity"
+              },
+              {
+                "tr": "`AB ≠ BA`",
+                "en": "`AB ≠ BA`"
+              },
+              {
+                "tr": "Dönüşüm sırası sonucu değiştirir",
+                "en": "Order changes the result"
+              }
             ],
             [
-              { "tr": "Birim", "en": "Identity" },
-              { "tr": "`AI = IA = A`", "en": "`AI = IA = A`" },
-              { "tr": "Hiçbir şey yapmayan dönüşüm", "en": "The map that does nothing" }
+              {
+                "tr": "Birim",
+                "en": "Identity"
+              },
+              {
+                "tr": "`AI = IA = A`",
+                "en": "`AI = IA = A`"
+              },
+              {
+                "tr": "Hiçbir şey yapmayan dönüşüm",
+                "en": "The map that does nothing"
+              }
             ],
             [
-              { "tr": "Transpoz", "en": "Transpose" },
-              { "tr": "`(AB)ᵀ = BᵀAᵀ`", "en": "`(AB)ᵀ = BᵀAᵀ`" },
-              { "tr": "Sıra tersine döner", "en": "The order reverses" }
+              {
+                "tr": "Transpoz",
+                "en": "Transpose"
+              },
+              {
+                "tr": "`(AB)ᵀ = BᵀAᵀ`",
+                "en": "`(AB)ᵀ = BᵀAᵀ`"
+              },
+              {
+                "tr": "Sıra tersine döner",
+                "en": "The order reverses"
+              }
             ]
           ]
         },
@@ -120,7 +424,10 @@
     },
     {
       "id": "bolum-3",
-      "title": { "tr": "3. Determinant, Ters ve Lineer Sistemler", "en": "3. Determinant, Inverse and Linear Systems" },
+      "title": {
+        "tr": "3. Determinant, Ters ve Lineer Sistemler",
+        "en": "3. Determinant, Inverse and Linear Systems"
+      },
       "intro": {
         "tr": "`A x = b` sisteminin tek çözümü olması, `A`'nın **tekil olmaması** ile eşdeğerdir. Determinant bunun sayısal göstergesidir; koşul sayısı ise çözümün ne kadar hassas olduğunu söyler.",
         "en": "A unique solution of `A x = b` is equivalent to `A` being **non-singular**. The determinant is the numerical indicator of that, while the condition number tells you how sensitive the solution is."
@@ -134,10 +441,46 @@
         {
           "type": "steps",
           "items": [
-            { "title": { "tr": "Ayrıştır (factorize)", "en": "Factorize" }, "text": { "tr": "`A = P L U` — kısmi pivotlamalı LU. Bir kez `O(n³)` maliyet.", "en": "`A = P L U` — LU with partial pivoting. One `O(n³)` cost." } },
-            { "title": { "tr": "İleri yerine koyma", "en": "Forward substitution" }, "text": { "tr": "`L y = P b` çözülür — `O(n²)`.", "en": "Solve `L y = P b` — `O(n²)`." } },
-            { "title": { "tr": "Geri yerine koyma", "en": "Back substitution" }, "text": { "tr": "`U x = y` çözülür — `O(n²)`.", "en": "Solve `U x = y` — `O(n²)`." } },
-            { "title": { "tr": "Doğrula", "en": "Verify" }, "text": { "tr": "`‖A x - b‖` artık (residual) normu ölçülür.", "en": "Measure the residual norm `‖A x - b‖`." } }
+            {
+              "title": {
+                "tr": "Ayrıştır (factorize)",
+                "en": "Factorize"
+              },
+              "text": {
+                "tr": "`A = P L U` — kısmi pivotlamalı LU. Bir kez `O(n³)` maliyet.",
+                "en": "`A = P L U` — LU with partial pivoting. One `O(n³)` cost."
+              }
+            },
+            {
+              "title": {
+                "tr": "İleri yerine koyma",
+                "en": "Forward substitution"
+              },
+              "text": {
+                "tr": "`L y = P b` çözülür — `O(n²)`.",
+                "en": "Solve `L y = P b` — `O(n²)`."
+              }
+            },
+            {
+              "title": {
+                "tr": "Geri yerine koyma",
+                "en": "Back substitution"
+              },
+              "text": {
+                "tr": "`U x = y` çözülür — `O(n²)`.",
+                "en": "Solve `U x = y` — `O(n²)`."
+              }
+            },
+            {
+              "title": {
+                "tr": "Doğrula",
+                "en": "Verify"
+              },
+              "text": {
+                "tr": "`‖A x - b‖` artık (residual) normu ölçülür.",
+                "en": "Measure the residual norm `‖A x - b‖`."
+              }
+            }
           ]
         },
         {
@@ -157,7 +500,10 @@
     },
     {
       "id": "bolum-4",
-      "title": { "tr": "4. Dört Temel Alt Uzay ve Rank-Nullity", "en": "4. The Four Fundamental Subspaces" },
+      "title": {
+        "tr": "4. Dört Temel Alt Uzay ve Rank-Nullity",
+        "en": "4. The Four Fundamental Subspaces"
+      },
       "intro": {
         "tr": "Her `m x n` matris dört alt uzay tanımlar. Boyutları arasındaki ilişki (rank-nullity), lineer sistemlerin çözülebilirliğini tam olarak karakterize eder.",
         "en": "Every `m x n` matrix defines four subspaces. The relation among their dimensions (rank-nullity) fully characterizes the solvability of linear systems."
@@ -166,30 +512,75 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Alt uzay", "en": "Subspace" },
-            { "tr": "Nerede yaşar", "en": "Lives in" },
-            { "tr": "Boyut", "en": "Dimension" }
+            {
+              "tr": "Alt uzay",
+              "en": "Subspace"
+            },
+            {
+              "tr": "Nerede yaşar",
+              "en": "Lives in"
+            },
+            {
+              "tr": "Boyut",
+              "en": "Dimension"
+            }
           ],
           "rows": [
             [
-              { "tr": "Kolon uzayı `C(A)`", "en": "Column space `C(A)`" },
-              { "tr": "`ℝᵐ`", "en": "`ℝᵐ`" },
-              { "tr": "`r` (rank)", "en": "`r` (rank)" }
+              {
+                "tr": "Kolon uzayı `C(A)`",
+                "en": "Column space `C(A)`"
+              },
+              {
+                "tr": "`ℝᵐ`",
+                "en": "`ℝᵐ`"
+              },
+              {
+                "tr": "`r` (rank)",
+                "en": "`r` (rank)"
+              }
             ],
             [
-              { "tr": "Sıfır uzayı `N(A)`", "en": "Null space `N(A)`" },
-              { "tr": "`ℝⁿ`", "en": "`ℝⁿ`" },
-              { "tr": "`n − r`", "en": "`n − r`" }
+              {
+                "tr": "Sıfır uzayı `N(A)`",
+                "en": "Null space `N(A)`"
+              },
+              {
+                "tr": "`ℝⁿ`",
+                "en": "`ℝⁿ`"
+              },
+              {
+                "tr": "`n − r`",
+                "en": "`n − r`"
+              }
             ],
             [
-              { "tr": "Satır uzayı `C(Aᵀ)`", "en": "Row space `C(Aᵀ)`" },
-              { "tr": "`ℝⁿ`", "en": "`ℝⁿ`" },
-              { "tr": "`r`", "en": "`r`" }
+              {
+                "tr": "Satır uzayı `C(Aᵀ)`",
+                "en": "Row space `C(Aᵀ)`"
+              },
+              {
+                "tr": "`ℝⁿ`",
+                "en": "`ℝⁿ`"
+              },
+              {
+                "tr": "`r`",
+                "en": "`r`"
+              }
             ],
             [
-              { "tr": "Sol sıfır uzayı `N(Aᵀ)`", "en": "Left null space `N(Aᵀ)`" },
-              { "tr": "`ℝᵐ`", "en": "`ℝᵐ`" },
-              { "tr": "`m − r`", "en": "`m − r`" }
+              {
+                "tr": "Sol sıfır uzayı `N(Aᵀ)`",
+                "en": "Left null space `N(Aᵀ)`"
+              },
+              {
+                "tr": "`ℝᵐ`",
+                "en": "`ℝᵐ`"
+              },
+              {
+                "tr": "`m − r`",
+                "en": "`m − r`"
+              }
             ]
           ]
         },
@@ -208,7 +599,10 @@
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Rank'ı ölçmek", "en": "Measuring the rank" },
+          "title": {
+            "tr": "Rank'ı ölçmek",
+            "en": "Measuring the rank"
+          },
           "text": {
             "tr": "Sayısal rank `rank(A)` ile SVD tabanlı hesaplanır: tekil değerlerden belirli bir eşiğin üzerinde kalanların sayısı alınır. Yani \"tam rank\" kavramı kayan nokta dünyasında bir **eşik kararıdır** — kötü koşullu matrislerde bu karar önemlidir.",
             "en": "The numerical rank reported by `rank(A)` is SVD-based: it counts the singular values above a threshold. In floating point, \"full rank\" is therefore a **threshold decision** — one that matters on badly conditioned matrices."
@@ -218,7 +612,10 @@
     },
     {
       "id": "bolum-5",
-      "title": { "tr": "5. Özdeğer, Özvektör ve Spektral Ayrışım", "en": "5. Eigenvalues, Eigenvectors and the Spectral Theorem" },
+      "title": {
+        "tr": "5. Özdeğer, Özvektör ve Spektral Ayrışım",
+        "en": "5. Eigenvalues, Eigenvectors and the Spectral Theorem"
+      },
       "intro": {
         "tr": "Özvektörler, dönüşümün yalnızca **ölçeklediği** yönlerdir. Simetrik matrislerde bu yönler diktir ve spektral ayrışım verinin anlamlı eksenlerini ortaya çıkarır.",
         "en": "Eigenvectors are the directions a map only **scales**. For symmetric matrices those directions are orthogonal, and the spectral decomposition reveals the meaningful axes of the data."
@@ -239,30 +636,75 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Nicelik", "en": "Quantity" },
-            { "tr": "İfade", "en": "Expression" },
-            { "tr": "Anlam", "en": "Meaning" }
+            {
+              "tr": "Nicelik",
+              "en": "Quantity"
+            },
+            {
+              "tr": "İfade",
+              "en": "Expression"
+            },
+            {
+              "tr": "Anlam",
+              "en": "Meaning"
+            }
           ],
           "rows": [
             [
-              { "tr": "Spektral norm", "en": "Spectral norm" },
-              { "tr": "`‖A‖₂ = max|λᵢ|`", "en": "`‖A‖₂ = max|λᵢ|`" },
-              { "tr": "Dönüşümün en büyük büyütme faktörü", "en": "The largest amplification factor of the map" }
+              {
+                "tr": "Spektral norm",
+                "en": "Spectral norm"
+              },
+              {
+                "tr": "`‖A‖₂ = max|λᵢ|`",
+                "en": "`‖A‖₂ = max|λᵢ|`"
+              },
+              {
+                "tr": "Dönüşümün en büyük büyütme faktörü",
+                "en": "The largest amplification factor of the map"
+              }
             ],
             [
-              { "tr": "İz (trace)", "en": "Trace" },
-              { "tr": "`tr(A) = Σλ`", "en": "`tr(A) = Σλᵢ`" },
-              { "tr": "Toplam varyans (kovaryansta)", "en": "Total variance (for a covariance)" }
+              {
+                "tr": "İz (trace)",
+                "en": "Trace"
+              },
+              {
+                "tr": "`tr(A) = Σλ`",
+                "en": "`tr(A) = Σλᵢ`"
+              },
+              {
+                "tr": "Toplam varyans (kovaryansta)",
+                "en": "Total variance (for a covariance)"
+              }
             ],
             [
-              { "tr": "Determinant", "en": "Determinant" },
-              { "tr": "`det(A) = Πλᵢ`", "en": "`det(A) = Πλᵢ`" },
-              { "tr": "Hacim ölçekleme faktörü", "en": "Volume scaling factor" }
+              {
+                "tr": "Determinant",
+                "en": "Determinant"
+              },
+              {
+                "tr": "`det(A) = Πλᵢ`",
+                "en": "`det(A) = Πλᵢ`"
+              },
+              {
+                "tr": "Hacim ölçekleme faktörü",
+                "en": "Volume scaling factor"
+              }
             ],
             [
-              { "tr": "Pozitif tanımlılık", "en": "Positive definiteness" },
-              { "tr": "`λᵢ > 0 ∀i`", "en": "`λ > 0 ∀i`" },
-              { "tr": "Cholesky ayrışımının ön koşulu", "en": "Precondition for the Cholesky factorisation" }
+              {
+                "tr": "Pozitif tanımlılık",
+                "en": "Positive definiteness"
+              },
+              {
+                "tr": "`λᵢ > 0 ∀i`",
+                "en": "`λ > 0 ∀i`"
+              },
+              {
+                "tr": "Cholesky ayrışımının ön koşulu",
+                "en": "Precondition for the Cholesky factorisation"
+              }
             ]
           ]
         },
@@ -275,7 +717,10 @@
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "Simetri zorunludur", "en": "Symmetry is mandatory" },
+          "title": {
+            "tr": "Simetri zorunludur",
+            "en": "Symmetry is mandatory"
+          },
           "text": {
             "tr": "`eigen()` girdiyi simetrik varsayar ve simetriyi doğrulamaz (bu `O(n²)` ek bir tarama olurdu). Simetrik olmayan bir matris geçirirseniz **hata almazsınız** — sadece anlamsız sonuçlar alırsınız. Genel durum için SVD kullanın: her matrisin SVD'si vardır.",
             "en": "`eigen()` assumes a symmetric input and does not validate it (that would add an `O(n²)` scan). Pass a non-symmetric matrix and you will **not** get an error — only meaningless results. Use the SVD for the general case: every matrix has one."
@@ -285,7 +730,10 @@
     },
     {
       "id": "bolum-6",
-      "title": { "tr": "6. SVD ve Düşük-Rank Yaklaşımı", "en": "6. The SVD and Low-Rank Approximation" },
+      "title": {
+        "tr": "6. SVD ve Düşük-Rank Yaklaşımı",
+        "en": "6. The SVD and Low-Rank Approximation"
+      },
       "intro": {
         "tr": "SVD her matris için vardır ve lineer cebirin en bilgilendirici ayrışımıdır: `A = U Σ Vᵀ`. Sol tekil vektörler çıkış uzayının, sağ tekil vektörler girdi uzayının ortonormal bazlarıdır; tekil değerler ise her yönün **ölçekleme faktörüdür**.",
         "en": "The SVD exists for every matrix and is the most informative decomposition in linear algebra: `A = U Σ Vᵀ`. Left singular vectors form an orthonormal basis of the output space, right singular vectors one of the input space, and the singular values are the **scaling factors** of each direction."
@@ -306,20 +754,48 @@
         {
           "type": "figure",
           "data": [
-            ["σ₁", "0", "0"],
-            ["0", "σ₂", "0"],
-            ["0", "0", "σ₃"]
+            [
+              "σ₁",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "σ₂",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "σ₃"
+            ]
           ],
           "caption": {
             "tr": "Tekil değer matrisi Σ: köşegen dışı tamamen sıfır, köşegen azalan sırada.",
             "en": "The singular value matrix Σ: entirely zero off the diagonal, with the diagonal in descending order."
           },
-          "highlight": [[0, 0], [1, 1], [2, 2]],
+          "highlight": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ],
           "accent": "chart-3"
         },
         {
           "type": "h3",
-          "text": { "tr": "Eckart–Young: en iyi düşük-rank yaklaşım", "en": "Eckart–Young: the best low-rank approximation" }
+          "text": {
+            "tr": "Eckart–Young: en iyi düşük-rank yaklaşım",
+            "en": "Eckart–Young: the best low-rank approximation"
+          }
         },
         {
           "type": "math",
@@ -343,7 +819,10 @@
     },
     {
       "id": "bolum-7",
-      "title": { "tr": "7. En Küçük Kareler ve Normal Denklemler", "en": "7. Least Squares and the Normal Equations" },
+      "title": {
+        "tr": "7. En Küçük Kareler ve Normal Denklemler",
+        "en": "7. Least Squares and the Normal Equations"
+      },
       "intro": {
         "tr": "Tutarsız bir sistemde (`b ∉ C(A)`) yapılabilecek en iyi şey artık normunu minimize etmektir. Çözüm, `b`'nin kolon uzayına **dik izdüşümüdür**.",
         "en": "For an inconsistent system (`b ∉ C(A)`) the best you can do is minimize the residual norm. The solution is the **orthogonal projection** of `b` onto the column space."
@@ -364,30 +843,75 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Yöntem", "en": "Method" },
-            { "tr": "Maliyet", "en": "Cost" },
-            { "tr": "Sayısal davranış", "en": "Numerical behaviour" }
+            {
+              "tr": "Yöntem",
+              "en": "Method"
+            },
+            {
+              "tr": "Maliyet",
+              "en": "Cost"
+            },
+            {
+              "tr": "Sayısal davranış",
+              "en": "Numerical behaviour"
+            }
           ],
           "rows": [
             [
-              { "tr": "Normal denklemler", "en": "Normal equations" },
-              { "tr": "`O(mn²)` + `cond²`", "en": "`O(mn²)` + `cond²`" },
-              { "tr": "En hızlı, en kırılgan", "en": "Fastest, most fragile" }
+              {
+                "tr": "Normal denklemler",
+                "en": "Normal equations"
+              },
+              {
+                "tr": "`O(mn²)` + `cond²`",
+                "en": "`O(mn²)` + `cond²`"
+              },
+              {
+                "tr": "En hızlı, en kırılgan",
+                "en": "Fastest, most fragile"
+              }
             ],
             [
-              { "tr": "QR (`qr`)", "en": "QR (`qr`)" },
-              { "tr": "`O(mn²)`", "en": "`O(mn²)`" },
-              { "tr": "Dengeli; `cond` korunur", "en": "Balanced; `cond` preserved" }
+              {
+                "tr": "QR (`qr`)",
+                "en": "QR (`qr`)"
+              },
+              {
+                "tr": "`O(mn²)`",
+                "en": "`O(mn²)`"
+              },
+              {
+                "tr": "Dengeli; `cond` korunur",
+                "en": "Balanced; `cond` preserved"
+              }
             ],
             [
-              { "tr": "SVD (`pinv`, `solve_least_squares`)", "en": "SVD (`pinv`, `solve_least_squares`)" },
-              { "tr": "`O(mn²)` sabitle daha yüksek", "en": "`O(mn²)` with a larger constant" },
-              { "tr": "Rank-yetersizlikte de güvenli", "en": "Safe even when rank-deficient" }
+              {
+                "tr": "SVD (`pinv`, `solve_least_squares`)",
+                "en": "SVD (`pinv`, `solve_least_squares`)"
+              },
+              {
+                "tr": "`O(mn²)` sabitle daha yüksek",
+                "en": "`O(mn²)` with a larger constant"
+              },
+              {
+                "tr": "Rank-yetersizlikte de güvenli",
+                "en": "Safe even when rank-deficient"
+              }
             ],
             [
-              { "tr": "Ridge (L2 düzenleme)", "en": "Ridge (L2 regularisation)" },
-              { "tr": "`(AᵀA + λI)` çözümü", "en": "Solve `(AᵀA + λI)`" },
-              { "tr": "Koşulu `λ` ile iyileştirir", "en": "Improves conditioning via `λ`" }
+              {
+                "tr": "Ridge (L2 düzenleme)",
+                "en": "Ridge (L2 regularisation)"
+              },
+              {
+                "tr": "`(AᵀA + λI)` çözümü",
+                "en": "Solve `(AᵀA + λI)`"
+              },
+              {
+                "tr": "Koşulu `λ` ile iyileştirir",
+                "en": "Improves conditioning via `λ`"
+              }
             ]
           ]
         },
@@ -400,7 +924,10 @@
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Ridge = koşul iyileştirme", "en": "Ridge = conditioning repair" },
+          "title": {
+            "tr": "Ridge = koşul iyileştirme",
+            "en": "Ridge = conditioning repair"
+          },
           "text": {
             "tr": "`(AᵀA + λI)` eklemek en küçük özdeğeri `λ` kadar yukarı çeker, yani koşul sayısını düşürür ve çözümü kararlı kılar. Aynı zamanda ağırlıklara L2 cezası uygular — düzenleme ve sayısal kararlılık burada aynı matematiksel hamledir.",
             "en": "Adding `(AᵀA + λI)` lifts the smallest eigenvalue by `λ`, lowering the condition number and stabilising the solution. It also applies an L2 penalty to the weights — regularisation and numerical stability are the same mathematical move here."

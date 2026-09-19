@@ -20,7 +20,9 @@
         {
           "type": "list",
           "items": [
-            { "tr": "**cuBLAS GEMM** — TF32 Tensor Core hızlı yolu, boyut eşiği aşıldığında otomatik devreye girer.", "en": "**cuBLAS GEMM** — the TF32 Tensor Core fast path activates automatically once the size threshold is crossed." },
+            { "tr": "**Shape-aware GEMM** — mikro / GEMV / algo-cache’li cublasLt / TENSOR_OP; `multiply_into` ile cuBLAS-sınıfı hot path.", "en": "**Shape-aware GEMM** — micro / GEMV / algo-cached cublasLt / TENSOR_OP; `multiply_into` for a cuBLAS-class hot path." },
+            { "tr": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` tek çağrıda; zincire göre 1–6×.", "en": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` in one call; 1–6× over the chain." },
+            { "tr": "**cuBLAS GEMM** — TF32 Tensor Core hızlı yolu, boyut eşiği aşıldığında otomatik.", "en": "**cuBLAS GEMM** — TF32 Tensor Core fast path activates automatically once size crosses the threshold." },
             { "tr": "**Autograd tape motoru** — `Variable` ve `VarTensor` ile ters-mod otomatik türev; CNN ve batched GEMM dahil.", "en": "**Autograd tape engine** — reverse-mode automatic differentiation via `Variable` and `VarTensor`, including CNN ops and batched GEMM." },
             { "tr": "**cuSOLVER doğrusal cebir** — QR, SVD, özdeğer, Cholesky, pseudo-inverse, rank, least-squares.", "en": "**cuSOLVER linear algebra** — QR, SVD, eigen, Cholesky, pseudo-inverse, rank and least squares." },
             { "tr": "**Seyrek CSR matrisler** — `spmv`, sparse-dense matmul ve donmuş desenli embedding gradyanı.", "en": "**Sparse CSR matrices** — `spmv`, sparse-dense matmul and frozen-pattern embedding gradients." },
@@ -545,6 +547,16 @@
             { "tr": "Kazanç", "en": "Benefit" }
           ],
           "rows": [
+            [
+              { "tr": "Tahsissiz GEMM hot path", "en": "Allocation-free GEMM hot path" },
+              { "tr": "`multiply_into(A, B, Out)`", "en": "`multiply_into(A, B, Out)`" },
+              { "tr": "cuBLAS ile aynı koşul; operator* tahsisini eker", "en": "Same condition as cuBLAS; skips operator* allocation" }
+            ],
+            [
+              { "tr": "Fused GEMM + bias + act", "en": "Fused GEMM + bias + act" },
+              { "tr": "`gemm_bias_relu`, `gemm_bias_gelu`", "en": "`gemm_bias_relu`, `gemm_bias_gelu`" },
+              { "tr": "3 kernel → 1 cublasLt epilogue (1–6×)", "en": "3 kernels → 1 cublasLt epilogue (1–6×)" }
+            ],
             [
               { "tr": "Birleşik çekirdek (fusion)", "en": "Kernel fusion" },
               { "tr": "`fused_relu_add`, `fused_bias_gelu`, `fused_scale_bias`", "en": "`fused_relu_add`, `fused_bias_gelu`, `fused_scale_bias`" },

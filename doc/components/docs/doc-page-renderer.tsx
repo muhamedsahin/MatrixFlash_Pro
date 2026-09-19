@@ -63,16 +63,16 @@ export function DocPageRenderer({
       />
 
       {/* Syllabus / TOC quick bar */}
-      <Reveal className="rounded-xl border border-border/80 bg-card/40 p-4 backdrop-blur-md">
+      <Reveal className="rounded-2xl border border-border/80 glass-panel surface-shine p-5">
         <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
           {t('İÇİNDEKİLER', 'TABLE OF CONTENTS')}
         </span>
-        <div className="mt-2.5 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
           {sections.map((section) => (
             <a
               key={section.id}
               href={`#${section.id}`}
-              className="text-muted-foreground transition-colors hover:text-primary"
+              className="rounded-lg px-2 py-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
             >
               {section.title[lang]}
             </a>

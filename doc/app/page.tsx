@@ -11,12 +11,13 @@ import { Cta } from '@/components/landing/cta'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+    <div className="relative min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+      <div className="pointer-events-none fixed inset-0 -z-10 mesh-aurora opacity-50" aria-hidden />
       <SiteNav />
-      <main className="space-y-4">
+      <main className="space-y-2">
         <Hero />
         <Quickstart />
-        <section className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <ModuleExplorer />
         </section>
         <PipelineDemo />

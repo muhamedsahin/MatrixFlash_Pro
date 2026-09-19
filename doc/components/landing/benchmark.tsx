@@ -93,7 +93,7 @@ python tools/sync_benchmark_data.py`
           </Reveal>
 
           <Reveal delay={100}>
-            <div className="rounded-2xl border border-border/80 bg-card/50 p-6 shadow-2xl backdrop-blur-xl">
+            <div className="rounded-2xl border border-border/80 glass-panel surface-shine p-6 shadow-2xl">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <span className="flex items-center gap-2 font-mono text-xs font-bold text-foreground">
                   <Cpu className="size-4 text-primary" />

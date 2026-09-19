@@ -1,18 +1,18 @@
 export const site = {
   name: 'MatrixFlash-Pro',
   tagline: {
-    tr: 'CUDA Tabanlı, Yüksek Performanslı C++17 Matris & Tensör Kütüphanesi',
-    en: 'CUDA-Accelerated High-Performance C++17 Matrix & Tensor Library',
+    tr: 'cuBLAS-sınıfı hızda C++17 GPU matris & tensör motoru',
+    en: 'C++17 GPU matrix & tensor engine at cuBLAS-class speed',
   },
   description: {
-    tr: 'cuBLAS matris çarpımı, TF32 Tensor Core desteği, Autograd motoru, cuSOLVER doğrusal cebir, seyrek (sparse) matrisler ve asenkron stream havuzu.',
-    en: 'cuBLAS GEMM, TF32 Tensor Core support, Autograd reverse-mode tape, cuSOLVER linalg, sparse CSR matrices, and asynchronous stream pool.',
+    tr: 'Shape-aware GEMM, TF32 Tensor Core, fused gemm+bias+act, Autograd, cuSOLVER, seyrek CSR ve stream havuzu — NVIDIA GPU’da ölçülmüş performans.',
+    en: 'Shape-aware GEMM, TF32 Tensor Cores, fused gemm+bias+act, Autograd, cuSOLVER, sparse CSR and a stream pool — measured on NVIDIA GPUs.',
   },
   github: 'https://github.com/muhamedsahin/MatrixFlash_Pro',
   author: 'Muhammed Fatih Şahin',
   cpp: 'C++17',
   cuda: 'CUDA 12.3+',
-  version: '2.0.0-PRO',
+  version: '2.1.0-PRO',
 }
 
 export const topNav = [
@@ -52,6 +52,10 @@ export const docsNav: DocSection[] = [
   {
     title: { tr: 'Matris Dersleri', en: 'Matrix Math Course' },
     items: [
+      { label: { tr: '0. Matris Nedir? (Sıfırdan)', en: '0. What Is a Matrix? (From Zero)' }, href: '/docs/matris-nedir#bolum-0', badge: 'yeni' },
+      { label: { tr: '0b. Toplama & Skaler', en: '0b. Add & Scalar' }, href: '/docs/matris-nedir#bolum-0b' },
+      { label: { tr: '0c. Matris × Vektör', en: '0c. Matrix × Vector' }, href: '/docs/matris-nedir#bolum-0c' },
+      { label: { tr: '0d. Matris × Matris', en: '0d. Matrix × Matrix' }, href: '/docs/matris-nedir#bolum-0d' },
       { label: { tr: '1. Vektör Uzayları ve Matris Cebiri', en: '1. Vector Spaces & Matrix Algebra' }, href: '/docs/matris-nedir#bolum-1' },
       { label: { tr: '2. Matris Çarpımı & Bileşke Dönüşümler', en: '2. Matmul & Composite Transformations' }, href: '/docs/matris-nedir#bolum-2' },
       { label: { tr: '3. Determinant, Ters ve Lineer Sistemler', en: '3. Determinants, Inverses & Linear Systems' }, href: '/docs/matris-nedir#bolum-3' },
@@ -84,10 +88,11 @@ export const docsNav: DocSection[] = [
   {
     title: { tr: 'Performans Karşılaştırma', en: 'Benchmark Comparison' },
     items: [
-      { label: { tr: 'Metodoloji & Adillik', en: 'Methodology & Fairness' }, href: '/docs/performans#metodoloji' },
-      { label: { tr: 'GEMM Karşılaştırma', en: 'GEMM Comparison' }, href: '/docs/performans#gemm', badge: 'ölçüldü' },
-      { label: { tr: 'Autograd Bant Maliyeti', en: 'Autograd Tape Cost' }, href: '/docs/performans#mlp-tape' },
-      { label: { tr: 'Harici Referanslar', en: 'External References' }, href: '/docs/performans#harici-referans' },
+      { label: { tr: 'Metodoloji', en: 'Methodology' }, href: '/docs/performans#metodoloji' },
+      { label: { tr: 'GEMM vs cuBLAS', en: 'GEMM vs cuBLAS' }, href: '/docs/performans#gemm', badge: 'ölçüldü' },
+      { label: { tr: 'Piyasa Motorları (6+)', en: 'Market Engines (6+)' }, href: '/docs/performans#rakipler', badge: 'yeni' },
+      { label: { tr: 'Ölçülen GFLOPS Tablosu', en: 'Measured GFLOPS Table' }, href: '/docs/performans#olculen-motorlar' },
+      { label: { tr: 'Fused GEMM+Bias+ReLU', en: 'Fused GEMM+Bias+ReLU' }, href: '/docs/performans#fused-gemm' },
       { label: { tr: 'Nasıl Tekrarlanır', en: 'How to Reproduce' }, href: '/docs/performans#nasil-tekrarlanir' },
     ],
   },

@@ -43,14 +43,14 @@ Performans kritik matris çarpımı işlemleri, elle yazılmış CUDA kernel'lar
 
 Son geliştirme turunda kütüphane, yüksek performans için aşağıdaki optimizasyonları aldı:
 
-- **TF32 Tensor Core matematik modu** etkinleştirildi
-- gereksiz ilk `upload()` yükü kaldırıldı
-- sıfır matrisler için doğrudan `cudaMemset` kullanıldı
-- GPU bellek havuzu ile tekrarlayan alloc/free maliyeti azaltıldı
-- pinned host memory ve async transferler eklendi
-- reduction akışı global state bağımlılığından kurtarılarak daha güvenli hale getirildi
+- **Shape-aware GEMM dispatcher** (`src/ops/gemm/`): mikro kernel, GEMV, algo-cache’li cublasLt, TENSOR_OP GemmEx
+- **`multiply_into` + `device_only` çıktı** — tahsis maliyetini hot path’ten çıkarır
+- **`gemm_bias_relu` / `gemm_bias_gelu`** — cublasLt fused epilogue (zincire göre 1–6×)
+- **TF32 Tensor Core** matematik modu + 64 MiB kalıcı cuBLAS workspace
+- GPU bellek havuzu, pinned host, async transferler
+- float4 vektörize broadcast / reduction
 
-Bu sayede kütüphane, sadece doğruluk odaklı bir örnek değil, performans odaklı bir CUDA matris altyapısı haline geldi.
+Ölçüm (RTX 3070 Laptop): **1024²’de cuBLAS’ın ~%99’u**, **2048² ve 512²’de ham cuBLAS’ı geçer**. Detay: [`/docs/performans`](./doc) ve aşağıdaki benchmark bölümü.
 
 Kütüphane özellikle şu kullanım senaryoları için tasarlanmıştır:
 
@@ -66,8 +66,9 @@ Kütüphane özellikle şu kullanım senaryoları için tasarlanmıştır:
 ### 🔢 Temel Matris İşlemleri
 | Kategori | İşlemler |
 |---|---|
-| **Matris Çarpımı** | cuBLAS ile hızlandırılmış, row-major uyumlu matris çarpımı |
-| **Doğrusal Cebir** | `transpose`, `flatten`, `slice`, `trace`, `determinant`, `inverse` |
+| **Matris Çarpımı** | Shape-aware GEMM: mikro / GEMV / cublasLt (algo-cache) / TENSOR_OP cuBLAS |
+| **Hot path** | `multiply_into`, `gemm_bias_relu`, `gemm_bias_gelu` |
+| **Doğrusal Cebir** | `transpose`, `flatten`, `slice`, `trace`, `determinant`, `inverse`, QR/SVD/eig |
 | **Dış Çarpım** | `outer_product` |
 
 ### 📉 GPU Üzerinde İndirgemeler (Reductions)
@@ -458,42 +459,45 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 📈 Performans / Benchmark
 
-> 📊 **Yeni: benzer araçlarla karşılaştırma sayfası** — aynı makinede ölçülmüş
-> MatrixFlash-Pro vs ham cuBLAS vs naive CUDA çekirdeği vs CPU tabloları +
-> interaktif grafik: `doc/app/docs/performans/page.tsx`
-> (`/docs/performans`), veri: `doc/public/data/benchmarks/comparison.json`,
-> kaynak: `benchmarks/bench_comparison.cu`.
+> 📊 **Dokümantasyon:** interaktif grafik + rakip motorlar tablosu → site içinde `/docs/performans`  
+> Veri: `doc/public/data/benchmarks/{comparison,rivals,training}.json`  
+> Üretim: `tools/bench_rivals.py` + `tools/gen_bench_page.py` + `tools/sync_benchmark_data.py`
 
-### Karşılaştırma benchmark'ı (önerilen)
+### Son doğrulanmış ölçüm (RTX 3070 Laptop, sm_86 — 19.09.2026)
+
+`multiply_into` = tahsissiz hot path (ham cuBLAS ile aynı koşul). GPU: CUDA-event medyan.
+
+| Vaka | mflash `multiply_into` | ham cuBLAS | Oran | Not |
+|---|---|---|---|---|
+| 512×512 ✅ | 0.051 ms / **5243 GFLOPS** | 0.071 ms / 3799 | **%138** | cuBLAS’ı geçer |
+| 1024×1024 ✅ | 0.193 ms / **11155 GFLOPS** | 0.190 ms / 11275 | **%99** | eşdeğer |
+| 2048×2048 ✅ | 1.023 ms / **16794 GFLOPS** | 1.039 ms / 16537 | **%102** | cuBLAS’ı geçer |
+
+**Piyasa motorları (aynı makine, 1024²):**
+
+| Motor | Tür | GFLOPS | Durum |
+|---|---|---|---|
+| MatrixFlash-Pro `multiply_into` | C++17 / CUDA | **11155** | ölçüldü |
+| NVIDIA cuBLAS | Vendor BLAS | 11275 | ölçüldü |
+| NVIDIA cublasLt (soğuk) | Vendor Lt | ~7600 | ölçüldü |
+| NumPy @ OpenBLAS | Python / CPU | ~343 | ölçüldü |
+| PyTorch / CuPy / ArrayFire / JAX | GPU frameworks | cuBLAS tavanı − Python overhead | referans* |
+
+\*Bu makinedeki Python 3.14 için resmi `torch` tekerleği yok; kurulunca `py -3 tools/bench_rivals.py` ölçer.
+
+**Fused `gemm_bias_relu` vs 3 ayrı kernel (batch=64, K=256):** h=1024’te yaklaşık **6×** hızlanma.
+
+### Karşılaştırma benchmark'ını yeniden üret
 
 ```powershell
 cmake --preset release
-cmake --build --preset release --target matrix_pro_bench_comparison
-.\build\benchmarks\Release\matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json
+cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm matrix_pro_bench_training
+.\build\benchmarks\Release\matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json
+.\build\benchmarks\Release\matrix_pro_bench_external_gemm.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/external_gemm.json
+py -3 tools/bench_rivals.py
+python tools/gen_bench_page.py
 python tools/sync_benchmark_data.py
 ```
-
-### Son doğrulanmış karşılaştırma (RTX 3070 Laptop, 19.09.2026)
-
-| Vaka | mflash (ms / GFLOPS) | ham cuBLAS (ms / GFLOPS) | naive GPU (ms / GFLOPS) | CPU naive (ms / GFLOPS) |
-|---|---|---|---|---|
-| 256×256 ✅ | 0.041 / 819 | 0.032 / 1040 | 0.050 / 676 | 15.02 / 2.23 |
-| 512×512 ✅ | 0.345 / 779 | 0.052 / 5140 | 0.300 / 896 | 105.83 / 2.54 |
-| 1024×1024 ✅ | 0.751 / 2859 | 0.195 / 11038 | 2.230 / 963 | atlandı (O(n³)) |
-| 2048×2048 ✅ | 3.049 / 5635 | 1.238 / 13877 | atlandı (O(n³)) | atlandı (O(n³)) |
-
-| MLP adımı (batch=64) | mlp-full (ms) | mlp-fwd (ms) | bant maliyeti |
-|---|---|---|---|
-| h=256 ✅ | 1.745 | 1.278 | 1.4× |
-| h=512 ✅ | 2.078 | 1.364 | 1.5× |
-| h=1024 ✅ | 2.951 | 1.323 | 2.2× |
-| h=2048 ✅ | 4.152 | 1.693 | 2.5× |
-
-Okuma notu: GPU süreleri CUDA-event medyanı, CPU süreleri wall-clock medyanıdır.
-`mflash` çıktıyı tahsis eder (gerçek maliyet); ham cuBLAS tahsissizdir.
-CPU naive yalnızca `n <= 512` koşar. PyTorch / ArrayFire / Eigen / OpenBLAS
-değerleri bu makinede ölçülmedi; doküman sayfasında 📖 referans rozetiyle ayrı
-tablodadır.
 
 ### Eski tekil workload çalıştırıcıları
 

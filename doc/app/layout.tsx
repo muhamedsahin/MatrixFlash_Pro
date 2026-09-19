@@ -28,7 +28,7 @@ const sora = Sora({
 export const metadata: Metadata = {
   title: 'MatrixFlash-Pro — CUDA-Accelerated C++17 Matrix & Tensor Library',
   description:
-    'cuBLAS GEMM, TF32 Tensor Cores, Autograd tape engine, cuSOLVER linalg, sparse CSR, fused kernels, and async stream pool.',
+    'Shape-aware GEMM at cuBLAS-class speed, TF32 Tensor Cores, fused gemm+bias+act, Autograd, cuSOLVER, sparse CSR, async streams.',
   keywords: [
     'CUDA',
     'cuBLAS',
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
-  themeColor: '#0a0f0a',
+  themeColor: '#0a1210',
 }
 
 export default function RootLayout({

@@ -30,8 +30,8 @@ export function SiteNav() {
       className={cn(
         'fixed inset-x-0 top-0 z-50 transition-all duration-300',
         scrolled
-          ? 'border-b border-border/70 bg-background/80 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-2xl'
-          : 'border-b border-transparent bg-background/30 backdrop-blur-md',
+          ? 'border-b border-border/60 bg-background/75 shadow-[0_8px_40px_oklch(0_0_0_/_0.45)] backdrop-blur-2xl'
+          : 'border-b border-transparent bg-background/25 backdrop-blur-md',
       )}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">

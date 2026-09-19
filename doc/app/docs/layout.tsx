@@ -6,10 +6,11 @@ import { DocsMobileNav } from '../../components/docs/docs-mobile-nav'
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen">
+      <div className="pointer-events-none fixed inset-0 -z-10 mesh-aurora opacity-60" aria-hidden />
       <SiteNav />
       <div className="mx-auto flex max-w-7xl gap-10 px-4 pt-16 sm:px-6 lg:px-8">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 overflow-y-auto py-10 lg:block">
+        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto border-r border-border/40 py-10 pr-4 lg:block">
           <DocsSidebar />
         </aside>
 
