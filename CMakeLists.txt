@@ -68,6 +68,13 @@ add_library(matrix_pro STATIC
 	# --- ops ---
 	src/ops/elementwise.cu
 	src/ops/matmul.cu
+	src/ops/gemm/gemm_dispatch.cu
+	src/ops/gemm/gemm_cublas_ex.cu
+	src/ops/gemm/gemm_cublas_lt.cu
+	src/ops/gemm/gemm_micro.cu
+	src/ops/gemm/gemm_gemv.cu
+	src/ops/gemm/gemm_tiled.cu
+	src/ops/gemm/gemm_fused.cu
 	src/ops/transforms.cu
 	src/ops/statistics.cu
 	src/ops/shape.cu
@@ -113,7 +120,7 @@ target_include_directories(matrix_pro
 
 # cuBLAS (GEMM) and cuSOLVER (decompositions) are part of the public API surface:
 # consumers must inherit them.
-target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cusolver)
+target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cublasLt CUDA::cusolver)
 
 if(MATRIX_PRO_CUDNN_FOUND)
 	# PUBLIC, not PRIVATE: core/cuda_utils.hpp conditionally declares

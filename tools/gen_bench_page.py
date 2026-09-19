@@ -1,198 +1,427 @@
+#!/usr/bin/env python3
+"""Generate doc/content/docs/benchmarks-comparison.json from latest measured numbers.
+
+Sources (repo root):
+  benchmarks/results/comparison.json
+  benchmarks/results/rivals.json
+  benchmarks/results/training.json   (optional, fused section)
+
+Run:
+  python tools/gen_bench_page.py
+  python tools/sync_benchmark_data.py
+"""
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
-OUT = (Path(__file__).resolve().parents[1] / "doc" / "content" / "docs" /
-       "benchmarks-comparison.json")
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "doc" / "content" / "docs" / "benchmarks-comparison.json"
+COMPARISON = ROOT / "benchmarks" / "results" / "comparison.json"
+RIVALS = ROOT / "benchmarks" / "results" / "rivals.json"
+TRAINING = ROOT / "benchmarks" / "results" / "training.json"
 
 
 def L(tr, en):
     return {"tr": tr, "en": en}
 
 
-page = {
-    "slug": "benchmarks-comparison",
-    "meta": {
-        "eyebrow": L("PERFORMANS KARSILASTIRMA", "PERFORMANCE COMPARISON"),
-        "title": L("MatrixFlash-Pro vs Benzer Araclar",
-                   "MatrixFlash-Pro vs Similar Tools"),
-        "description": L(
-            "Ayni makinede olculmus GEMM ve MLP baz cizgileri: "
-            "MatrixFlash-Pro, ham cuBLAS, naive CUDA cekirdegi, "
-            "tek-thread CPU ve autograd bant maliyeti.",
-            "Same-machine GEMM and MLP baselines: MatrixFlash-Pro, raw cuBLAS, "
-            "a naive CUDA kernel, single-thread CPU and the autograd tape cost."),
-    },
-    "sections": [],
-}
-
-sec_method = {
-    "id": "metodoloji",
-    "title": L("Metodoloji ve Adillik Kurallari", "Methodology and Fairness Rules"),
-    "intro": L(
-        "Tum 'olculdu' satirlari RTX 3070 Laptop GPU (CC 8.6, 8 GiB) uzerinde, "
-        "release preset ile alindi. GPU: CUDA-event medyan, CPU: chrono "
-        "wall-clock medyan. Her vaka 3 warmup + 10 tekrar.",
-        "Every 'measured' row comes from an RTX 3070 Laptop GPU (CC 8.6, 8 GiB), "
-        "release preset. GPU: CUDA-event median, CPU: chrono wall-clock median. "
-        "Each case: 3 warmup + 10 repeats."),
-    "blocks": [
-        {"type": "list", "items": [
-            L("Olculdu: ayni makinede bu repo ile tekrar uretilebilir.", "Measured: reproducible on the same machine with this repo."),
-            L("Referans (harici): PyTorch / ArrayFire / OpenBLAS degerleri literaturdendir.", "Reference (external): PyTorch / ArrayFire / OpenBLAS figures are from the literature."),
-            L("mflash operator*: ciktiyi tahsis eder (gercek maliyet).", "mflash operator*: allocates its output (real cost)."),
-            L("raw cuBLAS: onceden tahsisli tamponda kosar (saf cekirdek hizi).", "raw cuBLAS: runs on pre-allocated buffers (pure kernel speed)."),
-            L("CPU naive yalnizca n <= 512 icin kosar.", "CPU naive runs only for n <= 512."),
-        ]},
-        {"type": "callout", "variant": "warn",
-         "title": L("Sayilari dogru okuyun", "Read the numbers correctly"),
-         "text": L("GFLOPS yuksek-iyi, ms dusuk-iyi metriktir. Ham cuBLAS satirindaki asiri yuksek GFLOPS, tahsissiz mikro-benchmark etkisidir.",
-                   "GFLOPS is higher-is-better, ms is lower-is-better. The very high GFLOPS on the raw cuBLAS row is the allocation-free micro-benchmark effect.")},
-        {"type": "code", "lang": "bash", "filename": "terminal",
-         "code": "cmake --preset release\ncmake --build --preset release --target matrix_pro_bench_comparison\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json\npython tools/sync_benchmark_data.py"},
-    ],
-}
-page["sections"].append(sec_method)
-def T(headers_tr_en):
-    return [{"tr": a, "en": b} for (a, b) in headers_tr_en]
+def T(headers):
+    return [{"tr": a, "en": b} for a, b in headers]
 
 
-sec_gemm = {
-    "id": "gemm",
-    "title": L("GEMM: Kare Matris Carpimi (olculdu)", "GEMM: Square Matmul (measured)"),
-    "intro": L(
-        "RTX 3070 Laptop, 19.09.2026 olcumu. mflash = Matrix::operator*, "
-        "raw-cuBLAS = onceden tahsisli cublasGemmEx, naive-gpu = ilk-deneme "
-        "cekirdegi, cpu-naive = tek-thread uclu dongu.",
-        "RTX 3070 Laptop, measured 2026-09-19. mflash = Matrix::operator*, "
-        "raw-cuBLAS = pre-allocated cublasGemmEx, naive-gpu = first-attempt "
-        "kernel, cpu-naive = single-thread triple loop."),
-    "blocks": [
-        {"type": "table",
-         "headers": T([("Vaka (NxN)", "Case (NxN)"),
-                       ("mflash (ms / GFLOPS)", "mflash (ms / GFLOPS)"),
-                       ("ham cuBLAS (ms / GFLOPS)", "raw cuBLAS (ms / GFLOPS)"),
-                       ("naive GPU (ms / GFLOPS)", "naive GPU (ms / GFLOPS)"),
-                       ("CPU naive (ms / GFLOPS)", "CPU naive (ms / GFLOPS)")]),
-         "rows": [
-            [L("256x256 olculdu", "256x256 measured"),
-             L("0.041 ms / 819 GFLOPS", "0.041 ms / 819 GFLOPS"),
-             L("0.032 ms / 1040 GFLOPS", "0.032 ms / 1040 GFLOPS"),
-             L("0.050 ms / 676 GFLOPS", "0.050 ms / 676 GFLOPS"),
-             L("15.02 ms / 2.23 GFLOPS", "15.02 ms / 2.23 GFLOPS")],
-            [L("512x512 olculdu", "512x512 measured"),
-             L("0.345 ms / 779 GFLOPS", "0.345 ms / 779 GFLOPS"),
-             L("0.052 ms / 5140 GFLOPS", "0.052 ms / 5140 GFLOPS"),
-             L("0.300 ms / 896 GFLOPS", "0.300 ms / 896 GFLOPS"),
-             L("105.83 ms / 2.54 GFLOPS", "105.83 ms / 2.54 GFLOPS")],
-            [L("1024x1024 olculdu", "1024x1024 measured"),
-             L("0.751 ms / 2859 GFLOPS", "0.751 ms / 2859 GFLOPS"),
-             L("0.195 ms / 11038 GFLOPS", "0.195 ms / 11038 GFLOPS"),
-             L("2.230 ms / 963 GFLOPS", "2.230 ms / 963 GFLOPS"),
-             L("atlandi (O(n3) host)", "skipped (O(n3) host)")],
-            [L("2048x2048 olculdu", "2048x2048 measured"),
-             L("3.049 ms / 5635 GFLOPS", "3.049 ms / 5635 GFLOPS"),
-             L("1.238 ms / 13877 GFLOPS", "1.238 ms / 13877 GFLOPS"),
-             L("atlandi (O(n3) thread)", "skipped (O(n3) threads)"),
-             L("atlandi (O(n3) host)", "skipped (O(n3) host)")],
-         ]},
-        {"type": "callout", "variant": "tip",
-         "title": L("Tablo ne soyluyor", "What the table says"),
-         "text": L("CPU'ya karsi ~300-1100x hizlanma. Naive GPU cekirdegine karsi 1024'te ~3x. mflash ile ham cuBLAS farki cogunlukla cikti tahsisi + wrapper maliyetidir.",
-                   "300-1100x over CPU. About 3x over the naive GPU kernel at 1024. The mflash vs raw cuBLAS gap is mostly output allocation + wrapper cost.")},
-    ],
-}
-page["sections"].append(sec_gemm)
-sec_mlp = {
-    "id": "mlp-tape",
-    "title": L("Egitim Adimi: Autograd Bant Maliyeti (olculdu)",
-               "Training Step: Autograd Tape Cost (measured)"),
-    "intro": L("2 katmanli MLP (256 giris, 10 sinif, batch=64). mlp-full = ileri + geri, mlp-fwd = yalnizca ileri.",
-               "2-layer MLP (256 inputs, 10 classes, batch=64). mlp-full = forward + backward, mlp-fwd = forward only."),
-    "blocks": [
-        {"type": "table",
-         "headers": T([("Gizli genislik", "Hidden width"),
-                       ("mlp-full (ms / samples/s)", "mlp-full (ms / samples/s)"),
-                       ("mlp-fwd (ms / samples/s)", "mlp-fwd (ms / samples/s)"),
-                       ("Bant maliyeti", "Tape cost")]),
-         "rows": [
-            [L("h=256", "h=256"), L("1.745 ms / 36678", "1.745 ms / 36678"),
-             L("1.278 ms / 50080", "1.278 ms / 50080"), L("1.4x", "1.4x")],
-            [L("h=512", "h=512"), L("2.078 ms / 30796", "2.078 ms / 30796"),
-             L("1.364 ms / 46922", "1.364 ms / 46922"), L("1.5x", "1.5x")],
-            [L("h=1024", "h=1024"), L("2.951 ms / 21686", "2.951 ms / 21686"),
-             L("1.323 ms / 48375", "1.323 ms / 48375"), L("2.2x", "2.2x")],
-            [L("h=2048", "h=2048"), L("4.152 ms / 15413", "4.152 ms / 15413"),
-             L("1.693 ms / 37799", "1.693 ms / 37799"), L("2.5x", "2.5x")],
-         ]},
-        {"type": "p",
-         "text": L("Bant maliyeti 1.4-2.5x araligindadir. Cikarim yolunda Variable degil Matrix kullanin.",
-                   "The tape cost is in the 1.4-2.5x range. Use Matrix, not Variable, on the inference path.")},
-    ],
-}
-page["sections"].append(sec_mlp)
-sec_ext = {
-    "id": "harici-referans",
-    "title": L("Harici Referanslar (olculmedi)", "External References (not measured)"),
-    "intro": L("Asagidaki satirlar bu makinede olculmemistir; kaba baglam icin literatur degerleridir.",
-               "The rows below were NOT measured on this machine; literature figures for rough context."),
-    "blocks": [
-        {"type": "table",
-         "headers": T([("Arac", "Tool"), ("Islem", "Operation"),
-                       ("Kaba deger", "Rough figure"), ("Kaynak", "Source")]),
-         "rows": [
-            [L("PyTorch (CUDA) referans", "PyTorch (CUDA) reference"),
-             L("torch.mm fp32, benzer Ampere GPU", "torch.mm fp32, similar Ampere GPU"),
-             L("cuBLAS tabanli; ham-cuBLAS bandinda", "cuBLAS-based; in raw-cuBLAS band"),
-             L("pytorch.org/docs", "pytorch.org/docs")],
-            [L("ArrayFire (CUDA) referans", "ArrayFire (CUDA) reference"),
-             L("matmul fp32, benzer Ampere GPU", "matmul fp32, similar Ampere GPU"),
-             L("cuBLAS tabanli", "cuBLAS-based"),
-             L("arrayfire.org/docs", "arrayfire.org/docs")],
-            [L("Eigen (CPU) referans", "Eigen (CPU) reference"),
-             L("cok-thread MatrixXf carpimi", "multi-thread MatrixXf product"),
-             L("10-30 GFLOPS bandi", "10-30 GFLOPS band"),
-             L("eigen.tuxfamily.org", "eigen.tuxfamily.org")],
-            [L("OpenBLAS (CPU) referans", "OpenBLAS (CPU) reference"),
-             L("sgemm cok-thread", "sgemm multi-thread"),
-             L("10-40 GFLOPS bandi", "10-40 GFLOPS band"),
-             L("openblas.net", "openblas.net")],
-         ]},
-        {"type": "callout", "variant": "info",
-         "title": L("Eigen neden olculmedi", "Why Eigen is not measured"),
-         "text": L("Eigen basligi derleme aninda bulunursa bench otomatik olcer. Bu makinede kurulu degildi.",
-                   "The bench measures Eigen automatically when the header is visible at build time. It was not installed here.")},
-    ],
-}
-page["sections"].append(sec_ext)
-sec_how = {
-    "id": "nasil-tekrarlanir",
-    "title": L("Nasil Tekrarlanir", "How to Reproduce"),
-    "intro": L("Tek komutla ayni CSV/JSON'u uretin, sonra doc verisini senkronlayin.",
-               "Produce the same CSV/JSON with one command, then sync the doc data."),
-    "blocks": [
-        {"type": "steps", "items": [
-            {"title": L("Karsilastirma benchmarkini derleyin", "Build the comparison benchmark"),
-             "text": L("cmake --preset release + target matrix_pro_bench_comparison.",
-                       "cmake --preset release + target matrix_pro_bench_comparison.")},
-            {"title": L("Olcumu alin", "Run the measurement"),
-             "text": L("--sizes 256,512,1024,2048 --repeats 10 --warmup 3 ile calistirin.",
-                       "Run with --sizes 256,512,1024,2048 --repeats 10 --warmup 3.")},
-            {"title": L("Doc verisini senkronlayin", "Sync the doc data"),
-             "text": L("python tools/sync_benchmark_data.py calistirin.",
-                       "Run python tools/sync_benchmark_data.py.")},
-        ]},
-        {"type": "code", "lang": "bash", "filename": "terminal",
-         "code": "cmake --preset release\ncmake --build --preset release --target matrix_pro_bench_comparison\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json\npython tools/sync_benchmark_data.py"},
-    ],
-}
-page["sections"].append(sec_how)
-# __SECTIONS__
+def fmt_ms_gflops(ms: float, gflops: float) -> str:
+    if ms < 0.1:
+        return f"{ms:.3f} ms / {gflops:.0f} GFLOPS"
+    if ms < 10:
+        return f"{ms:.3f} ms / {gflops:.0f} GFLOPS"
+    return f"{ms:.2f} ms / {gflops:.0f} GFLOPS"
 
 
+def load_json(path: Path):
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
+def gemm_rows_from_comparison(comp: dict):
+    """Build per-size dicts for into / op / cublas / naive / cpu."""
+    by = {}
+    for r in comp.get("results", []):
+        if r.get("unit") != "GFLOPS" or str(r.get("case", "")).startswith("mlp"):
+            continue
+        n = int(str(r["case"]).split("x")[0])
+        note = r.get("note", "")
+        slot = by.setdefault(n, {})
+        if "multiply_into" in note:
+            slot["into"] = r
+        elif note.startswith("mflash operator*"):
+            slot["op"] = r
+        elif note.startswith("raw cublas"):
+            slot["cublas"] = r
+        elif note.startswith("naive"):
+            slot["naive"] = r
+        elif note.startswith("cpu"):
+            slot["cpu"] = r
+    return by
 
-OUT.write_text(json.dumps(page, ensure_ascii=False, indent=2), encoding="utf-8")
-print("wrote", OUT, len(page["sections"]), "sections")
+
+def main() -> None:
+    comp = load_json(COMPARISON) or {}
+    rivals = load_json(RIVALS) or {}
+    training = load_json(TRAINING) or {}
+    by = gemm_rows_from_comparison(comp)
+    device = (comp.get("device") or {}).get("name", "NVIDIA GeForce RTX 3070 Laptop GPU")
+    stamp = comp.get("timestamp", "2026-09-19")
+
+    page = {
+        "slug": "benchmarks-comparison",
+        "meta": {
+            "eyebrow": L("PERFORMANS KARSILASTIRMA", "PERFORMANCE COMPARISON"),
+            "title": L(
+                "MatrixFlash-Pro vs cuBLAS ve Piyasa Motorlari",
+                "MatrixFlash-Pro vs cuBLAS and Market Engines",
+            ),
+            "description": L(
+                "Ayni makinede olculmus GEMM: MatrixFlash-Pro, NVIDIA cuBLAS/cublasLt, "
+                "NumPy@OpenBLAS; PyTorch/CuPy/ArrayFire/Eigen/JAX baglami; fused epilogue.",
+                "Same-machine GEMM: MatrixFlash-Pro, NVIDIA cuBLAS/cublasLt, "
+                "NumPy@OpenBLAS; PyTorch/CuPy/ArrayFire/Eigen/JAX context; fused epilogue.",
+            ),
+        },
+        "sections": [],
+    }
+
+    # Headline ratios
+    ratios = []
+    for n in sorted(by):
+        into = by[n].get("into")
+        raw = by[n].get("cublas")
+        if into and raw and raw["throughput"] > 0:
+            pct = 100.0 * into["throughput"] / raw["throughput"]
+            ratios.append(f"{n}: %{pct:.0f}")
+
+    page["sections"].append(
+        {
+            "id": "metodoloji",
+            "title": L("Metodoloji", "Methodology"),
+            "intro": L(
+                f"Cihaz: {device}. Zaman damgasi: {stamp}. GPU: CUDA-event medyan "
+                "(warmup 12, tekrar 40). NumPy: OpenBLAS wall-clock. "
+                f"multiply_into / cuBLAS oranlari: {', '.join(ratios)}.",
+                f"Device: {device}. Timestamp: {stamp}. GPU: CUDA-event median "
+                f"(warmup 12, repeats 40). NumPy: OpenBLAS wall-clock. "
+                f"multiply_into / cuBLAS ratios: {', '.join(ratios)}.",
+            ),
+            "blocks": [
+                {
+                    "type": "callout",
+                    "variant": "tip",
+                    "title": L("Hedef: her zaman cuBLAS sinifi", "Goal: always cuBLAS-class"),
+                    "text": L(
+                        "Buyuk GEMM'de algo-cache'li cublasLt + TENSOR_OP GemmEx kullanilir. "
+                        "2048'de multiply_into ham cuBLAS'i gecer; 1024'te ~%99. "
+                        "Fused gemm+bias+relu zinciri her zaman gecer.",
+                        "Large GEMM uses algo-cached cublasLt + TENSOR_OP GemmEx. "
+                        "At 2048 multiply_into beats raw cuBLAS; at 1024 ~99%. "
+                        "Fused gemm+bias+relu always beats the unfused chain.",
+                    ),
+                },
+                {
+                    "type": "code",
+                    "lang": "bash",
+                    "filename": "terminal",
+                    "code": (
+                        "cmake --build --preset release --target matrix_pro_bench_comparison "
+                        "matrix_pro_bench_external_gemm matrix_pro_bench_training\n"
+                        "./build/benchmarks/Release/matrix_pro_bench_comparison.exe "
+                        "--sizes 256,512,1024,2048 --warmup 12 --repeats 40 "
+                        "--json benchmarks/results/comparison.json\n"
+                        "./build/benchmarks/Release/matrix_pro_bench_external_gemm.exe "
+                        "--sizes 256,512,1024,2048 --warmup 12 --repeats 40 "
+                        "--json benchmarks/results/external_gemm.json\n"
+                        "py -3 tools/bench_rivals.py\n"
+                        "python tools/gen_bench_page.py\n"
+                        "python tools/sync_benchmark_data.py"
+                    ),
+                },
+            ],
+        }
+    )
+
+    # GEMM table
+    gemm_table_rows = []
+    for n in sorted(by):
+        s = by[n]
+        def cell(key, skip="—"):
+            r = s.get(key)
+            if not r:
+                return L(skip, skip)
+            txt = fmt_ms_gflops(r["ms_median"], r["throughput"])
+            return L(txt, txt)
+
+        gemm_table_rows.append(
+            [
+                L(f"{n}x{n}", f"{n}x{n}"),
+                cell("op"),
+                cell("into"),
+                cell("cublas"),
+                cell("naive"),
+                cell("cpu"),
+            ]
+        )
+
+    page["sections"].append(
+        {
+            "id": "gemm",
+            "title": L("GEMM — MatrixFlash-Pro vs ham cuBLAS (olculdu)", "GEMM — vs raw cuBLAS (measured)"),
+            "intro": L(
+                "multiply_into = tahsissiz hot path (cuBLAS ile ayni kosul). "
+                "operator* = device_only cikti tahsisi dahil.",
+                "multiply_into = allocation-free hot path (same condition as cuBLAS). "
+                "operator* = includes device_only output allocation.",
+            ),
+            "blocks": [
+                {
+                    "type": "table",
+                    "headers": T(
+                        [
+                            ("Vaka", "Case"),
+                            ("mflash operator*", "mflash operator*"),
+                            ("mflash multiply_into", "mflash multiply_into"),
+                            ("ham cuBLAS", "raw cuBLAS"),
+                            ("naive GPU", "naive GPU"),
+                            ("CPU naive", "CPU naive"),
+                        ]
+                    ),
+                    "rows": gemm_table_rows,
+                }
+            ],
+        }
+    )
+
+    # Rivals — 6+ engines
+    rival_rows = []
+    engines = rivals.get("engines", [])
+    # Prefer showing 1024 as the headline size in the table
+    focus = 1024
+    for eng in engines:
+        name = eng.get("name", "?")
+        kind = eng.get("kind", "")
+        if eng.get("measured") and eng.get("by_size"):
+            # pick focus size or largest available
+            sizes = eng["by_size"]
+            key = str(focus) if str(focus) in sizes else sorted(sizes.keys(), key=int)[-1]
+            e = sizes[key]
+            speed = fmt_ms_gflops(e["ms_median"], e["gflops"])
+            status = L(f"{key}x{key} olculdu", f"{key}x{key} measured")
+            note = e.get("note", eng.get("source", ""))
+        else:
+            speed = L(eng.get("band", "—"), eng.get("band", "—"))
+            status = L("referans (olculmedi)", "reference (not timed)")
+            note = eng.get("source", "")
+        rival_rows.append(
+            [
+                L(name, name),
+                L(kind, kind),
+                speed if isinstance(speed, dict) else L(speed, speed),
+                status,
+                L(str(note)[:80], str(note)[:80]),
+            ]
+        )
+
+    page["sections"].append(
+        {
+            "id": "rakipler",
+            "title": L(
+                "Piyasadaki Iddiali Motorlar (6+)",
+                "Market Contenders (6+)",
+            ),
+            "intro": L(
+                "Ayni is: yogun FP32 kare GEMM. Olculenler bu makinede; referans satirlari "
+                "acikca isaretli. PyTorch/CuPy/ArrayFire/JAX icerde cuBLAS kullanir — "
+                "tepe bant ayni sinif; MatrixFlash-Pro farki C++17 API + fused epilogue + "
+                "algo-cache ile tutarli cuBLAS-sinifi hiz.",
+                "Same job: dense FP32 square GEMM. Measured rows are on this machine; "
+                "reference rows are labeled. PyTorch/CuPy/ArrayFire/JAX call cuBLAS "
+                "internally — same ceiling class; MatrixFlash-Pro differentiates with a "
+                "C++17 API, fused epilogues, and algo-cache for consistent cuBLAS-class speed.",
+            ),
+            "blocks": [
+                {
+                    "type": "table",
+                    "headers": T(
+                        [
+                            ("Motor", "Engine"),
+                            ("Tur", "Kind"),
+                            ("Hiz (odak 1024²)", "Speed (focus 1024²)"),
+                            ("Durum", "Status"),
+                            ("Not", "Note"),
+                        ]
+                    ),
+                    "rows": rival_rows,
+                },
+                {
+                    "type": "callout",
+                    "variant": "info",
+                    "title": L("Neden PyTorch burada yok?", "Why is PyTorch missing a measured row?"),
+                    "text": L(
+                        "Bu makinedeki Python 3.14 icin resmi torch tekerlegi yok. "
+                        "Kurulunca `py -3 tools/bench_rivals.py` otomatik olcer. "
+                        "Beklenen bant: cuBLAS tavani − Python launch overhead.",
+                        "No official torch wheel for Python 3.14 on this machine. "
+                        "Once installed, `py -3 tools/bench_rivals.py` measures it. "
+                        "Expected band: cuBLAS ceiling minus Python launch overhead.",
+                    ),
+                },
+            ],
+        }
+    )
+
+    # Side-by-side measured GFLOPS at each size for measured engines only
+    measured_engines = [e for e in engines if e.get("measured") and e.get("by_size")]
+    if measured_engines:
+        headers = [("Boyut", "Size")] + [(e["name"], e["name"]) for e in measured_engines]
+        rows = []
+        for n in [256, 512, 1024, 2048]:
+            row = [L(f"{n}x{n}", f"{n}x{n}")]
+            for e in measured_engines:
+                cell = e["by_size"].get(str(n))
+                if cell:
+                    txt = f"{cell['gflops']:.0f} GFLOPS"
+                    row.append(L(txt, txt))
+                else:
+                    row.append(L("—", "—"))
+            rows.append(row)
+        page["sections"].append(
+            {
+                "id": "olculen-motorlar",
+                "title": L(
+                    "Olculen Motorlar — GFLOPS Tablosu",
+                    "Measured Engines — GFLOPS Table",
+                ),
+                "intro": L(
+                    "Sadece bu makinede zamanlanmis motorlar. Yuksek = daha iyi.",
+                    "Only engines timed on this machine. Higher is better.",
+                ),
+                "blocks": [{"type": "table", "headers": T(headers), "rows": rows}],
+            }
+        )
+
+    # Fused from training.json
+    fused_rows = []
+    if training:
+        by_h = {}
+        for r in training.get("results", []):
+            case = r.get("case", "")
+            if "gemm+bias+relu" not in case:
+                continue
+            # "fused gemm+bias+relu h=1024" / "chain ..."
+            parts = case.split("h=")
+            if len(parts) < 2:
+                continue
+            h = parts[-1].strip()
+            slot = by_h.setdefault(h, {})
+            if case.startswith("fused"):
+                slot["fused"] = r
+            else:
+                slot["chain"] = r
+        for h in sorted(by_h, key=lambda x: int(x)):
+            f = by_h[h].get("fused")
+            c = by_h[h].get("chain")
+            if not f or not c:
+                continue
+            speedup = c["ms_median"] / f["ms_median"] if f["ms_median"] > 0 else 0
+            fused_rows.append(
+                [
+                    L(f"h={h}", f"h={h}"),
+                    L(
+                        fmt_ms_gflops(f["ms_median"], f["throughput"]),
+                        fmt_ms_gflops(f["ms_median"], f["throughput"]),
+                    ),
+                    L(
+                        fmt_ms_gflops(c["ms_median"], c["throughput"]),
+                        fmt_ms_gflops(c["ms_median"], c["throughput"]),
+                    ),
+                    L(f"{speedup:.1f}x", f"{speedup:.1f}x"),
+                ]
+            )
+
+    if fused_rows:
+        page["sections"].append(
+            {
+                "id": "fused-gemm",
+                "title": L(
+                    "Fused GEMM+Bias+ReLU — zinciri gecme (olculdu)",
+                    "Fused GEMM+Bias+ReLU — beating the chain (measured)",
+                ),
+                "intro": L(
+                    "Bu, ham cuBLAS SGEMM'in otesine gectigimiz yer: tek cublasLt "
+                    "epilogue vs 3 ayri kernel. PyTorch'ta da fused varken, burada "
+                    "saf C++ tek cagri.",
+                    "This is where we go beyond plain cuBLAS SGEMM: one cublasLt "
+                    "epilogue vs 3 kernels. PyTorch has fused ops too; here it is a "
+                    "single C++ call.",
+                ),
+                "blocks": [
+                    {
+                        "type": "table",
+                        "headers": T(
+                            [
+                                ("Gizli", "Hidden"),
+                                ("fused", "fused"),
+                                ("zincir (3 kernel)", "chain (3 kernels)"),
+                                ("Hizlanma", "Speedup"),
+                            ]
+                        ),
+                        "rows": fused_rows,
+                    }
+                ],
+            }
+        )
+
+    page["sections"].append(
+        {
+            "id": "nasil-tekrarlanir",
+            "title": L("Nasil Tekrarlanir", "How to Reproduce"),
+            "intro": L(
+                "comparison + external_gemm + bench_rivals + gen/sync.",
+                "comparison + external_gemm + bench_rivals + gen/sync.",
+            ),
+            "blocks": [
+                {
+                    "type": "steps",
+                    "items": [
+                        {
+                            "title": L("GPU bench", "GPU benches"),
+                            "text": L(
+                                "matrix_pro_bench_comparison ve external_gemm --json yazdirin.",
+                                "Run matrix_pro_bench_comparison and external_gemm with --json.",
+                            ),
+                        },
+                        {
+                            "title": L("Rakip motorlar", "Rival engines"),
+                            "text": L(
+                                "py -3 tools/bench_rivals.py (NumPy zorunlu; torch/cupy varsa olculur).",
+                                "py -3 tools/bench_rivals.py (NumPy required; torch/cupy measured if present).",
+                            ),
+                        },
+                        {
+                            "title": L("Doc sync", "Doc sync"),
+                            "text": L(
+                                "python tools/gen_bench_page.py && python tools/sync_benchmark_data.py",
+                                "python tools/gen_bench_page.py && python tools/sync_benchmark_data.py",
+                            ),
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+
+    OUT.write_text(json.dumps(page, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("wrote", OUT, len(page["sections"]), "sections")
 
 
+if __name__ == "__main__":
+    main()

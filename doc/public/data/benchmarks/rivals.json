@@ -1,0 +1,183 @@
+{
+  "library": "MatrixFlash-Pro",
+  "title": "Rival matrix engines vs MatrixFlash-Pro",
+  "device_note": "GPU rows: RTX 3070 Laptop CUDA-event medians; NumPy: OpenBLAS wall-clock",
+  "sizes": [
+    256,
+    512,
+    1024,
+    2048
+  ],
+  "engines": [
+    {
+      "id": "matrixflash_pro",
+      "name": "MatrixFlash-Pro",
+      "kind": "C++17 / CUDA library",
+      "measured": true,
+      "by_size": {
+        "256": {
+          "ms_median": 0.027136,
+          "gflops": 1236.5283,
+          "note": "mflash multiply_into, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        },
+        "512": {
+          "ms_median": 0.0512,
+          "gflops": 5242.8801,
+          "note": "mflash multiply_into, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        },
+        "1024": {
+          "ms_median": 0.192512,
+          "gflops": 11155.0635,
+          "note": "mflash multiply_into, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        },
+        "2048": {
+          "ms_median": 1.022976,
+          "gflops": 16794.0093,
+          "note": "mflash multiply_into, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        }
+      }
+    },
+    {
+      "id": "cublas",
+      "name": "NVIDIA cuBLAS",
+      "kind": "Vendor BLAS",
+      "measured": true,
+      "by_size": {
+        "256": {
+          "ms_median": 0.017408,
+          "gflops": 1927.5294,
+          "note": "raw cublasGemmEx, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        },
+        "512": {
+          "ms_median": 0.070656,
+          "gflops": 3799.1883,
+          "note": "raw cublasGemmEx, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        },
+        "1024": {
+          "ms_median": 0.190464,
+          "gflops": 11275.0105,
+          "note": "raw cublasGemmEx, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        },
+        "2048": {
+          "ms_median": 1.038848,
+          "gflops": 16537.4227,
+          "note": "raw cublasGemmEx, no alloc (measured)",
+          "source": "comparison.json (same machine, CUDA events)"
+        }
+      }
+    },
+    {
+      "id": "cublaslt",
+      "name": "NVIDIA cublasLt",
+      "kind": "Vendor matmul (Lt)",
+      "measured": true,
+      "by_size": {
+        "256": {
+          "ms_median": 0.06656,
+          "gflops": 504.1231,
+          "note": "cublasLt pre-alloc, no wrapper (measured)",
+          "source": "external_gemm.json (same machine, CUDA events)"
+        },
+        "512": {
+          "ms_median": 0.073728,
+          "gflops": 3640.8888,
+          "note": "cublasLt pre-alloc, no wrapper (measured)",
+          "source": "external_gemm.json (same machine, CUDA events)"
+        },
+        "1024": {
+          "ms_median": 0.282576,
+          "gflops": 7599.6673,
+          "note": "cublasLt pre-alloc, no wrapper (measured)",
+          "source": "external_gemm.json (same machine, CUDA events)"
+        },
+        "2048": {
+          "ms_median": 1.941504,
+          "gflops": 8848.7426,
+          "note": "cublasLt pre-alloc, no wrapper (measured)",
+          "source": "external_gemm.json (same machine, CUDA events)"
+        }
+      },
+      "band": null,
+      "source": "external_gemm.json"
+    },
+    {
+      "id": "numpy_openblas",
+      "name": "NumPy @ OpenBLAS",
+      "kind": "Python / CPU BLAS",
+      "measured": true,
+      "by_size": {
+        "256": {
+          "ms_median": 0.3452999808359891,
+          "gflops": 97.1747288220607,
+          "note": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)",
+          "source": "bench_rivals.py measured"
+        },
+        "512": {
+          "ms_median": 1.0630000033415854,
+          "gflops": 252.5262983595125,
+          "note": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)",
+          "source": "bench_rivals.py measured"
+        },
+        "1024": {
+          "ms_median": 6.259399990085512,
+          "gflops": 343.081389813956,
+          "note": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)",
+          "source": "bench_rivals.py measured"
+        },
+        "2048": {
+          "ms_median": 43.49209999782033,
+          "gflops": 395.01125916800964,
+          "note": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)",
+          "source": "bench_rivals.py measured"
+        }
+      }
+    },
+    {
+      "id": "pytorch",
+      "name": "PyTorch (CUDA)",
+      "kind": "Python / DL framework",
+      "measured": false,
+      "band": "cuBLAS-backed GPU ceiling; Python launch overhead on top of vendor GEMM",
+      "source": "reference (torch not installable on this Python 3.14)"
+    },
+    {
+      "id": "cupy",
+      "name": "CuPy",
+      "kind": "Python / CUDA arrays",
+      "measured": false,
+      "band": "cuBLAS-backed GPU ceiling; Python overhead on top",
+      "source": "reference (package not installed)"
+    },
+    {
+      "id": "arrayfire",
+      "name": "ArrayFire (CUDA)",
+      "kind": "Array runtime",
+      "measured": false,
+      "band": "cuBLAS-backed — same GPU ceiling class as mflash/cuBLAS",
+      "source": "reference (not timed on this machine)"
+    },
+    {
+      "id": "eigen",
+      "name": "Eigen (CPU multi-thread)",
+      "kind": "C++ CPU templates",
+      "measured": false,
+      "band": "~10–40 GFLOPS fp32 on laptop-class CPUs (well below GPU path)",
+      "source": "reference (literature / typical laptop)"
+    },
+    {
+      "id": "jax",
+      "name": "JAX (CUDA)",
+      "kind": "Python / XLA",
+      "measured": false,
+      "band": "XLA → cuBLAS/cuDNN — same GPU ceiling class",
+      "source": "reference (not timed on this machine)"
+    }
+  ]
+}

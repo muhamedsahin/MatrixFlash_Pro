@@ -21,6 +21,7 @@
 #include "matrix_pro/nn/fused.hpp"
 #include "matrix_pro/ops/broadcast.hpp"
 #include "matrix_pro/ops/elementwise.hpp"
+#include "matrix_pro/ops/product.hpp"
 #include "matrix_pro/ops/shape.hpp"
 
 namespace matrix_pro {
@@ -137,6 +138,42 @@ void run(const Options& options_orig, std::vector<Result>& out) {
             add_result(out, "training", "chain add+gelu h=" + std::to_string(hidden), hidden,
                        chained, to_gbps(5 * rows * hidden * sizeof(float), chained.median),
                        "GB/s", "unfused chain");
+        }
+
+        // --- fused GEMM + bias + relu vs multiply + add_row + relu --------------
+        {
+            const std::size_t m = kBatch;
+            const std::size_t k = kInputs;
+            const std::size_t n = hidden;
+            if (!memory_available(8 * (m * k + k * n + m * n) * sizeof(float))) {
+                continue;
+            }
+            Matrix left = Matrix::uniform(m, k, -0.5f, 0.5f);
+            Matrix right = Matrix::uniform(k, n, -0.5f, 0.5f);
+            Matrix bias = Matrix::uniform(1, n, -0.1f, 0.1f);
+            const double flops = 2.0 * static_cast<double>(m) * n * k;
+
+            const Stats fused = sample_ms([&] {
+                Matrix value = matrix_pro::gemm_bias_relu(left, right, bias);
+                (void)value;
+            }, options);
+
+            const Stats chained = sample_ms([&] {
+                Matrix product = left * right;
+                Matrix biased = matrix_pro::add_row_vector(product, bias);
+                Matrix value = biased.relu();
+                (void)value;
+            }, options);
+
+            const double speedup = fused.median > 0.0 ? chained.median / fused.median : 0.0;
+            const long long tenths = static_cast<long long>(speedup * 10.0 + 0.5);
+            add_result(out, "training", "fused gemm+bias+relu h=" + std::to_string(hidden),
+                       hidden, fused, to_gflops(flops, fused.median), "GFLOPS",
+                       "cublasLt epilogue, " + std::to_string(tenths / 10) + "." +
+                           std::to_string(tenths % 10) + "x vs chain");
+            add_result(out, "training", "chain gemm+bias+relu h=" + std::to_string(hidden),
+                       hidden, chained, to_gflops(flops, chained.median), "GFLOPS",
+                       "3 kernels");
         }
     }
 }

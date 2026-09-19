@@ -1,0 +1,65 @@
+{
+  "library": "MatrixFlash-Pro",
+  "timestamp": "2026-09-19T10:59:33",
+  "device": {
+    "name": "NVIDIA GeForce RTX 3070 Laptop GPU",
+    "index": 0,
+    "compute_capability": "8.6",
+    "sm_count": 40,
+    "memory_bytes": 8589410304
+  },
+  "results": [
+    {
+      "bench": "external-gemm",
+      "case": "256x256",
+      "size": 256,
+      "ms_mean": 0.068614,
+      "ms_median": 0.066560,
+      "ms_min": 0.050176,
+      "ms_max": 0.093184,
+      "ms_stddev": 0.010425,
+      "throughput": 504.1231,
+      "unit": "GFLOPS",
+      "note": "cublasLt pre-alloc, no wrapper (measured)"
+    },
+    {
+      "bench": "external-gemm",
+      "case": "512x512",
+      "size": 512,
+      "ms_mean": 0.099456,
+      "ms_median": 0.073728,
+      "ms_min": 0.050176,
+      "ms_max": 0.226304,
+      "ms_stddev": 0.042840,
+      "throughput": 3640.8888,
+      "unit": "GFLOPS",
+      "note": "cublasLt pre-alloc, no wrapper (measured)"
+    },
+    {
+      "bench": "external-gemm",
+      "case": "1024x1024",
+      "size": 1024,
+      "ms_mean": 0.286871,
+      "ms_median": 0.282576,
+      "ms_min": 0.271360,
+      "ms_max": 0.321536,
+      "ms_stddev": 0.012470,
+      "throughput": 7599.6673,
+      "unit": "GFLOPS",
+      "note": "cublasLt pre-alloc, no wrapper (measured)"
+    },
+    {
+      "bench": "external-gemm",
+      "case": "2048x2048",
+      "size": 2048,
+      "ms_mean": 1.910758,
+      "ms_median": 1.941504,
+      "ms_min": 1.624064,
+      "ms_max": 1.967104,
+      "ms_stddev": 0.077673,
+      "throughput": 8848.7426,
+      "unit": "GFLOPS",
+      "note": "cublasLt pre-alloc, no wrapper (measured)"
+    }
+  ]
+}

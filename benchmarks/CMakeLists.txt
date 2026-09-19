@@ -25,12 +25,20 @@ add_library(matrix_pro_bench_support STATIC
 	bench_sparse.cpp
 	bench_training.cpp
 	bench_comparison.cu
+	bench_external_gemm.cu
+	bench_external_linalg.cu
+	bench_external_sparse.cu
 )
 target_link_libraries(matrix_pro_bench_support PUBLIC matrix_pro Threads::Threads)
 target_include_directories(matrix_pro_bench_support PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/support)
 matrix_pro_set_warnings(matrix_pro_bench_support)
+# --- CCCL preprocessor fix for CUDA 13.x / MSVC --------------------------
+if(MSVC)
+	target_compile_options(matrix_pro_bench_support PRIVATE
+		$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
+endif()
 
 # --- one executable per workload family --------------------------------------
 set(MATRIX_PRO_BENCHES
@@ -44,6 +52,9 @@ set(MATRIX_PRO_BENCHES
 	sparse
 	training
 	comparison
+	external_gemm
+	external_linalg
+	external_sparse
 )
 
 foreach(bench IN LISTS MATRIX_PRO_BENCHES)

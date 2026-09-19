@@ -47,11 +47,51 @@ __global__ void add_row_vector_kernel(const float* __restrict__ matrix, const fl
     output[index] = matrix[index] + vector[index % cols];
 }
 
+// float4 path when cols is a multiple of 4: one vector load of the row segment
+// plus four scalar bias lookups (or one float4 bias load when col%4==0).
+__global__ void add_row_vector_vec4_kernel(const float4* __restrict__ matrix,
+                                          const float* __restrict__ vector,
+                                          float4* __restrict__ output,
+                                          std::size_t n4, std::size_t cols) {
+    const std::size_t stride = static_cast<std::size_t>(gridDim.x) * blockDim.x;
+    for (std::size_t i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+         i < n4; i += stride) {
+        const std::size_t base = i * 4;
+        const std::size_t col = base % cols;
+        const float4 m = matrix[i];
+        float4 r;
+        r.x = m.x + vector[col];
+        r.y = m.y + vector[col + 1];
+        r.z = m.z + vector[col + 2];
+        r.w = m.w + vector[col + 3];
+        output[i] = r;
+    }
+}
+
 __global__ void add_col_vector_kernel(const float* __restrict__ matrix, const float* __restrict__ vector,
                                       float* __restrict__ output, std::size_t rows, std::size_t cols) {
     const auto index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= rows * cols) return;
     output[index] = matrix[index] + vector[index / cols];
+}
+
+__global__ void add_col_vector_vec4_kernel(const float4* __restrict__ matrix,
+                                          const float* __restrict__ vector,
+                                          float4* __restrict__ output,
+                                          std::size_t n4, std::size_t cols) {
+    const std::size_t stride = static_cast<std::size_t>(gridDim.x) * blockDim.x;
+    for (std::size_t i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+         i < n4; i += stride) {
+        const std::size_t row = (i * 4) / cols;
+        const float v = vector[row];
+        const float4 m = matrix[i];
+        float4 r;
+        r.x = m.x + v;
+        r.y = m.y + v;
+        r.z = m.z + v;
+        r.w = m.w + v;
+        output[i] = r;
+    }
 }
 
 __global__ void mul_row_vector_kernel(const float* __restrict__ matrix, const float* __restrict__ vector,
@@ -61,6 +101,24 @@ __global__ void mul_row_vector_kernel(const float* __restrict__ matrix, const fl
     output[index] = matrix[index] * vector[index % cols];
 }
 
+__global__ void mul_row_vector_vec4_kernel(const float4* __restrict__ matrix,
+                                          const float* __restrict__ vector,
+                                          float4* __restrict__ output,
+                                          std::size_t n4, std::size_t cols) {
+    const std::size_t stride = static_cast<std::size_t>(gridDim.x) * blockDim.x;
+    for (std::size_t i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+         i < n4; i += stride) {
+        const std::size_t col = (i * 4) % cols;
+        const float4 m = matrix[i];
+        float4 r;
+        r.x = m.x * vector[col];
+        r.y = m.y * vector[col + 1];
+        r.z = m.z * vector[col + 2];
+        r.w = m.w * vector[col + 3];
+        output[i] = r;
+    }
+}
+
 __global__ void mul_col_vector_kernel(const float* __restrict__ matrix, const float* __restrict__ vector,
                                       float* __restrict__ output, std::size_t rows, std::size_t cols) {
     const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -68,8 +126,27 @@ __global__ void mul_col_vector_kernel(const float* __restrict__ matrix, const fl
     output[index] = matrix[index] * vector[index / cols];
 }
 
+__global__ void mul_col_vector_vec4_kernel(const float4* __restrict__ matrix,
+                                          const float* __restrict__ vector,
+                                          float4* __restrict__ output,
+                                          std::size_t n4, std::size_t cols) {
+    const std::size_t stride = static_cast<std::size_t>(gridDim.x) * blockDim.x;
+    for (std::size_t i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+         i < n4; i += stride) {
+        const std::size_t row = (i * 4) / cols;
+        const float v = vector[row];
+        const float4 m = matrix[i];
+        float4 r;
+        r.x = m.x * v;
+        r.y = m.y * v;
+        r.z = m.z * v;
+        r.w = m.w * v;
+        output[i] = r;
+    }
+}
+
 Matrix unary(const Matrix& matrix, UnaryOp op, float a = 0.0f, float b = 0.0f) {
-    Matrix output(matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
     detail::launch_unary(matrix.device_data(), output.device_data(), matrix.size(),
                          UnaryDispatcher{op, a, b}, compute_stream());
     checkCuda(cudaGetLastError(), "unary kernel launch");
@@ -83,7 +160,7 @@ Matrix add(const Matrix& left, const Matrix& right) {
     if (left.rows() != right.rows() || left.cols() != right.cols()) {
         throw ShapeMismatchError("Matrix shapes must match");
     }
-    Matrix output(left.rows(), left.cols());
+    Matrix output(left.rows(), left.cols(), MemoryMode::device_only);
     detail::launch_binary(left.device_data(), right.device_data(), output.device_data(),
                           left.size(), AddOp{}, compute_stream());
     checkCuda(cudaGetLastError(), "add kernel launch");
@@ -95,7 +172,7 @@ Matrix subtract(const Matrix& left, const Matrix& right) {
     if (left.rows() != right.rows() || left.cols() != right.cols()) {
         throw ShapeMismatchError("Matrix shapes must match");
     }
-    Matrix output(left.rows(), left.cols());
+    Matrix output(left.rows(), left.cols(), MemoryMode::device_only);
     detail::launch_binary(left.device_data(), right.device_data(), output.device_data(),
                           left.size(), SubtractOp{}, compute_stream());
     checkCuda(cudaGetLastError(), "subtract kernel launch");
@@ -107,7 +184,7 @@ Matrix elementwise_multiply(const Matrix& left, const Matrix& right) {
     if (left.rows() != right.rows() || left.cols() != right.cols()) {
         throw ShapeMismatchError("Matrix shapes must match");
     }
-    Matrix output(left.rows(), left.cols());
+    Matrix output(left.rows(), left.cols(), MemoryMode::device_only);
     detail::launch_binary(left.device_data(), right.device_data(), output.device_data(),
                           left.size(), MultiplyOp{}, compute_stream());
     checkCuda(cudaGetLastError(), "elementwise multiply kernel launch");
@@ -116,7 +193,7 @@ Matrix elementwise_multiply(const Matrix& left, const Matrix& right) {
 }
 
 Matrix multiply(const Matrix& matrix, float scalar) {
-    Matrix output(matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
     detail::launch_unary(matrix.device_data(), output.device_data(), matrix.size(),
                          MultiplyScalarOp{scalar}, compute_stream());
     checkCuda(cudaGetLastError(), "scalar kernel launch");
@@ -125,7 +202,7 @@ Matrix multiply(const Matrix& matrix, float scalar) {
 }
 
 Matrix add_scalar(const Matrix& matrix, float value) {
-    Matrix output(matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
     detail::launch_unary(matrix.device_data(), output.device_data(), matrix.size(),
                          AddScalarOp{value}, compute_stream());
     checkCuda(cudaGetLastError(), "add scalar kernel launch");
@@ -145,9 +222,17 @@ Matrix negate(const Matrix& matrix) { return unary(matrix, UnaryOp::negate); }
 
 Matrix add_row_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.cols()) throw ShapeMismatchError("Row vector length must equal column count");
-    Matrix output(matrix.rows(), matrix.cols());
-    add_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
-        matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
+    if ((matrix.cols() % 4) == 0 && matrix.size() >= 4 &&
+        detail::is_aligned4(matrix.device_data()) && detail::is_aligned4(output.device_data())) {
+        const std::size_t n4 = matrix.size() / 4;
+        add_row_vector_vec4_kernel<<<detail::capped_grid(n4, 256), 256, 0, compute_stream()>>>(
+            reinterpret_cast<const float4*>(matrix.device_data()), vector.device_data(),
+            reinterpret_cast<float4*>(output.device_data()), n4, matrix.cols());
+    } else {
+        add_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
+            matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    }
     checkCuda(cudaGetLastError(), "add row vector kernel launch");
     output.mark_host_stale();
     return output;
@@ -155,9 +240,17 @@ Matrix add_row_vector(const Matrix& matrix, const Matrix& vector) {
 
 Matrix add_col_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.rows()) throw ShapeMismatchError("Column vector length must equal row count");
-    Matrix output(matrix.rows(), matrix.cols());
-    add_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
-        matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
+    if ((matrix.cols() % 4) == 0 && matrix.size() >= 4 &&
+        detail::is_aligned4(matrix.device_data()) && detail::is_aligned4(output.device_data())) {
+        const std::size_t n4 = matrix.size() / 4;
+        add_col_vector_vec4_kernel<<<detail::capped_grid(n4, 256), 256, 0, compute_stream()>>>(
+            reinterpret_cast<const float4*>(matrix.device_data()), vector.device_data(),
+            reinterpret_cast<float4*>(output.device_data()), n4, matrix.cols());
+    } else {
+        add_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
+            matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    }
     checkCuda(cudaGetLastError(), "add col vector kernel launch");
     output.mark_host_stale();
     return output;
@@ -165,9 +258,17 @@ Matrix add_col_vector(const Matrix& matrix, const Matrix& vector) {
 
 Matrix multiply_row_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.cols()) throw ShapeMismatchError("Row vector length must equal column count");
-    Matrix output(matrix.rows(), matrix.cols());
-    mul_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
-        matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
+    if ((matrix.cols() % 4) == 0 && matrix.size() >= 4 &&
+        detail::is_aligned4(matrix.device_data()) && detail::is_aligned4(output.device_data())) {
+        const std::size_t n4 = matrix.size() / 4;
+        mul_row_vector_vec4_kernel<<<detail::capped_grid(n4, 256), 256, 0, compute_stream()>>>(
+            reinterpret_cast<const float4*>(matrix.device_data()), vector.device_data(),
+            reinterpret_cast<float4*>(output.device_data()), n4, matrix.cols());
+    } else {
+        mul_row_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
+            matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    }
     checkCuda(cudaGetLastError(), "multiply row vector kernel launch");
     output.mark_host_stale();
     return output;
@@ -175,9 +276,17 @@ Matrix multiply_row_vector(const Matrix& matrix, const Matrix& vector) {
 
 Matrix multiply_col_vector(const Matrix& matrix, const Matrix& vector) {
     if (vector.size() != matrix.rows()) throw ShapeMismatchError("Column vector length must equal row count");
-    Matrix output(matrix.rows(), matrix.cols());
-    mul_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
-        matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    Matrix output(matrix.rows(), matrix.cols(), MemoryMode::device_only);
+    if ((matrix.cols() % 4) == 0 && matrix.size() >= 4 &&
+        detail::is_aligned4(matrix.device_data()) && detail::is_aligned4(output.device_data())) {
+        const std::size_t n4 = matrix.size() / 4;
+        mul_col_vector_vec4_kernel<<<detail::capped_grid(n4, 256), 256, 0, compute_stream()>>>(
+            reinterpret_cast<const float4*>(matrix.device_data()), vector.device_data(),
+            reinterpret_cast<float4*>(output.device_data()), n4, matrix.cols());
+    } else {
+        mul_col_vector_kernel<<<static_cast<unsigned>((matrix.size() + 255) / 256), 256, 0, compute_stream()>>>(
+            matrix.device_data(), vector.device_data(), output.device_data(), matrix.rows(), matrix.cols());
+    }
     checkCuda(cudaGetLastError(), "multiply col vector kernel launch");
     output.mark_host_stale();
     return output;

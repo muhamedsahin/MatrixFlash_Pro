@@ -130,6 +130,19 @@ void run_gemm_cases(const Options& options, std::vector<Result>& out,
                        "mflash operator* (measured)");
         }
 
+        // (a2) MatrixFlash-Pro multiply_into on a pre-allocated device buffer
+        // — apples-to-apples versus raw cuBLAS (no alloc in the timed region).
+        {
+            Matrix left = Matrix::ones(n, n);
+            Matrix right = Matrix::ones(n, n);
+            Matrix output(n, n, MemoryMode::device_only);
+            const Stats ms = sample_ms(
+                [&] { multiply_into(left, right, output); }, options);
+            add_result(out, "comparison", label, n, ms,
+                       to_gflops(flops, ms.median), "GFLOPS",
+                       "mflash multiply_into, no alloc (measured)");
+        }
+
         // (b) Raw cuBLAS on pre-allocated buffers (no alloc in timing).
         {
             float* raw_left = nullptr;

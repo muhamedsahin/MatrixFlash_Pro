@@ -55,13 +55,39 @@ __global__ void reduce_partial_kernel(const float* input, std::size_t count, flo
 
     float sum = 0.0f, sum_sq = 0.0f, sum_l1 = 0.0f;
     float local_min = FLT_MAX, local_max = -FLT_MAX;
-    for (std::size_t index = blockIdx.x * reduce_block + tid; index < count; index += gridDim.x * reduce_block) {
-        const float value = input[index];
-        sum += value;
-        sum_l1 += fabsf(value);
-        sum_sq += value * value;
-        local_min = fminf(local_min, value);
-        local_max = fmaxf(local_max, value);
+
+    // float4 prefix: 4x fewer global loads on aligned buffers.
+    const std::size_t n4 = count / 4;
+    if (n4 > 0 && (reinterpret_cast<uintptr_t>(input) & 0xFu) == 0u) {
+        const float4* in4 = reinterpret_cast<const float4*>(input);
+        for (std::size_t index = blockIdx.x * reduce_block + tid; index < n4;
+             index += static_cast<std::size_t>(gridDim.x) * reduce_block) {
+            const float4 v = in4[index];
+            sum += v.x + v.y + v.z + v.w;
+            sum_l1 += fabsf(v.x) + fabsf(v.y) + fabsf(v.z) + fabsf(v.w);
+            sum_sq += v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
+            local_min = fminf(local_min, fminf(fminf(v.x, v.y), fminf(v.z, v.w)));
+            local_max = fmaxf(local_max, fmaxf(fmaxf(v.x, v.y), fmaxf(v.z, v.w)));
+        }
+        for (std::size_t index = n4 * 4 + blockIdx.x * reduce_block + tid; index < count;
+             index += static_cast<std::size_t>(gridDim.x) * reduce_block) {
+            const float value = input[index];
+            sum += value;
+            sum_l1 += fabsf(value);
+            sum_sq += value * value;
+            local_min = fminf(local_min, value);
+            local_max = fmaxf(local_max, value);
+        }
+    } else {
+        for (std::size_t index = blockIdx.x * reduce_block + tid; index < count;
+             index += static_cast<std::size_t>(gridDim.x) * reduce_block) {
+            const float value = input[index];
+            sum += value;
+            sum_l1 += fabsf(value);
+            sum_sq += value * value;
+            local_min = fminf(local_min, value);
+            local_max = fmaxf(local_max, value);
+        }
     }
 
     ssum[tid] = sum; ssq[tid] = sum_sq; sl1[tid] = sum_l1;

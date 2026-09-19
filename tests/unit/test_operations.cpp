@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "matrix_pro/core/matrix.hpp"
+#include "matrix_pro/ops/product.hpp"
 
 #include "test_support.hpp"
 using matrix_pro::test::check;
@@ -26,14 +27,26 @@ int main() {
 			check(std::abs(c.at(1, 1) - 154.0f) < 1e-3f, "matmul c11");
 		}
 
-		// --- singleton / small matmul round-trip through host reference ---
+		// --- multiply_into + fused gemm_bias_relu ---
 		{
-			Matrix a{{1.0f, -2.0f}, {3.0f, 4.0f}};
-			Matrix b{{2.0f, 1.0f}, {0.0f, 2.0f}};
-			Matrix c = a * b;
-			c.download();
-			check(std::abs(c.at(0, 0) - 2.0f) < 1e-3f && std::abs(c.at(1, 1) - 11.0f) < 1e-3f, "matmul 2x2");
+			Matrix a{{1.0f, 2.0f}, {3.0f, 4.0f}};
+			Matrix b{{2.0f, 0.0f}, {1.0f, 2.0f}};
+			Matrix out(2, 2, matrix_pro::MemoryMode::device_only);
+			matrix_pro::multiply_into(a, b, out);
+			out.download();
+			check(std::abs(out.at(0, 0) - 4.0f) < 1e-3f, "multiply_into 00");
+			check(std::abs(out.at(1, 1) - 8.0f) < 1e-3f, "multiply_into 11");
+
+			Matrix bias{{1.0f, -10.0f}};
+			Matrix fused = matrix_pro::gemm_bias_relu(a, b, bias);
+			fused.download();
+			// AB = [[4,4],[10,8]]; +bias = [[5,-6],[11,-2]]; relu -> [[5,0],[11,0]]
+			check(std::abs(fused.at(0, 0) - 5.0f) < 1e-2f, "gemm_bias_relu 00");
+			check(std::abs(fused.at(0, 1) - 0.0f) < 1e-2f, "gemm_bias_relu 01");
+			check(std::abs(fused.at(1, 0) - 11.0f) < 1e-2f, "gemm_bias_relu 10");
+			check(std::abs(fused.at(1, 1) - 0.0f) < 1e-2f, "gemm_bias_relu 11");
 		}
+
 
 		// --- outer_product ---
 		{

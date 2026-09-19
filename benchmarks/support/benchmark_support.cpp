@@ -133,7 +133,10 @@ std::vector<BenchmarkInfo> all_benchmarks() {
             precision_benchmark(),
             sparse_benchmark(),
             training_benchmark(),
-            comparison_benchmark()};
+            comparison_benchmark(),
+            external_gemm_benchmark(),
+            external_linalg_benchmark(),
+            external_sparse_benchmark()};
 }
 
 // ============================================================================

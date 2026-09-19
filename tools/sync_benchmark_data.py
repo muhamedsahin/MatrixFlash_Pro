@@ -10,7 +10,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "benchmarks" / "results"
 DST = ROOT / "doc" / "public" / "data" / "benchmarks"
 
-COPY_FILES = ["comparison.json", "matmul.json"]
+COPY_FILES = [
+    "comparison.json",
+    "matmul.json",
+    "training.json",
+    "rivals.json",
+    "external_gemm.json",
+]
+
 
 def main() -> None:
     DST.mkdir(parents=True, exist_ok=True)
@@ -23,6 +30,7 @@ def main() -> None:
         json.loads(src.read_text(encoding="utf-8"))
         shutil.copy2(src, DST / name)
         print(f"synced: {name}")
+
 
 if __name__ == "__main__":
     main()

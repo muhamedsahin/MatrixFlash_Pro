@@ -6,240 +6,601 @@
       "en": "PERFORMANCE COMPARISON"
     },
     "title": {
-      "tr": "MatrixFlash-Pro vs Benzer Araclar",
-      "en": "MatrixFlash-Pro vs Similar Tools"
+      "tr": "MatrixFlash-Pro vs cuBLAS ve Piyasa Motorlari",
+      "en": "MatrixFlash-Pro vs cuBLAS and Market Engines"
     },
     "description": {
-      "tr": "Ayni makinede olculmus GEMM ve MLP baz cizgileri: MatrixFlash-Pro, ham cuBLAS, naive CUDA cekirdegi, tek-thread CPU ve autograd bant maliyeti.",
-      "en": "Same-machine GEMM and MLP baselines: MatrixFlash-Pro, raw cuBLAS, a naive CUDA kernel, single-thread CPU and the autograd tape cost."
+      "tr": "Ayni makinede olculmus GEMM: MatrixFlash-Pro, NVIDIA cuBLAS/cublasLt, NumPy@OpenBLAS; PyTorch/CuPy/ArrayFire/Eigen/JAX baglami; fused epilogue.",
+      "en": "Same-machine GEMM: MatrixFlash-Pro, NVIDIA cuBLAS/cublasLt, NumPy@OpenBLAS; PyTorch/CuPy/ArrayFire/Eigen/JAX context; fused epilogue."
     }
   },
   "sections": [
     {
       "id": "metodoloji",
       "title": {
-        "tr": "Metodoloji ve Adillik Kurallari",
-        "en": "Methodology and Fairness Rules"
+        "tr": "Metodoloji",
+        "en": "Methodology"
       },
       "intro": {
-        "tr": "Tum 'olculdu' satirlari RTX 3070 Laptop GPU (CC 8.6, 8 GiB) uzerinde, release preset ile alindi. GPU: CUDA-event medyan, CPU: chrono wall-clock medyan. Her vaka 3 warmup + 10 tekrar.",
-        "en": "Every 'measured' row comes from an RTX 3070 Laptop GPU (CC 8.6, 8 GiB), release preset. GPU: CUDA-event median, CPU: chrono wall-clock median. Each case: 3 warmup + 10 repeats."
+        "tr": "Cihaz: NVIDIA GeForce RTX 3070 Laptop GPU. Zaman damgasi: 2026-09-19T10:59:33. GPU: CUDA-event medyan (warmup 12, tekrar 40). NumPy: OpenBLAS wall-clock. multiply_into / cuBLAS oranlari: 256: %64, 512: %138, 1024: %99, 2048: %102.",
+        "en": "Device: NVIDIA GeForce RTX 3070 Laptop GPU. Timestamp: 2026-09-19T10:59:33. GPU: CUDA-event median (warmup 12, repeats 40). NumPy: OpenBLAS wall-clock. multiply_into / cuBLAS ratios: 256: %64, 512: %138, 1024: %99, 2048: %102."
       },
       "blocks": [
         {
-          "type": "list",
-          "items": [
-            {
-              "tr": "Olculdu: ayni makinede bu repo ile tekrar uretilebilir.",
-              "en": "Measured: reproducible on the same machine with this repo."
-            },
-            {
-              "tr": "Referans (harici): PyTorch / ArrayFire / OpenBLAS degerleri literaturdendir.",
-              "en": "Reference (external): PyTorch / ArrayFire / OpenBLAS figures are from the literature."
-            },
-            {
-              "tr": "mflash operator*: ciktiyi tahsis eder (gercek maliyet).",
-              "en": "mflash operator*: allocates its output (real cost)."
-            },
-            {
-              "tr": "raw cuBLAS: onceden tahsisli tamponda kosar (saf cekirdek hizi).",
-              "en": "raw cuBLAS: runs on pre-allocated buffers (pure kernel speed)."
-            },
-            {
-              "tr": "CPU naive yalnizca n <= 512 icin kosar.",
-              "en": "CPU naive runs only for n <= 512."
-            }
-          ]
-        },
-        {
           "type": "callout",
-          "variant": "warn",
+          "variant": "tip",
           "title": {
-            "tr": "Sayilari dogru okuyun",
-            "en": "Read the numbers correctly"
+            "tr": "Hedef: her zaman cuBLAS sinifi",
+            "en": "Goal: always cuBLAS-class"
           },
           "text": {
-            "tr": "GFLOPS yuksek-iyi, ms dusuk-iyi metriktir. Ham cuBLAS satirindaki asiri yuksek GFLOPS, tahsissiz mikro-benchmark etkisidir.",
-            "en": "GFLOPS is higher-is-better, ms is lower-is-better. The very high GFLOPS on the raw cuBLAS row is the allocation-free micro-benchmark effect."
+            "tr": "Buyuk GEMM'de algo-cache'li cublasLt + TENSOR_OP GemmEx kullanilir. 2048'de multiply_into ham cuBLAS'i gecer; 1024'te ~%99. Fused gemm+bias+relu zinciri her zaman gecer.",
+            "en": "Large GEMM uses algo-cached cublasLt + TENSOR_OP GemmEx. At 2048 multiply_into beats raw cuBLAS; at 1024 ~99%. Fused gemm+bias+relu always beats the unfused chain."
           }
         },
         {
           "type": "code",
           "lang": "bash",
           "filename": "terminal",
-          "code": "cmake --preset release\ncmake --build --preset release --target matrix_pro_bench_comparison\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json\npython tools/sync_benchmark_data.py"
+          "code": "cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm matrix_pro_bench_training\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json\n./build/benchmarks/Release/matrix_pro_bench_external_gemm.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/external_gemm.json\npy -3 tools/bench_rivals.py\npython tools/gen_bench_page.py\npython tools/sync_benchmark_data.py"
         }
       ]
     },
     {
       "id": "gemm",
       "title": {
-        "tr": "GEMM: Kare Matris Carpimi (olculdu)",
-        "en": "GEMM: Square Matmul (measured)"
+        "tr": "GEMM — MatrixFlash-Pro vs ham cuBLAS (olculdu)",
+        "en": "GEMM — vs raw cuBLAS (measured)"
       },
       "intro": {
-        "tr": "RTX 3070 Laptop, 19.09.2026 olcumu. mflash = Matrix::operator*, raw-cuBLAS = onceden tahsisli cublasGemmEx, naive-gpu = ilk-deneme cekirdegi, cpu-naive = tek-thread uclu dongu.",
-        "en": "RTX 3070 Laptop, measured 2026-09-19. mflash = Matrix::operator*, raw-cuBLAS = pre-allocated cublasGemmEx, naive-gpu = first-attempt kernel, cpu-naive = single-thread triple loop."
+        "tr": "multiply_into = tahsissiz hot path (cuBLAS ile ayni kosul). operator* = device_only cikti tahsisi dahil.",
+        "en": "multiply_into = allocation-free hot path (same condition as cuBLAS). operator* = includes device_only output allocation."
       },
       "blocks": [
         {
           "type": "table",
           "headers": [
             {
-              "tr": "Vaka (NxN)",
-              "en": "Case (NxN)"
+              "tr": "Vaka",
+              "en": "Case"
             },
             {
-              "tr": "mflash (ms / GFLOPS)",
-              "en": "mflash (ms / GFLOPS)"
+              "tr": "mflash operator*",
+              "en": "mflash operator*"
             },
             {
-              "tr": "ham cuBLAS (ms / GFLOPS)",
-              "en": "raw cuBLAS (ms / GFLOPS)"
+              "tr": "mflash multiply_into",
+              "en": "mflash multiply_into"
             },
             {
-              "tr": "naive GPU (ms / GFLOPS)",
-              "en": "naive GPU (ms / GFLOPS)"
+              "tr": "ham cuBLAS",
+              "en": "raw cuBLAS"
             },
             {
-              "tr": "CPU naive (ms / GFLOPS)",
-              "en": "CPU naive (ms / GFLOPS)"
+              "tr": "naive GPU",
+              "en": "naive GPU"
+            },
+            {
+              "tr": "CPU naive",
+              "en": "CPU naive"
             }
           ],
           "rows": [
             [
               {
-                "tr": "256x256 olculdu",
-                "en": "256x256 measured"
+                "tr": "256x256",
+                "en": "256x256"
               },
               {
-                "tr": "0.041 ms / 819 GFLOPS",
-                "en": "0.041 ms / 819 GFLOPS"
+                "tr": "0.017 ms / 1928 GFLOPS",
+                "en": "0.017 ms / 1928 GFLOPS"
               },
               {
-                "tr": "0.032 ms / 1040 GFLOPS",
-                "en": "0.032 ms / 1040 GFLOPS"
+                "tr": "0.027 ms / 1237 GFLOPS",
+                "en": "0.027 ms / 1237 GFLOPS"
               },
               {
-                "tr": "0.050 ms / 676 GFLOPS",
-                "en": "0.050 ms / 676 GFLOPS"
+                "tr": "0.017 ms / 1928 GFLOPS",
+                "en": "0.017 ms / 1928 GFLOPS"
               },
               {
-                "tr": "15.02 ms / 2.23 GFLOPS",
-                "en": "15.02 ms / 2.23 GFLOPS"
+                "tr": "0.045 ms / 745 GFLOPS",
+                "en": "0.045 ms / 745 GFLOPS"
+              },
+              {
+                "tr": "12.93 ms / 3 GFLOPS",
+                "en": "12.93 ms / 3 GFLOPS"
               }
             ],
             [
               {
-                "tr": "512x512 olculdu",
-                "en": "512x512 measured"
+                "tr": "512x512",
+                "en": "512x512"
               },
               {
-                "tr": "0.345 ms / 779 GFLOPS",
-                "en": "0.345 ms / 779 GFLOPS"
+                "tr": "0.057 ms / 4681 GFLOPS",
+                "en": "0.057 ms / 4681 GFLOPS"
               },
               {
-                "tr": "0.052 ms / 5140 GFLOPS",
-                "en": "0.052 ms / 5140 GFLOPS"
+                "tr": "0.051 ms / 5243 GFLOPS",
+                "en": "0.051 ms / 5243 GFLOPS"
               },
               {
-                "tr": "0.300 ms / 896 GFLOPS",
-                "en": "0.300 ms / 896 GFLOPS"
+                "tr": "0.071 ms / 3799 GFLOPS",
+                "en": "0.071 ms / 3799 GFLOPS"
               },
               {
-                "tr": "105.83 ms / 2.54 GFLOPS",
-                "en": "105.83 ms / 2.54 GFLOPS"
+                "tr": "0.290 ms / 926 GFLOPS",
+                "en": "0.290 ms / 926 GFLOPS"
+              },
+              {
+                "tr": "98.73 ms / 3 GFLOPS",
+                "en": "98.73 ms / 3 GFLOPS"
               }
             ],
             [
+              {
+                "tr": "1024x1024",
+                "en": "1024x1024"
+              },
+              {
+                "tr": "0.214 ms / 10058 GFLOPS",
+                "en": "0.214 ms / 10058 GFLOPS"
+              },
+              {
+                "tr": "0.193 ms / 11155 GFLOPS",
+                "en": "0.193 ms / 11155 GFLOPS"
+              },
+              {
+                "tr": "0.190 ms / 11275 GFLOPS",
+                "en": "0.190 ms / 11275 GFLOPS"
+              },
+              {
+                "tr": "2.215 ms / 970 GFLOPS",
+                "en": "2.215 ms / 970 GFLOPS"
+              },
+              {
+                "tr": "—",
+                "en": "—"
+              }
+            ],
+            [
+              {
+                "tr": "2048x2048",
+                "en": "2048x2048"
+              },
+              {
+                "tr": "1.054 ms / 16296 GFLOPS",
+                "en": "1.054 ms / 16296 GFLOPS"
+              },
+              {
+                "tr": "1.023 ms / 16794 GFLOPS",
+                "en": "1.023 ms / 16794 GFLOPS"
+              },
+              {
+                "tr": "1.039 ms / 16537 GFLOPS",
+                "en": "1.039 ms / 16537 GFLOPS"
+              },
+              {
+                "tr": "—",
+                "en": "—"
+              },
+              {
+                "tr": "—",
+                "en": "—"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rakipler",
+      "title": {
+        "tr": "Piyasadaki Iddiali Motorlar (6+)",
+        "en": "Market Contenders (6+)"
+      },
+      "intro": {
+        "tr": "Ayni is: yogun FP32 kare GEMM. Olculenler bu makinede; referans satirlari acikca isaretli. PyTorch/CuPy/ArrayFire/JAX icerde cuBLAS kullanir — tepe bant ayni sinif; MatrixFlash-Pro farki C++17 API + fused epilogue + algo-cache ile tutarli cuBLAS-sinifi hiz.",
+        "en": "Same job: dense FP32 square GEMM. Measured rows are on this machine; reference rows are labeled. PyTorch/CuPy/ArrayFire/JAX call cuBLAS internally — same ceiling class; MatrixFlash-Pro differentiates with a C++17 API, fused epilogues, and algo-cache for consistent cuBLAS-class speed."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            {
+              "tr": "Motor",
+              "en": "Engine"
+            },
+            {
+              "tr": "Tur",
+              "en": "Kind"
+            },
+            {
+              "tr": "Hiz (odak 1024²)",
+              "en": "Speed (focus 1024²)"
+            },
+            {
+              "tr": "Durum",
+              "en": "Status"
+            },
+            {
+              "tr": "Not",
+              "en": "Note"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "tr": "MatrixFlash-Pro",
+                "en": "MatrixFlash-Pro"
+              },
+              {
+                "tr": "C++17 / CUDA library",
+                "en": "C++17 / CUDA library"
+              },
+              {
+                "tr": "0.193 ms / 11155 GFLOPS",
+                "en": "0.193 ms / 11155 GFLOPS"
+              },
               {
                 "tr": "1024x1024 olculdu",
                 "en": "1024x1024 measured"
               },
               {
-                "tr": "0.751 ms / 2859 GFLOPS",
-                "en": "0.751 ms / 2859 GFLOPS"
-              },
-              {
-                "tr": "0.195 ms / 11038 GFLOPS",
-                "en": "0.195 ms / 11038 GFLOPS"
-              },
-              {
-                "tr": "2.230 ms / 963 GFLOPS",
-                "en": "2.230 ms / 963 GFLOPS"
-              },
-              {
-                "tr": "atlandi (O(n3) host)",
-                "en": "skipped (O(n3) host)"
+                "tr": "mflash multiply_into, no alloc (measured)",
+                "en": "mflash multiply_into, no alloc (measured)"
               }
             ],
             [
               {
-                "tr": "2048x2048 olculdu",
-                "en": "2048x2048 measured"
+                "tr": "NVIDIA cuBLAS",
+                "en": "NVIDIA cuBLAS"
               },
               {
-                "tr": "3.049 ms / 5635 GFLOPS",
-                "en": "3.049 ms / 5635 GFLOPS"
+                "tr": "Vendor BLAS",
+                "en": "Vendor BLAS"
               },
               {
-                "tr": "1.238 ms / 13877 GFLOPS",
-                "en": "1.238 ms / 13877 GFLOPS"
+                "tr": "0.190 ms / 11275 GFLOPS",
+                "en": "0.190 ms / 11275 GFLOPS"
               },
               {
-                "tr": "atlandi (O(n3) thread)",
-                "en": "skipped (O(n3) threads)"
+                "tr": "1024x1024 olculdu",
+                "en": "1024x1024 measured"
               },
               {
-                "tr": "atlandi (O(n3) host)",
-                "en": "skipped (O(n3) host)"
+                "tr": "raw cublasGemmEx, no alloc (measured)",
+                "en": "raw cublasGemmEx, no alloc (measured)"
+              }
+            ],
+            [
+              {
+                "tr": "NVIDIA cublasLt",
+                "en": "NVIDIA cublasLt"
+              },
+              {
+                "tr": "Vendor matmul (Lt)",
+                "en": "Vendor matmul (Lt)"
+              },
+              {
+                "tr": "0.283 ms / 7600 GFLOPS",
+                "en": "0.283 ms / 7600 GFLOPS"
+              },
+              {
+                "tr": "1024x1024 olculdu",
+                "en": "1024x1024 measured"
+              },
+              {
+                "tr": "cublasLt pre-alloc, no wrapper (measured)",
+                "en": "cublasLt pre-alloc, no wrapper (measured)"
+              }
+            ],
+            [
+              {
+                "tr": "NumPy @ OpenBLAS",
+                "en": "NumPy @ OpenBLAS"
+              },
+              {
+                "tr": "Python / CPU BLAS",
+                "en": "Python / CPU BLAS"
+              },
+              {
+                "tr": "6.259 ms / 343 GFLOPS",
+                "en": "6.259 ms / 343 GFLOPS"
+              },
+              {
+                "tr": "1024x1024 olculdu",
+                "en": "1024x1024 measured"
+              },
+              {
+                "tr": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)",
+                "en": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)"
+              }
+            ],
+            [
+              {
+                "tr": "PyTorch (CUDA)",
+                "en": "PyTorch (CUDA)"
+              },
+              {
+                "tr": "Python / DL framework",
+                "en": "Python / DL framework"
+              },
+              {
+                "tr": "cuBLAS-backed GPU ceiling; Python launch overhead on top of vendor GEMM",
+                "en": "cuBLAS-backed GPU ceiling; Python launch overhead on top of vendor GEMM"
+              },
+              {
+                "tr": "referans (olculmedi)",
+                "en": "reference (not timed)"
+              },
+              {
+                "tr": "reference (torch not installable on this Python 3.14)",
+                "en": "reference (torch not installable on this Python 3.14)"
+              }
+            ],
+            [
+              {
+                "tr": "CuPy",
+                "en": "CuPy"
+              },
+              {
+                "tr": "Python / CUDA arrays",
+                "en": "Python / CUDA arrays"
+              },
+              {
+                "tr": "cuBLAS-backed GPU ceiling; Python overhead on top",
+                "en": "cuBLAS-backed GPU ceiling; Python overhead on top"
+              },
+              {
+                "tr": "referans (olculmedi)",
+                "en": "reference (not timed)"
+              },
+              {
+                "tr": "reference (package not installed)",
+                "en": "reference (package not installed)"
+              }
+            ],
+            [
+              {
+                "tr": "ArrayFire (CUDA)",
+                "en": "ArrayFire (CUDA)"
+              },
+              {
+                "tr": "Array runtime",
+                "en": "Array runtime"
+              },
+              {
+                "tr": "cuBLAS-backed — same GPU ceiling class as mflash/cuBLAS",
+                "en": "cuBLAS-backed — same GPU ceiling class as mflash/cuBLAS"
+              },
+              {
+                "tr": "referans (olculmedi)",
+                "en": "reference (not timed)"
+              },
+              {
+                "tr": "reference (not timed on this machine)",
+                "en": "reference (not timed on this machine)"
+              }
+            ],
+            [
+              {
+                "tr": "Eigen (CPU multi-thread)",
+                "en": "Eigen (CPU multi-thread)"
+              },
+              {
+                "tr": "C++ CPU templates",
+                "en": "C++ CPU templates"
+              },
+              {
+                "tr": "~10–40 GFLOPS fp32 on laptop-class CPUs (well below GPU path)",
+                "en": "~10–40 GFLOPS fp32 on laptop-class CPUs (well below GPU path)"
+              },
+              {
+                "tr": "referans (olculmedi)",
+                "en": "reference (not timed)"
+              },
+              {
+                "tr": "reference (literature / typical laptop)",
+                "en": "reference (literature / typical laptop)"
+              }
+            ],
+            [
+              {
+                "tr": "JAX (CUDA)",
+                "en": "JAX (CUDA)"
+              },
+              {
+                "tr": "Python / XLA",
+                "en": "Python / XLA"
+              },
+              {
+                "tr": "XLA → cuBLAS/cuDNN — same GPU ceiling class",
+                "en": "XLA → cuBLAS/cuDNN — same GPU ceiling class"
+              },
+              {
+                "tr": "referans (olculmedi)",
+                "en": "reference (not timed)"
+              },
+              {
+                "tr": "reference (not timed on this machine)",
+                "en": "reference (not timed on this machine)"
               }
             ]
           ]
         },
         {
           "type": "callout",
-          "variant": "tip",
+          "variant": "info",
           "title": {
-            "tr": "Tablo ne soyluyor",
-            "en": "What the table says"
+            "tr": "Neden PyTorch burada yok?",
+            "en": "Why is PyTorch missing a measured row?"
           },
           "text": {
-            "tr": "CPU'ya karsi ~300-1100x hizlanma. Naive GPU cekirdegine karsi 1024'te ~3x. mflash ile ham cuBLAS farki cogunlukla cikti tahsisi + wrapper maliyetidir.",
-            "en": "300-1100x over CPU. About 3x over the naive GPU kernel at 1024. The mflash vs raw cuBLAS gap is mostly output allocation + wrapper cost."
+            "tr": "Bu makinedeki Python 3.14 icin resmi torch tekerlegi yok. Kurulunca `py -3 tools/bench_rivals.py` otomatik olcer. Beklenen bant: cuBLAS tavani − Python launch overhead.",
+            "en": "No official torch wheel for Python 3.14 on this machine. Once installed, `py -3 tools/bench_rivals.py` measures it. Expected band: cuBLAS ceiling minus Python launch overhead."
           }
         }
       ]
     },
     {
-      "id": "mlp-tape",
+      "id": "olculen-motorlar",
       "title": {
-        "tr": "Egitim Adimi: Autograd Bant Maliyeti (olculdu)",
-        "en": "Training Step: Autograd Tape Cost (measured)"
+        "tr": "Olculen Motorlar — GFLOPS Tablosu",
+        "en": "Measured Engines — GFLOPS Table"
       },
       "intro": {
-        "tr": "2 katmanli MLP (256 giris, 10 sinif, batch=64). mlp-full = ileri + geri, mlp-fwd = yalnizca ileri.",
-        "en": "2-layer MLP (256 inputs, 10 classes, batch=64). mlp-full = forward + backward, mlp-fwd = forward only."
+        "tr": "Sadece bu makinede zamanlanmis motorlar. Yuksek = daha iyi.",
+        "en": "Only engines timed on this machine. Higher is better."
       },
       "blocks": [
         {
           "type": "table",
           "headers": [
             {
-              "tr": "Gizli genislik",
-              "en": "Hidden width"
+              "tr": "Boyut",
+              "en": "Size"
             },
             {
-              "tr": "mlp-full (ms / samples/s)",
-              "en": "mlp-full (ms / samples/s)"
+              "tr": "MatrixFlash-Pro",
+              "en": "MatrixFlash-Pro"
             },
             {
-              "tr": "mlp-fwd (ms / samples/s)",
-              "en": "mlp-fwd (ms / samples/s)"
+              "tr": "NVIDIA cuBLAS",
+              "en": "NVIDIA cuBLAS"
             },
             {
-              "tr": "Bant maliyeti",
-              "en": "Tape cost"
+              "tr": "NVIDIA cublasLt",
+              "en": "NVIDIA cublasLt"
+            },
+            {
+              "tr": "NumPy @ OpenBLAS",
+              "en": "NumPy @ OpenBLAS"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "tr": "256x256",
+                "en": "256x256"
+              },
+              {
+                "tr": "1237 GFLOPS",
+                "en": "1237 GFLOPS"
+              },
+              {
+                "tr": "1928 GFLOPS",
+                "en": "1928 GFLOPS"
+              },
+              {
+                "tr": "504 GFLOPS",
+                "en": "504 GFLOPS"
+              },
+              {
+                "tr": "97 GFLOPS",
+                "en": "97 GFLOPS"
+              }
+            ],
+            [
+              {
+                "tr": "512x512",
+                "en": "512x512"
+              },
+              {
+                "tr": "5243 GFLOPS",
+                "en": "5243 GFLOPS"
+              },
+              {
+                "tr": "3799 GFLOPS",
+                "en": "3799 GFLOPS"
+              },
+              {
+                "tr": "3641 GFLOPS",
+                "en": "3641 GFLOPS"
+              },
+              {
+                "tr": "253 GFLOPS",
+                "en": "253 GFLOPS"
+              }
+            ],
+            [
+              {
+                "tr": "1024x1024",
+                "en": "1024x1024"
+              },
+              {
+                "tr": "11155 GFLOPS",
+                "en": "11155 GFLOPS"
+              },
+              {
+                "tr": "11275 GFLOPS",
+                "en": "11275 GFLOPS"
+              },
+              {
+                "tr": "7600 GFLOPS",
+                "en": "7600 GFLOPS"
+              },
+              {
+                "tr": "343 GFLOPS",
+                "en": "343 GFLOPS"
+              }
+            ],
+            [
+              {
+                "tr": "2048x2048",
+                "en": "2048x2048"
+              },
+              {
+                "tr": "16794 GFLOPS",
+                "en": "16794 GFLOPS"
+              },
+              {
+                "tr": "16537 GFLOPS",
+                "en": "16537 GFLOPS"
+              },
+              {
+                "tr": "8849 GFLOPS",
+                "en": "8849 GFLOPS"
+              },
+              {
+                "tr": "395 GFLOPS",
+                "en": "395 GFLOPS"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fused-gemm",
+      "title": {
+        "tr": "Fused GEMM+Bias+ReLU — zinciri gecme (olculdu)",
+        "en": "Fused GEMM+Bias+ReLU — beating the chain (measured)"
+      },
+      "intro": {
+        "tr": "Bu, ham cuBLAS SGEMM'in otesine gectigimiz yer: tek cublasLt epilogue vs 3 ayri kernel. PyTorch'ta da fused varken, burada saf C++ tek cagri.",
+        "en": "This is where we go beyond plain cuBLAS SGEMM: one cublasLt epilogue vs 3 kernels. PyTorch has fused ops too; here it is a single C++ call."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            {
+              "tr": "Gizli",
+              "en": "Hidden"
+            },
+            {
+              "tr": "fused",
+              "en": "fused"
+            },
+            {
+              "tr": "zincir (3 kernel)",
+              "en": "chain (3 kernels)"
+            },
+            {
+              "tr": "Hizlanma",
+              "en": "Speedup"
             }
           ],
           "rows": [
@@ -249,16 +610,16 @@
                 "en": "h=256"
               },
               {
-                "tr": "1.745 ms / 36678",
-                "en": "1.745 ms / 36678"
+                "tr": "0.127 ms / 66 GFLOPS",
+                "en": "0.127 ms / 66 GFLOPS"
               },
               {
-                "tr": "1.278 ms / 50080",
-                "en": "1.278 ms / 50080"
+                "tr": "0.146 ms / 57 GFLOPS",
+                "en": "0.146 ms / 57 GFLOPS"
               },
               {
-                "tr": "1.4x",
-                "en": "1.4x"
+                "tr": "1.1x",
+                "en": "1.1x"
               }
             ],
             [
@@ -267,16 +628,16 @@
                 "en": "h=512"
               },
               {
-                "tr": "2.078 ms / 30796",
-                "en": "2.078 ms / 30796"
+                "tr": "0.125 ms / 134 GFLOPS",
+                "en": "0.125 ms / 134 GFLOPS"
               },
               {
-                "tr": "1.364 ms / 46922",
-                "en": "1.364 ms / 46922"
+                "tr": "0.218 ms / 77 GFLOPS",
+                "en": "0.218 ms / 77 GFLOPS"
               },
               {
-                "tr": "1.5x",
-                "en": "1.5x"
+                "tr": "1.7x",
+                "en": "1.7x"
               }
             ],
             [
@@ -285,164 +646,19 @@
                 "en": "h=1024"
               },
               {
-                "tr": "2.951 ms / 21686",
-                "en": "2.951 ms / 21686"
+                "tr": "0.039 ms / 862 GFLOPS",
+                "en": "0.039 ms / 862 GFLOPS"
               },
               {
-                "tr": "1.323 ms / 48375",
-                "en": "1.323 ms / 48375"
+                "tr": "0.237 ms / 142 GFLOPS",
+                "en": "0.237 ms / 142 GFLOPS"
               },
               {
-                "tr": "2.2x",
-                "en": "2.2x"
-              }
-            ],
-            [
-              {
-                "tr": "h=2048",
-                "en": "h=2048"
-              },
-              {
-                "tr": "4.152 ms / 15413",
-                "en": "4.152 ms / 15413"
-              },
-              {
-                "tr": "1.693 ms / 37799",
-                "en": "1.693 ms / 37799"
-              },
-              {
-                "tr": "2.5x",
-                "en": "2.5x"
+                "tr": "6.1x",
+                "en": "6.1x"
               }
             ]
           ]
-        },
-        {
-          "type": "p",
-          "text": {
-            "tr": "Bant maliyeti 1.4-2.5x araligindadir. Cikarim yolunda Variable degil Matrix kullanin.",
-            "en": "The tape cost is in the 1.4-2.5x range. Use Matrix, not Variable, on the inference path."
-          }
-        }
-      ]
-    },
-    {
-      "id": "harici-referans",
-      "title": {
-        "tr": "Harici Referanslar (olculmedi)",
-        "en": "External References (not measured)"
-      },
-      "intro": {
-        "tr": "Asagidaki satirlar bu makinede olculmemistir; kaba baglam icin literatur degerleridir.",
-        "en": "The rows below were NOT measured on this machine; literature figures for rough context."
-      },
-      "blocks": [
-        {
-          "type": "table",
-          "headers": [
-            {
-              "tr": "Arac",
-              "en": "Tool"
-            },
-            {
-              "tr": "Islem",
-              "en": "Operation"
-            },
-            {
-              "tr": "Kaba deger",
-              "en": "Rough figure"
-            },
-            {
-              "tr": "Kaynak",
-              "en": "Source"
-            }
-          ],
-          "rows": [
-            [
-              {
-                "tr": "PyTorch (CUDA) referans",
-                "en": "PyTorch (CUDA) reference"
-              },
-              {
-                "tr": "torch.mm fp32, benzer Ampere GPU",
-                "en": "torch.mm fp32, similar Ampere GPU"
-              },
-              {
-                "tr": "cuBLAS tabanli; ham-cuBLAS bandinda",
-                "en": "cuBLAS-based; in raw-cuBLAS band"
-              },
-              {
-                "tr": "pytorch.org/docs",
-                "en": "pytorch.org/docs"
-              }
-            ],
-            [
-              {
-                "tr": "ArrayFire (CUDA) referans",
-                "en": "ArrayFire (CUDA) reference"
-              },
-              {
-                "tr": "matmul fp32, benzer Ampere GPU",
-                "en": "matmul fp32, similar Ampere GPU"
-              },
-              {
-                "tr": "cuBLAS tabanli",
-                "en": "cuBLAS-based"
-              },
-              {
-                "tr": "arrayfire.org/docs",
-                "en": "arrayfire.org/docs"
-              }
-            ],
-            [
-              {
-                "tr": "Eigen (CPU) referans",
-                "en": "Eigen (CPU) reference"
-              },
-              {
-                "tr": "cok-thread MatrixXf carpimi",
-                "en": "multi-thread MatrixXf product"
-              },
-              {
-                "tr": "10-30 GFLOPS bandi",
-                "en": "10-30 GFLOPS band"
-              },
-              {
-                "tr": "eigen.tuxfamily.org",
-                "en": "eigen.tuxfamily.org"
-              }
-            ],
-            [
-              {
-                "tr": "OpenBLAS (CPU) referans",
-                "en": "OpenBLAS (CPU) reference"
-              },
-              {
-                "tr": "sgemm cok-thread",
-                "en": "sgemm multi-thread"
-              },
-              {
-                "tr": "10-40 GFLOPS bandi",
-                "en": "10-40 GFLOPS band"
-              },
-              {
-                "tr": "openblas.net",
-                "en": "openblas.net"
-              }
-            ]
-          ]
-        },
-        {
-          "type": "callout",
-          "variant": "info",
-          "title": {
-            "tr": "Eigen neden olculmedi",
-            "en": "Why Eigen is not measured"
-          },
-          "text": {
-            "tr": "Eigen basligi derleme aninda bulunursa bench otomatik olcer. Bu makinede kurulu degildi.",
-            "en": "The bench measures Eigen automatically when the header is visible at build time. It was not installed here."
-          }
         }
       ]
     },
@@ -453,8 +669,8 @@
         "en": "How to Reproduce"
       },
       "intro": {
-        "tr": "Tek komutla ayni CSV/JSON'u uretin, sonra doc verisini senkronlayin.",
-        "en": "Produce the same CSV/JSON with one command, then sync the doc data."
+        "tr": "comparison + external_gemm + bench_rivals + gen/sync.",
+        "en": "comparison + external_gemm + bench_rivals + gen/sync."
       },
       "blocks": [
         {
@@ -462,41 +678,35 @@
           "items": [
             {
               "title": {
-                "tr": "Karsilastirma benchmarkini derleyin",
-                "en": "Build the comparison benchmark"
+                "tr": "GPU bench",
+                "en": "GPU benches"
               },
               "text": {
-                "tr": "cmake --preset release + target matrix_pro_bench_comparison.",
-                "en": "cmake --preset release + target matrix_pro_bench_comparison."
+                "tr": "matrix_pro_bench_comparison ve external_gemm --json yazdirin.",
+                "en": "Run matrix_pro_bench_comparison and external_gemm with --json."
               }
             },
             {
               "title": {
-                "tr": "Olcumu alin",
-                "en": "Run the measurement"
+                "tr": "Rakip motorlar",
+                "en": "Rival engines"
               },
               "text": {
-                "tr": "--sizes 256,512,1024,2048 --repeats 10 --warmup 3 ile calistirin.",
-                "en": "Run with --sizes 256,512,1024,2048 --repeats 10 --warmup 3."
+                "tr": "py -3 tools/bench_rivals.py (NumPy zorunlu; torch/cupy varsa olculur).",
+                "en": "py -3 tools/bench_rivals.py (NumPy required; torch/cupy measured if present)."
               }
             },
             {
               "title": {
-                "tr": "Doc verisini senkronlayin",
-                "en": "Sync the doc data"
+                "tr": "Doc sync",
+                "en": "Doc sync"
               },
               "text": {
-                "tr": "python tools/sync_benchmark_data.py calistirin.",
-                "en": "Run python tools/sync_benchmark_data.py."
+                "tr": "python tools/gen_bench_page.py && python tools/sync_benchmark_data.py",
+                "en": "python tools/gen_bench_page.py && python tools/sync_benchmark_data.py"
               }
             }
           ]
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "filename": "terminal",
-          "code": "cmake --preset release\ncmake --build --preset release --target matrix_pro_bench_comparison\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --repeats 10 --warmup 3 --csv benchmarks/results/comparison.csv --json benchmarks/results/comparison.json\npython tools/sync_benchmark_data.py"
         }
       ]
     }

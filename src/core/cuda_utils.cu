@@ -25,7 +25,7 @@ struct CudaExecutionContext {
     // internal scratch buffer on the first GEMM of every new shape, which
     // serializes the stream and fights our own memory pool. One 32 MiB
     // workspace per context removes that cost entirely.
-    static constexpr std::size_t workspace_bytes = 32u * 1024u * 1024u;
+    static constexpr std::size_t workspace_bytes = 64u * 1024u * 1024u;
     void* blas_workspace = nullptr;
 
     explicit CudaExecutionContext(int device_index) : device(device_index) {

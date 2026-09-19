@@ -26,7 +26,7 @@ namespace {
 constexpr std::size_t kMinimumSize = 32;
 
 std::vector<std::size_t> default_sizes() {
-    return {256, 512, 1024, 2048};
+    return {32, 64, 256, 512, 1024, 2048};
 }
 
 std::string rectangular_label(std::size_t m, std::size_t k, std::size_t n) {
@@ -71,7 +71,7 @@ void run(const Options& options, std::vector<Result>& out) {
 
             add_result(out, "matmul", format_matrix_label(n, n), n, ms,
                        to_gflops(flops, ms.median), "GFLOPS",
-                       "square, cuBLAS fp32");
+                       "square, shape-aware GEMM");
         }
 
         // --- rectangular GEMM -------------------------------------------------
@@ -109,7 +109,7 @@ void run(const Options& options, std::vector<Result>& out) {
 
 const BenchmarkInfo& matmul_benchmark() {
     static const BenchmarkInfo info{"matmul",
-                                    "dense GEMM (cuBLAS): GFLOPS across square / rectangular shapes",
+                                    "dense GEMM: micro/GEMV/cublasLt dispatcher across shapes",
                                     run};
     return info;
 }
