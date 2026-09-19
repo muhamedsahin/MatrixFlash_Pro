@@ -7,17 +7,19 @@
 //  #include "matrix_pro/matrix_pro.hpp"
 //
 //  pulls in every public module of the library:
-//    core/      Matrix, Tensor, error hierarchy, memory modes, dtypes, CUDA utils
-//    ops/       elementwise, products, reductions, broadcast, shape, transforms,
-//               masking, precision, advanced & cuSOLVER linear algebra
+//    core/      Matrix, Tensor, error hierarchy, memory modes, dtypes, CUDA utils,
+//               backend (device info, multi-GPU), memory pool, serialization
+//    ops/       elementwise, math (trig, erf, rsqrt...), products, reductions,
+//               broadcast, shape, transforms, masking, precision, advanced &
+//               cuSOLVER linear algebra, extended linalg (LU, trsm, matrix_exp)
 //    nn/        activations, losses, normalization/dropout, conv/pooling,
 //               batched GEMM, fused chains, in-place variants
-//    autograd/  Variable / VarTensor reverse-mode engine
-//    sparse/    CSR sparse matrices (spmv, sparse-dense matmul)
+//    autograd/  Variable / VarTensor reverse-mode engine (NoGrad, checkpoint)
+//    sparse/    CSR/COO/CSC sparse matrices (spmv, sparse-dense/sparse matmul)
 //    indexing/  gather / scatter / embedding primitives
 //    view/      zero-copy strided MatrixView
-//    rng/       counter-based device RNG
-//    streams/   stream pool + async reductions
+//    rng/       counter-based device RNG (extended distributions, RNGState)
+//    streams/   stream pool + async reductions + CUDA Graph + Pipeline
 //
 //  NOTE: the device-only helpers in matrix_pro/detail/*.cuh define __global__
 //  kernels and are deliberately NOT part of this umbrella -- include them from
@@ -32,8 +34,13 @@
 #include "matrix_pro/core/matrix.hpp"
 #include "matrix_pro/core/memory_mode.hpp"
 #include "matrix_pro/core/tensor.hpp"
+#include "matrix_pro/core/memory_pool.hpp"
+#include "matrix_pro/core/backend.hpp"
+#include "matrix_pro/core/serialization.hpp"
 
 #include "matrix_pro/ops/operations.hpp"
+#include "matrix_pro/ops/math.hpp"
+#include "matrix_pro/ops/linalg_extended.hpp"
 
 #include "matrix_pro/nn/activation.hpp"
 #include "matrix_pro/nn/batch.hpp"
@@ -47,5 +54,8 @@
 #include "matrix_pro/indexing/indexing.hpp"
 #include "matrix_pro/rng/rng.hpp"
 #include "matrix_pro/sparse/sparse.hpp"
+#include "matrix_pro/sparse/sparse_formats.hpp"
 #include "matrix_pro/streams/stream_pool.hpp"
+#include "matrix_pro/streams/execution.hpp"
 #include "matrix_pro/view/view.hpp"
+

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Menu, X, Globe, Sparkles } from 'lucide-react'
+import { Menu, X, Globe, Sparkles, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { site, topNav } from '@/lib/site'
 import { Logo } from '@/components/logo'
@@ -107,6 +107,17 @@ export function SiteNav() {
             </button>
           </div>
 
+          {/* PDF Technical Manual Download */}
+          <a
+            href="/MatrixFlash_Pro_Technical_Manual.pdf"
+            download="MatrixFlash_Pro_Technical_Manual.pdf"
+            className="hidden items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono font-medium text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-all sm:flex"
+            title="Download MatrixFlash-Pro Technical Manual (57 Pages PDF)"
+          >
+            <FileText className="size-3.5 text-emerald-400" />
+            <span>PDF (57s)</span>
+          </a>
+
           {/* GitHub link */}
           <a
             href={site.github}
@@ -189,10 +200,19 @@ export function SiteNav() {
             })}
 
             <a
+              href="/MatrixFlash_Pro_Technical_Manual.pdf"
+              download="MatrixFlash_Pro_Technical_Manual.pdf"
+              className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            >
+              <FileText className="size-4 text-emerald-400" />
+              <span>{lang === 'tr' ? 'Teknik Manuel PDF (57 Sayfa)' : 'Technical Manual PDF (57 Pages)'}</span>
+            </a>
+
+            <a
               href={site.github}
               target="_blank"
               rel="noreferrer"
-              className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-border bg-card/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card"
+              className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-border bg-card/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card"
             >
               <GithubIcon className="size-4 text-primary" /> GitHub Repository
             </a>

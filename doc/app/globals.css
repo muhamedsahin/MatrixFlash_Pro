@@ -266,6 +266,29 @@
       oklch(0.84 0.2 145 / 0.05) 100%
     );
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .section-highlight {
+    animation: section-pulse 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 1rem;
+  }
+}
+
+@keyframes section-pulse {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.84 0.2 145 / 0);
+  }
+  30% {
+    box-shadow: 0 0 0 3px oklch(0.84 0.2 145 / 0.5), 0 0 30px oklch(0.84 0.2 145 / 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.84 0.2 145 / 0);
+  }
 }
 
 @keyframes grid-pan {

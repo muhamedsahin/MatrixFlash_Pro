@@ -42,8 +42,8 @@ export function Hero() {
 
             <p className="mt-5 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
               {t(
-                'Shape-aware GEMM, TF32, fused bias+act, Autograd ve cuSOLVER — ölçülmüş: 1024²’de cuBLAS’ın %99’u, 2048²’de geçiyor.',
-                'Shape-aware GEMM, TF32, fused bias+act, Autograd and cuSOLVER — measured: 99% of cuBLAS at 1024², ahead at 2048².',
+                'Shape-aware GEMM, TF32, fused bias+act, Autograd ve cuSOLVER — doğrulanmış: 1024², 2048² ve 4096²’de cuBLAS’ı geçiyor (16,895 GFLOPS tepe verim).',
+                'Shape-aware GEMM, TF32, fused bias+act, Autograd and cuSOLVER — verified: beats cuBLAS at 1024², 2048², and 4096² (16,895 GFLOPS peak).',
               )}
             </p>
 
@@ -56,19 +56,20 @@ export function Hero() {
                 {t('Kuruluma Başla', 'Start Installation')}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
+              <a
+                href="/MatrixFlash_Pro_Technical_Manual.pdf"
+                download="MatrixFlash_Pro_Technical_Manual.pdf"
+                className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-all shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+              >
+                <BookOpen className="size-4 text-emerald-400" />
+                {t('Teknik Manuel (57s PDF)', 'Technical Manual (57p PDF)')}
+              </a>
               <Link
                 href="/docs/performans"
-                className="inline-flex items-center gap-2 rounded-2xl border border-border/80 glass-panel px-6 py-3.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/40"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border/80 glass-panel px-5 py-3.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/40"
               >
                 <Cpu className="size-4 text-primary" />
                 {t('Performans', 'Benchmarks')}
-              </Link>
-              <Link
-                href="/docs/matris-nedir"
-                className="inline-flex items-center gap-2 rounded-2xl border border-transparent px-4 py-3.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <BookOpen className="size-4 text-accent" />
-                {t('Sıfırdan Matris', 'Matrices from Zero')}
               </Link>
             </div>
 

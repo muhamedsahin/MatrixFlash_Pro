@@ -23,6 +23,11 @@ set(MATRIX_PRO_UNIT_TESTS
 	unit/test_view.cpp
 	unit/test_dtype_precision.cpp
 	unit/test_conv.cpp
+	unit/test_math.cpp
+	unit/test_tensor_advanced.cpp
+	unit/test_linalg_extended.cpp
+	unit/test_sparse_formats.cpp
+	unit/test_rng_extended.cpp
 )
 
 set(MATRIX_PRO_INTEGRATION_TESTS
@@ -32,6 +37,9 @@ set(MATRIX_PRO_INTEGRATION_TESTS
 	integration/test_infra.cpp
 	integration/test_new_features.cpp
 	integration/test_repro2.cpp
+	integration/test_execution.cpp
+	integration/test_serialization.cpp
+	integration/test_autograd_extended.cpp
 )
 
 # --- unit tests --------------------------------------------------------------

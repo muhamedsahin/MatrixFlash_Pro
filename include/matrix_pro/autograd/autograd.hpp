@@ -75,6 +75,16 @@ public:
                           std::function<Matrix(const Matrix&)> forward,
                           std::function<Matrix(const Matrix&, const Matrix&, const Matrix&)> backward) const;
 
+    Variable detach() const;
+    Variable clone() const;
+    void retain_grad();
+    bool is_leaf() const;
+    
+    static void clip_grad_norm_(std::vector<Variable>& params, float max_norm, float norm_type = 2.0f);
+    static void clip_grad_value_(std::vector<Variable>& params, float clip_value);
+    
+    static Variable checkpoint(std::function<Variable(const Variable&)> fn, const Variable& input);
+
 private:
     std::shared_ptr<Node> node_;
     explicit Variable(std::shared_ptr<Node> node);
@@ -141,5 +151,24 @@ private:
 VarTensor custom_loss(const VarTensor& prediction, const VarTensor& target,
                       std::function<float(const Tensor&, const Tensor&)> forward,
                       std::function<Tensor(const Tensor&, const Tensor&)> backward);
+
+// ---- Autograd Extensions ----
+
+// NoGrad scope — temporarily disables gradient tracking
+class NoGradGuard {
+public:
+    NoGradGuard();
+    ~NoGradGuard();
+    NoGradGuard(const NoGradGuard&) = delete;
+    NoGradGuard& operator=(const NoGradGuard&) = delete;
+private:
+    bool prev_state_;
+};
+
+// Query whether gradient tracking is enabled
+bool is_grad_enabled();
+
+// Set gradient tracking state
+void set_grad_enabled(bool enabled);
 
 }

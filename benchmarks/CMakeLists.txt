@@ -28,6 +28,9 @@ add_library(matrix_pro_bench_support STATIC
 	bench_external_gemm.cu
 	bench_external_linalg.cu
 	bench_external_sparse.cu
+	bench_math.cpp
+	bench_execution.cpp
+	bench_serialization.cpp
 )
 target_link_libraries(matrix_pro_bench_support PUBLIC matrix_pro Threads::Threads)
 target_include_directories(matrix_pro_bench_support PUBLIC
@@ -55,6 +58,9 @@ set(MATRIX_PRO_BENCHES
 	external_gemm
 	external_linalg
 	external_sparse
+	math
+	execution
+	serialization
 )
 
 foreach(bench IN LISTS MATRIX_PRO_BENCHES)

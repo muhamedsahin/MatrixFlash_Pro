@@ -1,8 +1,14 @@
 {
   "slug": "examples",
   "meta": {
-    "eyebrow": { "tr": "PRATİK ÖRNEKLER", "en": "PRACTICAL EXAMPLES" },
-    "title": { "tr": "Çalıştırılabilir Örnekler", "en": "Runnable Examples" },
+    "eyebrow": {
+      "tr": "PRATİK ÖRNEKLER",
+      "en": "PRACTICAL EXAMPLES"
+    },
+    "title": {
+      "tr": "Çalıştırılabilir Örnekler",
+      "en": "Runnable Examples"
+    },
     "description": {
       "tr": "En küçük uçtan uca programdan çoklu stream pipeline'ına kadar yedi tam örnek. Her örnek depoda `examples/` altında durur ve `matrix_pro` hedefine bağlı bağımsız bir CMake hedefidir.",
       "en": "Seven complete examples, from the smallest end-to-end program to a multi-stream pipeline. Every example lives under `examples/` in the repository and is a standalone CMake target linked against `matrix_pro`."
@@ -11,7 +17,10 @@
   "sections": [
     {
       "id": "basic",
-      "title": { "tr": "Temel GPU Kullanımı", "en": "Basic GPU Usage" },
+      "title": {
+        "tr": "Temel GPU Kullanımı",
+        "en": "Basic GPU Usage"
+      },
       "intro": {
         "tr": "Depodaki `basic_gpu_usage.cpp` dosyasının birebir kendisi: kütüphanenin en küçük uçtan uca kullanımı ve şemsiye başlık için derleme zamanı duman testi.",
         "en": "The literal content of `basic_gpu_usage.cpp` from the repository: the smallest end-to-end use of the library and a compile-time smoke test for the umbrella header."
@@ -32,15 +41,27 @@
         {
           "type": "list",
           "items": [
-            { "tr": "`const Matrix` olması önemli değildir: `operator*` yeni bir çıktı üretir, girdileri değiştirmez.", "en": "`const Matrix` is irrelevant here: `operator*` produces a new output and never modifies its inputs." },
-            { "tr": "`Matrix::identity(2)` cihazda üretilir, bu yüzden host'a yalnızca sonuç döner.", "en": "`Matrix::identity(2)` is generated on the device, so only the result travels back to the host." },
-            { "tr": "`relu()` zincirinin ardından `download()` çağrılmadan `at()` kullanılamaz (fail-fast).", "en": "After the `relu()` chain, `at()` cannot be used until `download()` is called (fail-fast)." }
+            {
+              "tr": "`const Matrix` olması önemli değildir: `operator*` yeni bir çıktı üretir, girdileri değiştirmez.",
+              "en": "`const Matrix` is irrelevant here: `operator*` produces a new output and never modifies its inputs."
+            },
+            {
+              "tr": "`Matrix::identity(2)` cihazda üretilir, bu yüzden host'a yalnızca sonuç döner.",
+              "en": "`Matrix::identity(2)` is generated on the device, so only the result travels back to the host."
+            },
+            {
+              "tr": "`relu()` zincirinin ardından `download()` çağrılmadan `at()` kullanılamaz (fail-fast).",
+              "en": "After the `relu()` chain, `at()` cannot be used until `download()` is called (fail-fast)."
+            }
           ]
         },
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Derleme süresini düşürün", "en": "Reduce compile time" },
+          "title": {
+            "tr": "Derleme süresini düşürün",
+            "en": "Reduce compile time"
+          },
           "text": {
             "tr": "Şemsiye başlık yerine yalnızca ihtiyacınız olan alt başlığı dahil edin: `#include \"matrix_pro/ops/product.hpp\"` bu örneğin tüm ihtiyacını karşılar ve derlemeyi belirgin biçimde hızlandırır.",
             "en": "Instead of the umbrella header, include only the granular header you need: `#include \"matrix_pro/ops/product.hpp\"` covers this example entirely and speeds the build up noticeably."
@@ -50,7 +71,10 @@
     },
     {
       "id": "high-perf",
-      "title": { "tr": "Yüksek Performans & Fused", "en": "High Performance & Fused" },
+      "title": {
+        "tr": "Yüksek Performans & Fused",
+        "en": "High Performance & Fused"
+      },
       "intro": {
         "tr": "`high_performance_demo.cpp` beş tekniği sırayla gösterir: cihaza özel matrisler, kalıcı tamponlar üzerinde cuBLAS GEMM döngüsü, fused/yerinde çekirdekler, kopyasız görünümler ve asenkron redüksiyonlar.",
         "en": "`high_performance_demo.cpp` walks through five techniques in order: device-only matrices, a cuBLAS GEMM loop over resident buffers, fused/in-place kernels, zero-copy views and asynchronous reductions."
@@ -59,11 +83,56 @@
         {
           "type": "steps",
           "items": [
-            { "title": { "tr": "Cihaza özel matrisler", "en": "Device-only matrices" }, "text": { "tr": "Host aynası yok: gizli PCIe trafiği yok, RAM yarıya iner.", "en": "No host mirror: no hidden PCIe traffic and half the RAM." } },
-            { "title": { "tr": "GEMM döngüsü", "en": "GEMM loop" }, "text": { "tr": "Kalıcı tamponlar üzerinde tekrarlanan çarpım; sürdürülebilir verim ölçülür.", "en": "Repeated multiplication over resident buffers to measure sustained throughput." } },
-            { "title": { "tr": "Fused & in-place", "en": "Fused & in-place" }, "text": { "tr": "Zincir yerine tek çekirdek; tahsis yerine tampon yeniden kullanımı.", "en": "One kernel instead of a chain; buffer reuse instead of allocation." } },
-            { "title": { "tr": "Zero-copy görünümler", "en": "Zero-copy views" }, "text": { "tr": "Transpose/slice belleğe hiç dokunmadan yapılır.", "en": "Transpose/slice without touching memory at all." } },
-            { "title": { "tr": "Asenkron redüksiyon", "en": "Async reduction" }, "text": { "tr": "Stream havuzuyla pinned host belleğe argmax; pipeline durmaz.", "en": "Stream-pool argmax into pinned host memory; the pipeline never stalls." } }
+            {
+              "title": {
+                "tr": "Cihaza özel matrisler",
+                "en": "Device-only matrices"
+              },
+              "text": {
+                "tr": "Host aynası yok: gizli PCIe trafiği yok, RAM yarıya iner.",
+                "en": "No host mirror: no hidden PCIe traffic and half the RAM."
+              }
+            },
+            {
+              "title": {
+                "tr": "GEMM döngüsü",
+                "en": "GEMM loop"
+              },
+              "text": {
+                "tr": "Kalıcı tamponlar üzerinde tekrarlanan çarpım; sürdürülebilir verim ölçülür.",
+                "en": "Repeated multiplication over resident buffers to measure sustained throughput."
+              }
+            },
+            {
+              "title": {
+                "tr": "Fused & in-place",
+                "en": "Fused & in-place"
+              },
+              "text": {
+                "tr": "Zincir yerine tek çekirdek; tahsis yerine tampon yeniden kullanımı.",
+                "en": "One kernel instead of a chain; buffer reuse instead of allocation."
+              }
+            },
+            {
+              "title": {
+                "tr": "Zero-copy görünümler",
+                "en": "Zero-copy views"
+              },
+              "text": {
+                "tr": "Transpose/slice belleğe hiç dokunmadan yapılır.",
+                "en": "Transpose/slice without touching memory at all."
+              }
+            },
+            {
+              "title": {
+                "tr": "Asenkron redüksiyon",
+                "en": "Async reduction"
+              },
+              "text": {
+                "tr": "Stream havuzuyla pinned host belleğe argmax; pipeline durmaz.",
+                "en": "Stream-pool argmax into pinned host memory; the pipeline never stalls."
+              }
+            }
           ]
         },
         {
@@ -75,7 +144,10 @@
         {
           "type": "callout",
           "variant": "info",
-          "title": { "tr": "Ölçüm disiplini", "en": "Measurement discipline" },
+          "title": {
+            "tr": "Ölçüm disiplini",
+            "en": "Measurement discipline"
+          },
           "text": {
             "tr": "Demo, her ölçümün etrafında `matrix_pro::synchronize()` çağırır. GPU çekirdekleri asenkron başladığı için senkronizasyon olmadan ölçülen süre **çekirdek süresi değil, başlatma süresidir**. Kendi benchmark'ınızda da aynısını yapın.",
             "en": "The demo calls `matrix_pro::synchronize()` around every measurement. Because GPU kernels launch asynchronously, timing without synchronization measures the **launch overhead, not the kernel time**. Do the same in your own benchmarks."
@@ -85,7 +157,10 @@
     },
     {
       "id": "autograd-mlp",
-      "title": { "tr": "Autograd ile MLP Eğitimi", "en": "MLP Training with Autograd" },
+      "title": {
+        "tr": "Autograd ile MLP Eğitimi",
+        "en": "MLP Training with Autograd"
+      },
       "intro": {
         "tr": "`autograd_mlp_demo.cpp` sentetik bir sınıflandırma görevinde iki katmanlı bir MLP eğitir. İleri geçiş, fused kayıp ve geri geçişin tamamı GPU'da çalışır; host yalnızca basılan kayıp değerini görür.",
         "en": "`autograd_mlp_demo.cpp` trains a two-layer MLP on a synthetic classification task. The forward pass, the fused loss and the backward pass all run on the GPU; the host only observes the printed loss value."
@@ -105,7 +180,10 @@
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "zero_grad() unutulursa", "en": "If you forget zero_grad()" },
+          "title": {
+            "tr": "zero_grad() unutulursa",
+            "en": "If you forget zero_grad()"
+          },
           "text": {
             "tr": "Backward geçişi gradyanları **biriktirir**. Bir adımda `zero_grad()` atlanırsa o adımın gradyanı önceki adımların üzerine eklenir ve optimizasyon sessizce bozulur — hata mesajı almazsınız, sadece kayıp yakınsamaz.",
             "en": "The backward pass **accumulates** gradients. Skip `zero_grad()` for one step and that step's gradient is added on top of the previous ones, silently corrupting the optimization — there is no error message, the loss simply stops converging."
@@ -114,7 +192,10 @@
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Fused kayıp gradyanı da verir", "en": "The fused loss also yields the gradient" },
+          "title": {
+            "tr": "Fused kayıp gradyanı da verir",
+            "en": "The fused loss also yields the gradient"
+          },
           "text": {
             "tr": "`softmax_cross_entropy_loss` softmax'ı ve negatif log-likelihood'ı tek çekirdekte birleştirir. Softmax'ı ayrı çalıştırıp sonra `log()` almak log-sum-exp kararlılığını kaybettirir ve büyük logitlerde kayıp `inf` olur.",
             "en": "`softmax_cross_entropy_loss` merges softmax and negative log-likelihood in one kernel. Running softmax separately and then taking `log()` loses the log-sum-exp stability and makes the loss `inf` on large logits."
@@ -124,7 +205,10 @@
     },
     {
       "id": "cnn",
-      "title": { "tr": "2D CNN (Conv2D & MaxPool)", "en": "2D CNN (Conv2D & MaxPool)" },
+      "title": {
+        "tr": "2D CNN (Conv2D & MaxPool)",
+        "en": "2D CNN (Conv2D & MaxPool)"
+      },
       "intro": {
         "tr": "Rank-4 NCHW tensörler üzerinde çapraz-korelasyon konvolüsyonu ve havuzlama. cuDNN bulunuyorsa arka uç ona delege edilir; API ve sonuçlar her iki yolda aynıdır. Ters geçiş, maksimum konumlarını ileri girdiden yeniden bulur — indeks tamponu saklamanız gerekmez.",
         "en": "Cross-correlation convolution and pooling over rank-4 NCHW tensors. When cuDNN is present the backend delegates to it; the API and results are identical on both paths. The backward pass re-locates the maxima from the forward input — no index buffer has to be stored."
@@ -133,16 +217,45 @@
         {
           "type": "figure",
           "data": [
-            ["1", "2", "0", "1"],
-            ["0", "3", "1", "2"],
-            ["1", "1", "4", "0"],
-            ["2", "0", "1", "3"]
+            [
+              "1",
+              "2",
+              "0",
+              "1"
+            ],
+            [
+              "0",
+              "3",
+              "1",
+              "2"
+            ],
+            [
+              "1",
+              "1",
+              "4",
+              "0"
+            ],
+            [
+              "2",
+              "0",
+              "1",
+              "3"
+            ]
           ],
           "caption": {
             "tr": "4x4 tek kanallı girdi; 2x2 max-pool her 2x2 pencereden en büyük değeri seçer.",
             "en": "A 4x4 single-channel input; 2x2 max-pool picks the largest value from every 2x2 window."
           },
-          "highlight": [[1, 1], [2, 2]],
+          "highlight": [
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ],
           "accent": "primary"
         },
         {
@@ -153,7 +266,10 @@
         },
         {
           "type": "h3",
-          "text": { "tr": "Elle geri geçiş", "en": "Manual backward pass" }
+          "text": {
+            "tr": "Elle geri geçiş",
+            "en": "Manual backward pass"
+          }
         },
         {
           "type": "code",
@@ -164,7 +280,10 @@
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "VarTensor ile otomatik bağlama", "en": "Automatic wiring with VarTensor" },
+          "title": {
+            "tr": "VarTensor ile otomatik bağlama",
+            "en": "Automatic wiring with VarTensor"
+          },
           "text": {
             "tr": "Elle backward çağırmak yerine `VarTensor` kullanın: `x.conv2d(w, b, 1, 1).max_pool2d(2, 2)` farklılaştırılabilir bir blok üretir ve `backward()` çağrısı ağırlık gradyanlarını otomatik toplar.",
             "en": "Instead of calling the backward functions by hand, use `VarTensor`: `x.conv2d(w, b, 1, 1).max_pool2d(2, 2)` yields a differentiable block, and `backward()` collects the weight gradients automatically."
@@ -174,7 +293,10 @@
     },
     {
       "id": "sparse",
-      "title": { "tr": "Seyrek Matris & Embedding", "en": "Sparse Matmul & Embedding" },
+      "title": {
+        "tr": "Seyrek Matris & Embedding",
+        "en": "Sparse Matmul & Embedding"
+      },
       "intro": {
         "tr": "CSR desteği iki klasik iş yükü için tasarlandı: seyrek ağırlıklı katmanlar ve embedding tabloları. Desen **donmuştur**: kurulumdan sonra `nnz` değişmez, yalnızca değerler güncellenir.",
         "en": "CSR support was designed for two classic workloads: sparsely weighted layers and embedding tables. The pattern is **frozen**: `nnz` never changes after construction, only the values are updated."
@@ -188,7 +310,10 @@
         },
         {
           "type": "h3",
-          "text": { "tr": "Embedding tablosu (desen sabit)", "en": "Embedding table (frozen pattern)" }
+          "text": {
+            "tr": "Embedding tablosu (desen sabit)",
+            "en": "Embedding table (frozen pattern)"
+          }
         },
         {
           "type": "code",
@@ -199,7 +324,10 @@
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "Yapı, değerden ayrıdır", "en": "Structure is separate from values" },
+          "title": {
+            "tr": "Yapı, değerden ayrıdır",
+            "en": "Structure is separate from values"
+          },
           "text": {
             "tr": "`sparse_outer_accumulate` yalnızca **var olan** girişleri güncellemekle yükümlüdür; yeni bir sıfırdan-farklı eleman oluşursa desen onu tutmaz ve gradyan kaybolur. Bu yüzden deseni olası tüm güncellemeleri kapsayacak biçimde bir kez kurun.",
             "en": "`sparse_outer_accumulate` only updates **existing** entries; if a new non-zero element appears, the pattern does not hold it and that gradient is lost. Build the pattern once so that it covers every possible update."
@@ -209,7 +337,10 @@
     },
     {
       "id": "view",
-      "title": { "tr": "Zero-Copy MatrixView", "en": "Zero-Copy MatrixView" },
+      "title": {
+        "tr": "Zero-Copy MatrixView",
+        "en": "Zero-Copy MatrixView"
+      },
       "intro": {
         "tr": "Görünümler cihaz belleğinde hiç kopya yapmadan transpose, dilim ve reshape sağlar. Karşılığında **yaşam süresi disiplini** ister: ana matris, görünümden uzun yaşamalıdır.",
         "en": "Views provide transpose, slicing and reshape on device memory with zero copies. In exchange they demand **lifetime discipline**: the parent matrix must outlive the view."
@@ -224,42 +355,99 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "İşlem", "en": "Operation" },
-            { "tr": "Kopya", "en": "Copies" },
-            { "tr": "Not", "en": "Note" }
+            {
+              "tr": "İşlem",
+              "en": "Operation"
+            },
+            {
+              "tr": "Kopya",
+              "en": "Copies"
+            },
+            {
+              "tr": "Not",
+              "en": "Note"
+            }
           ],
           "rows": [
             [
-              { "tr": "`transpose_view(x)`", "en": "`transpose_view(x)`" },
-              { "tr": "0", "en": "0" },
-              { "tr": "Stride'lar takas edilir; `contiguous()` false olur", "en": "Strides are swapped; `contiguous()` becomes false" }
+              {
+                "tr": "`transpose_view(x)`",
+                "en": "`transpose_view(x)`"
+              },
+              {
+                "tr": "0",
+                "en": "0"
+              },
+              {
+                "tr": "Stride'lar takas edilir; `contiguous()` false olur",
+                "en": "Strides are swapped; `contiguous()` becomes false"
+              }
             ],
             [
-              { "tr": "`slice_view(x, ...)`", "en": "`slice_view(x, ...)`" },
-              { "tr": "0", "en": "0" },
-              { "tr": "Satır adımı ana matrisin `cols()` değerinde kalır", "en": "The row stride stays at the parent's `cols()`" }
+              {
+                "tr": "`slice_view(x, ...)`",
+                "en": "`slice_view(x, ...)`"
+              },
+              {
+                "tr": "0",
+                "en": "0"
+              },
+              {
+                "tr": "Satır adımı ana matrisin `cols()` değerinde kalır",
+                "en": "The row stride stays at the parent's `cols()`"
+              }
             ],
             [
-              { "tr": "`reshape_view(x, r, c)`", "en": "`reshape_view(x, r, c)`" },
-              { "tr": "0", "en": "0" },
-              { "tr": "Yalnızca contiguous matrislerde geçerli", "en": "Valid for contiguous matrices only" }
+              {
+                "tr": "`reshape_view(x, r, c)`",
+                "en": "`reshape_view(x, r, c)`"
+              },
+              {
+                "tr": "0",
+                "en": "0"
+              },
+              {
+                "tr": "Yalnızca contiguous matrislerde geçerli",
+                "en": "Valid for contiguous matrices only"
+              }
             ],
             [
-              { "tr": "`as_strided_view(...)`", "en": "`as_strided_view(...)`" },
-              { "tr": "0", "en": "0" },
-              { "tr": "Offset + özel stride'lar; sınır denetimi yapılır", "en": "Offset plus custom strides; bounds are validated" }
+              {
+                "tr": "`as_strided_view(...)`",
+                "en": "`as_strided_view(...)`"
+              },
+              {
+                "tr": "0",
+                "en": "0"
+              },
+              {
+                "tr": "Offset + özel stride'lar; sınır denetimi yapılır",
+                "en": "Offset plus custom strides; bounds are validated"
+              }
             ],
             [
-              { "tr": "`materialize(v)`", "en": "`materialize(v)`" },
-              { "tr": "1", "en": "1" },
-              { "tr": "Yoğun, sahiplenen bir `Matrix` üretir", "en": "Produces a dense, owning `Matrix`" }
+              {
+                "tr": "`materialize(v)`",
+                "en": "`materialize(v)`"
+              },
+              {
+                "tr": "1",
+                "en": "1"
+              },
+              {
+                "tr": "Yoğun, sahiplenen bir `Matrix` üretir",
+                "en": "Produces a dense, owning `Matrix`"
+              }
             ]
           ]
         },
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "Sarkan görünüm", "en": "Dangling view" },
+          "title": {
+            "tr": "Sarkan görünüm",
+            "en": "Dangling view"
+          },
           "text": {
             "tr": "`MatrixView` ana tamponu canlı tutmaz. `x` kapsam dışına çıkarsa görünüm geçersiz; `x = Matrix(...)` gibi bir atama tamponu taşırsa görünüm serbest bırakılmış belleğe işaret eder. Uzun ömürlü kullanım için `materialize()` ile sahiplenen bir kopya alın.",
             "en": "A `MatrixView` does not keep the parent buffer alive. If `x` leaves scope the view is invalid; an assignment like `x = Matrix(...)` moves the buffer and the view ends up pointing at freed memory. For long-lived use, take an owning copy with `materialize()`."
@@ -269,7 +457,10 @@
     },
     {
       "id": "streams",
-      "title": { "tr": "Çoklu Stream & Asenkron Pipeline", "en": "Multi-Stream Async Pipeline" },
+      "title": {
+        "tr": "Çoklu Stream & Asenkron Pipeline",
+        "en": "Multi-Stream Async Pipeline"
+      },
       "intro": {
         "tr": "Bağımsız işler (örneğin iki ağırlık güncellemesi veya iki farklı çıkarım kolu) tek stream'de sıraya girer. Havuz, 4 ek stream ile bu işleri örtüştürür; asenkron redüksiyonlar ise pipeline'ı hiç durdurmaz.",
         "en": "Independent work (say, two weight updates or two inference branches) is serialized on a single stream. The pool overlaps that work across 4 extra streams, and asynchronous reductions never stall the pipeline."
@@ -283,7 +474,10 @@
         },
         {
           "type": "h3",
-          "text": { "tr": "Asenkron argmax: pipeline durmaz", "en": "Async argmax: the pipeline never stalls" }
+          "text": {
+            "tr": "Asenkron argmax: pipeline durmaz",
+            "en": "Async argmax: the pipeline never stalls"
+          }
         },
         {
           "type": "code",
@@ -294,46 +488,153 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Araç", "en": "Tool" },
-            { "tr": "Ne bekler", "en": "What it waits for" },
-            { "tr": "Ne beklemez", "en": "What it does not wait for" }
+            {
+              "tr": "Araç",
+              "en": "Tool"
+            },
+            {
+              "tr": "Ne bekler",
+              "en": "What it waits for"
+            },
+            {
+              "tr": "Ne beklemez",
+              "en": "What it does not wait for"
+            }
           ],
           "rows": [
             [
-              { "tr": "`compute_stream()`", "en": "`compute_stream()`" },
-              { "tr": "Varsayılan iş akışı", "en": "The default work stream" },
-              { "tr": "Havuz stream'lerini", "en": "The pool streams" }
+              {
+                "tr": "`compute_stream()`",
+                "en": "`compute_stream()`"
+              },
+              {
+                "tr": "Varsayılan iş akışı",
+                "en": "The default work stream"
+              },
+              {
+                "tr": "Havuz stream'lerini",
+                "en": "The pool streams"
+              }
             ],
             [
-              { "tr": "`synchronize()`", "en": "`synchronize()`" },
-              { "tr": "Yalnızca `compute_stream()`", "en": "Only `compute_stream()`" },
-              { "tr": "Havuz stream'lerini", "en": "The pool streams" }
+              {
+                "tr": "`synchronize()`",
+                "en": "`synchronize()`"
+              },
+              {
+                "tr": "Yalnızca `compute_stream()`",
+                "en": "Only `compute_stream()`"
+              },
+              {
+                "tr": "Havuz stream'lerini",
+                "en": "The pool streams"
+              }
             ],
             [
-              { "tr": "`synchronize_pool()`", "en": "`synchronize_pool()`" },
-              { "tr": "Havuz stream'leri (4 slot)", "en": "The pool streams (4 slots)" },
-              { "tr": "`compute_stream()`", "en": "`compute_stream()`" }
+              {
+                "tr": "`synchronize_pool()`",
+                "en": "`synchronize_pool()`"
+              },
+              {
+                "tr": "Havuz stream'leri (4 slot)",
+                "en": "The pool streams (4 slots)"
+              },
+              {
+                "tr": "`compute_stream()`",
+                "en": "`compute_stream()`"
+              }
             ],
             [
-              { "tr": "`synchronize_all_devices()`", "en": "`synchronize_all_devices()`" },
-              { "tr": "Bu thread'in dokunduğu tüm cihazlar", "en": "Every device this thread has touched" },
-              { "tr": "Diğer thread'lerin stream'lerini", "en": "Streams owned by other threads" }
+              {
+                "tr": "`synchronize_all_devices()`",
+                "en": "`synchronize_all_devices()`"
+              },
+              {
+                "tr": "Bu thread'in dokunduğu tüm cihazlar",
+                "en": "Every device this thread has touched"
+              },
+              {
+                "tr": "Diğer thread'lerin stream'lerini",
+                "en": "Streams owned by other threads"
+              }
             ],
             [
-              { "tr": "`argmax_async` callback", "en": "`argmax_async` callback" },
-              { "tr": "Kendi redüksiyonunun bitmesini", "en": "Its own reduction only" },
-              { "tr": "Çağıran thread'i", "en": "The calling thread" }
+              {
+                "tr": "`argmax_async` callback",
+                "en": "`argmax_async` callback"
+              },
+              {
+                "tr": "Kendi redüksiyonunun bitmesini",
+                "en": "Its own reduction only"
+              },
+              {
+                "tr": "Çağıran thread'i",
+                "en": "The calling thread"
+              }
             ]
           ]
         },
         {
           "type": "callout",
           "variant": "info",
-          "title": { "tr": "Bağlam (context) paylaşımı", "en": "Context sharing" },
+          "title": {
+            "tr": "Bağlam (context) paylaşımı",
+            "en": "Context sharing"
+          },
           "text": {
             "tr": "Her (host thread, cihaz) çifti kendi stream ve tutamaç setini alır. Havuz stream'i bir thread'de oluşturulup başka bir thread'den kullanılmamalıdır; iş yüklerini `launch_on_pool` ile aynı thread'den yayınlayın.",
             "en": "Each (host thread, device) pair gets its own stream and handle set. A pool stream created on one thread should not be used from another; dispatch your work with `launch_on_pool` from the same thread."
           }
+        }
+      ]
+    },
+    {
+      "id": "cuda-graph-inference",
+      "title": {
+        "tr": "CUDA Graph ile Sıfır Launch Overhead Çıkarım",
+        "en": "Zero-Overhead Inference with CUDA Graph"
+      },
+      "intro": {
+        "tr": "CUDA Graph capture & replay motorunu kullanarak mikro-saniye altı kernel yürütme. CPU kernel launch gecikmelerini tamamen ortadan kaldırır.",
+        "en": "Sub-microsecond kernel execution using the CUDA Graph capture & replay engine, completely eliminating CPU launch overhead."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "examples/cuda_graph_demo.cpp",
+          "code": "#include <iostream>\n#include \"matrix_pro/matrix_pro.hpp\"\n\nint main() {\n    using namespace matrix_pro;\n\n    Matrix x = Matrix::randn(1024, 1024);\n    Matrix w = Matrix::glorot(1024, 1024);\n    Matrix b = Matrix::zeros(1, 1024);\n    Matrix out(1024, 1024);\n\n    // Warm-up run\n    out = (x * w).add_row_vector(b).relu();\n    out.synchronize();\n\n    // Capture kernel sequence into CUDA Graph\n    CudaGraph graph;\n    graph.begin_capture();\n    out = (x * w).add_row_vector(b).relu();\n    graph.end_capture();\n\n    // Replay 10,000 times at hardware speed with zero CPU overhead\n    for (int i = 0; i < 10000; ++i) {\n        graph.replay();\n    }\n    synchronize();\n    std::cout << \"10,000 iterations completed via CUDA Graph!\\n\";\n    return 0;\n}"
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": {
+            "tr": "Performans Tavsiyesi",
+            "en": "Performance Tip"
+          },
+          "text": {
+            "tr": "CUDA Graph capture modundayken CPU bellek tahsisi veya host senkronizasyonu yapmayın. Tüm girdi ve çıktı matrisleri capture'dan önce tahsis edilmelidir.",
+            "en": "Do not allocate CPU memory or synchronize with host during CUDA Graph capture. Pre-allocate all input and output matrices beforehand."
+          }
+        }
+      ]
+    },
+    {
+      "id": "checkpoint-serialization",
+      "title": {
+        "tr": "Checkpoint ile Model Kaydetme & Yükleme",
+        "en": "Model Checkpoint Serialization & Loading"
+      },
+      "intro": {
+        "tr": "Çok katmanlı yapay zeka modellerinin ağırlıklarını, tensörlerini ve hiperparametrelerini .mfc ikili formatında diske kaydetme ve geri yükleme.",
+        "en": "Saving and loading multi-layer neural network parameters, tensors, and training metadata to disk in binary .mfc format."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "examples/checkpoint_demo.cpp",
+          "code": "#include <iostream>\n#include \"matrix_pro/matrix_pro.hpp\"\n\nint main() {\n    using namespace matrix_pro;\n\n    // Build model state dict\n    Checkpoint ckpt;\n    ckpt.add(\"fc1.weight\", Matrix::glorot(784, 256));\n    ckpt.add(\"fc1.bias\", Matrix::zeros(1, 256));\n    ckpt.add(\"fc2.weight\", Matrix::glorot(256, 10));\n    ckpt.add(\"input_cache\", Tensor({32, 1, 28, 28}));\n\n    ckpt.set_metadata(\"epoch\", \"100\");\n    ckpt.set_metadata(\"val_loss\", \"0.0142\");\n    ckpt.set_metadata(\"optimizer\", \"adamw\");\n\n    // Save to disk at NVMe wire speed\n    ckpt.save(\"model_checkpoint.mfc\");\n    std::cout << \"Saved \" << ckpt.size() << \" tensors to model_checkpoint.mfc\\n\";\n\n    // Load back on another machine/run\n    Checkpoint restored = Checkpoint::load(\"model_checkpoint.mfc\");\n    Matrix fc1_w = restored.get_matrix(\"fc1.weight\");\n    std::cout << \"Restored fc1.weight (\" << fc1_w.rows() << \"x\" << fc1_w.cols() << \")\\n\";\n    std::cout << \"Epoch: \" << restored.get_metadata(\"epoch\") << \"\\n\";\n    return 0;\n}"
         }
       ]
     }

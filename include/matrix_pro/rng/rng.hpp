@@ -25,4 +25,28 @@ Matrix uniform_gpu(std::size_t rows, std::size_t cols, float low, float high);
 // Inverted dropout with a device-generated mask (single kernel, no host traffic).
 Matrix dropout_gpu(const Matrix& matrix, float probability);
 
+// Extended distributions
+Matrix bernoulli_gpu(std::size_t rows, std::size_t cols, float prob);
+Matrix exponential_gpu(std::size_t rows, std::size_t cols, float lambda = 1.0f);
+Matrix poisson_gpu(std::size_t rows, std::size_t cols, float lambda);
+Matrix cauchy_gpu(std::size_t rows, std::size_t cols, float loc = 0.0f, float scale = 1.0f);
+Matrix log_normal_gpu(std::size_t rows, std::size_t cols, float mean = 0.0f, float stddev = 1.0f);
+Matrix truncated_normal_gpu(std::size_t rows, std::size_t cols, float low = -2.0f, float high = 2.0f);
+Matrix randint_gpu(std::size_t rows, std::size_t cols, int low, int high);
+Matrix randperm_gpu(std::size_t n);
+
+// Generator object with isolated state
+class RNGState {
+public:
+    explicit RNGState(unsigned long long seed = 42);
+    void manual_seed(unsigned long long seed);
+    unsigned long long seed() const noexcept;
+    Matrix randn(std::size_t rows, std::size_t cols);
+    Matrix uniform(std::size_t rows, std::size_t cols, float low = 0.0f, float high = 1.0f);
+    Matrix bernoulli(std::size_t rows, std::size_t cols, float prob);
+private:
+    unsigned long long seed_;
+    unsigned long long counter_;
+};
+
 } // namespace matrix_pro

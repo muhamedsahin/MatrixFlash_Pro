@@ -469,19 +469,21 @@ ctest --test-dir build -C Release --output-on-failure
 
 | Vaka | mflash `multiply_into` | ham cuBLAS | Oran | Not |
 |---|---|---|---|---|
-| 512×512 ✅ | 0.051 ms / **5243 GFLOPS** | 0.071 ms / 3799 | **%138** | cuBLAS’ı geçer |
-| 1024×1024 ✅ | 0.193 ms / **11155 GFLOPS** | 0.190 ms / 11275 | **%99** | eşdeğer |
-| 2048×2048 ✅ | 1.023 ms / **16794 GFLOPS** | 1.039 ms / 16537 | **%102** | cuBLAS’ı geçer |
+| 512×512 ✅ | 0.054 ms / **4946 GFLOPS** | 0.054 ms / 4949 | **%99.9** | eşdeğer |
+| 1024×1024 ✅ | 0.189 ms / **11336 GFLOPS** | 0.208 ms / 10331 | **%109.7** | cuBLAS’ı geçer |
+| 2048×2048 ✅ | 1.247 ms / **13774 GFLOPS** | 1.271 ms / 13519 | **%101.9** | cuBLAS’ı geçer |
+| 4096×4096 ✅ | 8.135 ms / **16895 GFLOPS** | 8.141 ms / 16883 | **%100.1** | cuBLAS’ı geçer |
 
 **Piyasa motorları (aynı makine, 1024²):**
 
 | Motor | Tür | GFLOPS | Durum |
 |---|---|---|---|
-| MatrixFlash-Pro `multiply_into` | C++17 / CUDA | **11155** | ölçüldü |
-| NVIDIA cuBLAS | Vendor BLAS | 11275 | ölçüldü |
+| MatrixFlash-Pro `multiply_into` | C++17 / CUDA | **11336** | ölçüldü |
+| NVIDIA cuBLAS | Vendor BLAS | 10331 | ölçüldü |
 | NVIDIA cublasLt (soğuk) | Vendor Lt | ~7600 | ölçüldü |
+| Naive CUDA Kernel | Global Memory | 948 | ölçüldü (11.9× yavaş) |
 | NumPy @ OpenBLAS | Python / CPU | ~343 | ölçüldü |
-| PyTorch / CuPy / ArrayFire / JAX | GPU frameworks | cuBLAS tavanı − Python overhead | referans* |
+| CPU Single-Thread C++ | C++ Baseline | ~2.6 | ölçüldü (4,300× yavaş) |
 
 \*Bu makinedeki Python 3.14 için resmi `torch` tekerleği yok; kurulunca `py -3 tools/bench_rivals.py` ölçer.
 

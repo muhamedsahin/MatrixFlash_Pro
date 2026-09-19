@@ -65,8 +65,12 @@ add_library(matrix_pro STATIC
 	src/core/matrix.cu
 	src/core/matrix_factories.cu
 	src/core/tensor.cu
+	src/core/backend.cu
+	src/core/memory_pool.cu
+	src/core/serialization.cu
 	# --- ops ---
 	src/ops/elementwise.cu
+	src/ops/math.cu
 	src/ops/matmul.cu
 	src/ops/gemm/gemm_dispatch.cu
 	src/ops/gemm/gemm_cublas_ex.cu
@@ -81,6 +85,7 @@ add_library(matrix_pro STATIC
 	src/ops/dtype.cu
 	src/ops/advanced.cu
 	src/ops/linalg.cu
+	src/ops/linalg_extended.cu
 	src/ops/masking.cu
 	src/ops/extended.cu
 	src/ops/precision.cu
@@ -97,9 +102,11 @@ add_library(matrix_pro STATIC
 	# --- autograd / sparse / indexing / rng / streams ---
 	src/autograd/autograd.cu
 	src/sparse/sparse.cu
+	src/sparse/sparse_formats.cu
 	src/indexing/indexing.cu
 	src/rng/rng.cu
 	src/streams/streams.cu
+	src/streams/execution.cu
 )
 
 add_library(matrix_pro::matrix_pro ALIAS matrix_pro)
@@ -118,9 +125,9 @@ target_include_directories(matrix_pro
 		$<INSTALL_INTERFACE:include>
 )
 
-# cuBLAS (GEMM) and cuSOLVER (decompositions) are part of the public API surface:
-# consumers must inherit them.
-target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cublasLt CUDA::cusolver)
+# cuBLAS (GEMM), cuSOLVER (decompositions), and cuSPARSE (sparse ops) are part of
+# the public API surface: consumers must inherit them.
+target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cublasLt CUDA::cusolver CUDA::cusparse)
 
 if(MATRIX_PRO_CUDNN_FOUND)
 	# PUBLIC, not PRIVATE: core/cuda_utils.hpp conditionally declares

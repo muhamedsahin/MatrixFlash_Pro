@@ -1,8 +1,14 @@
 {
   "slug": "api-reference",
   "meta": {
-    "eyebrow": { "tr": "API REFERANSI", "en": "API REFERENCE" },
-    "title": { "tr": "C++ API Referansı", "en": "C++ API Reference" },
+    "eyebrow": {
+      "tr": "API REFERANSI",
+      "en": "API REFERENCE"
+    },
+    "title": {
+      "tr": "C++ API Referansı",
+      "en": "C++ API Reference"
+    },
     "description": {
       "tr": "Kütüphanenin her genel yüzeyi: çekirdek sınıflar, fabrikalar, operasyonlar, cuSOLVER cebiri, autograd tape motoru, seyrek matrisler, görünümler, RNG ve stream havuzu. Gerçek başlık dosyalarındaki imzalarla birebir uyumludur.",
       "en": "Every public surface of the library: core classes, factories, operations, cuSOLVER algebra, the autograd tape engine, sparse matrices, views, RNG and the stream pool. Signatures match the real headers one-to-one."
@@ -11,7 +17,10 @@
   "sections": [
     {
       "id": "core",
-      "title": { "tr": "Çekirdek (Matrix & Tensor)", "en": "Core (Matrix & Tensor)" },
+      "title": {
+        "tr": "Çekirdek (Matrix & Tensor)",
+        "en": "Core (Matrix & Tensor)"
+      },
       "intro": {
         "tr": "`Matrix` kütüphanenin temel varlığıdır: 2B float32 veri, cihaz tamponu, isteğe bağlı host aynası ve fail-fast bayatlık bayrağı. `Tensor` aynı sözleşmeyle rank-N veri taşır.",
         "en": "`Matrix` is the library's fundamental entity: 2D float32 data, a device buffer, an optional host mirror and a fail-fast staleness flag. `Tensor` carries rank-N data under the same contract."
@@ -26,9 +35,30 @@
             "en": "A 2D float32 matrix. Four constructor forms exist: `(rows, cols)`, `(rows, cols, MemoryMode)`, `(rows, cols, std::vector<float>)` and an initializer list. Copy and move semantics are fully supported; the device buffer is managed as RAII through `std::unique_ptr<float, deleter>`. The convenience methods (`.relu()`, `.softmax()`, `.svd()` …) delegate to the corresponding free functions."
           },
           "params": [
-            { "name": "rows, cols", "type": "std::size_t", "desc": { "tr": "Matrisin boyutları; `size() == rows * cols`", "en": "Matrix dimensions; `size() == rows * cols`" } },
-            { "name": "mode", "type": "MemoryMode", "desc": { "tr": "`host_and_device` (varsayılan) veya `device_only`", "en": "`host_and_device` (default) or `device_only`" } },
-            { "name": "values", "type": "std::vector<float>", "desc": { "tr": "Satır-major host verisi; kurucu otomatik `upload()` yapar", "en": "Row-major host data; the constructor performs the `upload()` for you" } }
+            {
+              "name": "rows, cols",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Matrisin boyutları; `size() == rows * cols`",
+                "en": "Matrix dimensions; `size() == rows * cols`"
+              }
+            },
+            {
+              "name": "mode",
+              "type": "MemoryMode",
+              "desc": {
+                "tr": "`host_and_device` (varsayılan) veya `device_only`",
+                "en": "`host_and_device` (default) or `device_only`"
+              }
+            },
+            {
+              "name": "values",
+              "type": "std::vector<float>",
+              "desc": {
+                "tr": "Satır-major host verisi; kurucu otomatik `upload()` yapar",
+                "en": "Row-major host data; the constructor performs the `upload()` for you"
+              }
+            }
           ],
           "example": "#include \"matrix_pro/matrix_pro.hpp\"\n\nusing matrix_pro::Matrix;\nusing matrix_pro::MemoryMode;\n\n// Host degerleriyle kur (otomatik upload)\nMatrix a{{1.0f, 2.0f}, {3.0f, 4.0f}};\n\n// Cihaza ozel buyuk tampon\nMatrix act(1024, 1024, MemoryMode::device_only);\n\n// Boyut sorgulari\nstd::size_t n = a.size();       // 4\nbool stale  = !a.host_current();  // false"
         },
@@ -41,7 +71,14 @@
             "en": "A rank-N (including NCHW) float32 data container. It is defined by a `shape()` vector; `rank()`, `size()`, `device_only()` and `host_current()` follow the same contract. `zero()` clears both the host mirror and the device buffer without a host round-trip — critical for gradient accumulators."
           },
           "params": [
-            { "name": "shape", "type": "std::vector<std::size_t>", "desc": { "tr": "Örn. `{N, C, H, W}` — `size()` tüm boyutların çarpımıdır", "en": "E.g. `{N, C, H, W}` — `size()` is the product of every dimension" } }
+            {
+              "name": "shape",
+              "type": "std::vector<std::size_t>",
+              "desc": {
+                "tr": "Örn. `{N, C, H, W}` — `size()` tüm boyutların çarpımıdır",
+                "en": "E.g. `{N, C, H, W}` — `size()` is the product of every dimension"
+              }
+            }
           ],
           "example": "using matrix_pro::Tensor;\n\nTensor x({8, 3, 32, 32});   // NCHW batch\nTensor g({8, 3, 32, 32});\n\ng.zero();                   // gradyan biriktiriciyi sifirla\nstd::cout << x.rank() << \" \" << x.size();  // 4 24576"
         },
@@ -58,7 +95,10 @@
     },
     {
       "id": "factories",
-      "title": { "tr": "Fabrika Metotları (Factories)", "en": "Factories" },
+      "title": {
+        "tr": "Fabrika Metotları (Factories)",
+        "en": "Factories"
+      },
       "intro": {
         "tr": "Fabrikalar GPU üzerinde üretir: host'a bir float dizisi yazıp yüklemek yerine, çekirdek doğrudan cihaz belleğini doldurur. Bu, büyük tensörlerde belirgin bir PCIe tasarrufu sağlar.",
         "en": "Factories generate on the GPU: instead of writing a host array and uploading it, the kernel fills device memory directly. On large tensors this is a substantial PCIe saving."
@@ -74,8 +114,22 @@
             "en": "Deterministic fill factories. `identity` produces square matrices only; 1.0f on the diagonal, 0.0f elsewhere. All three launch a single kernel with zero host traffic."
           },
           "params": [
-            { "name": "rows, cols", "type": "std::size_t", "desc": { "tr": "Üretilecek matrisin boyutu", "en": "Dimensions of the matrix to produce" } },
-            { "name": "size", "type": "std::size_t", "desc": { "tr": "`identity` için kare kenar uzunluğu (size x size)", "en": "Square edge length for `identity` (size x size)" } }
+            {
+              "name": "rows, cols",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Üretilecek matrisin boyutu",
+                "en": "Dimensions of the matrix to produce"
+              }
+            },
+            {
+              "name": "size",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "`identity` için kare kenar uzunluğu (size x size)",
+                "en": "Square edge length for `identity` (size x size)"
+              }
+            }
           ],
           "example": "Matrix i = Matrix::identity(4);\nMatrix z = Matrix::zeros(2, 3);\nMatrix o = Matrix::ones(3, 3);\n\n// Butun degerler cihazda uretildi."
         },
@@ -89,8 +143,22 @@
             "en": "Random initialization factories. `random` is uniform over [0,1); `uniform` respects the `low`/`high` range you pass; `randn` yields a standard normal distribution (Box-Muller, two counters per element); `glorot` yields Xavier/Glorot-scaled normal values and is the default choice for weight initialization. The overloads without a seed consume the global device RNG state (`rng_seed`)."
           },
           "params": [
-            { "name": "low, high", "type": "float", "desc": { "tr": "`uniform` için alt/üst sınır", "en": "Lower/upper bound for `uniform`" } },
-            { "name": "seed", "type": "std::uint32_t", "desc": { "tr": "Tekrarlanabilirlik için tohum; verilmezse global durumdan türetilir", "en": "Seed for reproducibility; derived from the global state when omitted" } }
+            {
+              "name": "low, high",
+              "type": "float",
+              "desc": {
+                "tr": "`uniform` için alt/üst sınır",
+                "en": "Lower/upper bound for `uniform`"
+              }
+            },
+            {
+              "name": "seed",
+              "type": "std::uint32_t",
+              "desc": {
+                "tr": "Tekrarlanabilirlik için tohum; verilmezse global durumdan türetilir",
+                "en": "Seed for reproducibility; derived from the global state when omitted"
+              }
+            }
           ],
           "example": "// Tekrarlanabilir agirlik baslatma\nMatrix w1 = Matrix::glorot(784, 256);\nMatrix w2 = Matrix::randn(256, 10, /*seed=*/42u);\nMatrix noise = Matrix::uniform(4, 4, -0.1f, 0.1f);"
         },
@@ -104,7 +172,14 @@
             "en": "Writes a matrix to disk and reads it back. `save()` requires a current host mirror; a stale mirror makes `require_host_current()` throw — call `download()` first. File access failures are reported as `IoError`."
           },
           "params": [
-            { "name": "filename", "type": "const std::string&", "desc": { "tr": "Dosya yolu (uzantı serbest)", "en": "File path (extension is free-form)" } }
+            {
+              "name": "filename",
+              "type": "const std::string&",
+              "desc": {
+                "tr": "Dosya yolu (uzantı serbest)",
+                "en": "File path (extension is free-form)"
+              }
+            }
           ],
           "example": "Matrix w = Matrix::glorot(256, 128);\nw.save(\"weights/embedding.bin\");\n\nMatrix restored = Matrix::load(\"weights/embedding.bin\");\nrestored.download();\nstd::cout << restored.at(0, 0);"
         }
@@ -112,7 +187,10 @@
     },
     {
       "id": "ops",
-      "title": { "tr": "Operasyonlar & Redüksiyonlar", "en": "Operations & Reductions" },
+      "title": {
+        "tr": "Operasyonlar & Redüksiyonlar",
+        "en": "Operations & Reductions"
+      },
       "intro": {
         "tr": "Tüm elementwise fonksiyonlar **yerinde olmayan** (out-of-place) GPU çekirdekleridir: girdiler asla değiştirilmez. Tahsisten kaçınmak istediğinizde `nn/inplace.hpp` içindeki `_` sonekli varyantları kullanın.",
         "en": "Every elementwise function here is an **out-of-place** GPU kernel: inputs are never modified. When you need to avoid the allocation, switch to the `_`-suffixed variants in `nn/inplace.hpp`."
@@ -128,9 +206,30 @@
             "en": "cuBLAS-backed matrix multiplication. When the problem is large enough the TF32 Tensor Core fast path is chosen automatically; otherwise the shared-memory SIMT path is used. Throws `ShapeMismatchError` when `left.cols() != right.rows()`. `Matrix::operator*` delegates here."
           },
           "params": [
-            { "name": "left", "type": "const Matrix&", "desc": { "tr": "(m x k) sol operand", "en": "(m x k) left operand" } },
-            { "name": "right", "type": "const Matrix&", "desc": { "tr": "(k x n) sağ operand; sonuç (m x n)", "en": "(k x n) right operand; result is (m x n)" } },
-            { "name": "scalar", "type": "float", "desc": { "tr": "Her elemanı çarpan skaler", "en": "Scalar multiplied into every element" } }
+            {
+              "name": "left",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(m x k) sol operand",
+                "en": "(m x k) left operand"
+              }
+            },
+            {
+              "name": "right",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(k x n) sağ operand; sonuç (m x n)",
+                "en": "(k x n) right operand; result is (m x n)"
+              }
+            },
+            {
+              "name": "scalar",
+              "type": "float",
+              "desc": {
+                "tr": "Her elemanı çarpan skaler",
+                "en": "Scalar multiplied into every element"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(1024, 512);\nMatrix b = Matrix::randn(512, 256);\n\nMatrix c = multiply(a, b);     // (1024 x 256)\nMatrix s = multiply(c, 0.5f);  // olcekle"
         },
@@ -144,8 +243,22 @@
             "en": "A single-kernel elementwise family. All of them require **identical shapes** (use `broadcast.hpp` for NumPy-style broadcasting) and return a freshly allocated output. `divide` yields inf on division by zero — it does not silently zero anything; use `isnan()` if you need to inspect that."
           },
           "params": [
-            { "name": "left, right", "type": "const Matrix&", "desc": { "tr": "Aynı şekle sahip iki operand", "en": "Two operands of identical shape" } },
-            { "name": "low, high", "type": "float", "desc": { "tr": "`clamp` için alt/üst sınır", "en": "Lower/upper bound for `clamp`" } }
+            {
+              "name": "left, right",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Aynı şekle sahip iki operand",
+                "en": "Two operands of identical shape"
+              }
+            },
+            {
+              "name": "low, high",
+              "type": "float",
+              "desc": {
+                "tr": "`clamp` için alt/üst sınır",
+                "en": "Lower/upper bound for `clamp`"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(256, 256);\n\n// Fused olmayan zincir: her cagri ayri bir cekirdek\nMatrix h = add(exp(x), elementwise_multiply(x, x));\nh = clamp(h, -10.0f, 10.0f);\nh = divide(h, sqrt(abs(x)));"
         },
@@ -159,8 +272,22 @@
             "en": "Layout transforms and classic activation kernels. `softmax` is **row-wise** and numerically stable (max-subtraction trick). `slice` uses half-open ranges: `[row_start, row_end) x [col_start, col_end)` and throws `OutOfRangeError` when asked for an out-of-bounds window. For copy-free alternatives see the `view/` module."
           },
           "params": [
-            { "name": "row_start, row_end", "type": "std::size_t", "desc": { "tr": "Satır aralığı (bitiş hariç)", "en": "Row range (end exclusive)" } },
-            { "name": "col_start, col_end", "type": "std::size_t", "desc": { "tr": "Kolon aralığı (bitiş hariç)", "en": "Column range (end exclusive)" } }
+            {
+              "name": "row_start, row_end",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Satır aralığı (bitiş hariç)",
+                "en": "Row range (end exclusive)"
+              }
+            },
+            {
+              "name": "col_start, col_end",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Kolon aralığı (bitiş hariç)",
+                "en": "Column range (end exclusive)"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(8, 4);\n\nMatrix t = transpose(x);   // (4 x 8)\nMatrix p = softmax(x);     // her satir 1.0'a toplar\nMatrix patch = slice(x, 0, 2, 1, 3);  // (2 x 2)\n\n// Kopyasiz alternatif: MatrixView\n// MatrixView v = slice_view(x, 0, 2, 1, 3);"
         },
@@ -174,7 +301,14 @@
             "en": "Scalar reductions are computed with **one kernel plus a single host read**; no intermediate copy is made. `argmax`/`argmin` return a flattened (row-major) index, not a `(row, col)` pair. `trace` sums the diagonal and also works for rectangular matrices (min(rows, cols) terms)."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "Redüksiyonu alınacak matris; boş matris `InvalidArgumentError` fırlatır", "en": "Matrix to reduce; an empty matrix throws `InvalidArgumentError`" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Redüksiyonu alınacak matris; boş matris `InvalidArgumentError` fırlatır",
+                "en": "Matrix to reduce; an empty matrix throws `InvalidArgumentError`"
+              }
+            }
           ],
           "example": "Matrix logits = Matrix::randn(32, 10);\n\nfloat loss   = mean(l2_norm(logits));\nstd::size_t idx = argmax(logits);      // duzlestirilmis indeks\nfloat frob   = frobenius_norm(logits);\n\n// Eksen redüksiyonu: her satirin toplami\nMatrix rs = row_sum(logits);           // (32 x 1)"
         },
@@ -188,10 +322,38 @@
             "en": "Shape manipulation and label encoding. `reshape` is row-major and must preserve the total element count (otherwise `ShapeMismatchError`). `concat` takes axis 0 = rows (vertical) or 1 = columns (horizontal). `slice_scatter` is the **gradient of slice**: it writes the `grad` block into a zero matrix shaped like `like` at the given window. `one_hot` turns an (n x 1) or (1 x n) index matrix into a dense (n x classes) encoding."
           },
           "params": [
-            { "name": "parts", "type": "const std::vector<Matrix>&", "desc": { "tr": "Birleştirilecek parçalar; şekil uyumu zorunlu", "en": "Parts to combine; shape compatibility is enforced" } },
-            { "name": "axis", "type": "std::size_t", "desc": { "tr": "0 = satır, 1 = kolon", "en": "0 = rows, 1 = columns" } },
-            { "name": "indices", "type": "const Matrix&", "desc": { "tr": "Float kodlanmış tam sayı indeksler", "en": "Float-encoded integer indices" } },
-            { "name": "classes", "type": "std::size_t", "desc": { "tr": "One-hot çıktıdaki sınıf sayısı", "en": "Number of classes in the one-hot output" } }
+            {
+              "name": "parts",
+              "type": "const std::vector<Matrix>&",
+              "desc": {
+                "tr": "Birleştirilecek parçalar; şekil uyumu zorunlu",
+                "en": "Parts to combine; shape compatibility is enforced"
+              }
+            },
+            {
+              "name": "axis",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "0 = satır, 1 = kolon",
+                "en": "0 = rows, 1 = columns"
+              }
+            },
+            {
+              "name": "indices",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Float kodlanmış tam sayı indeksler",
+                "en": "Float-encoded integer indices"
+              }
+            },
+            {
+              "name": "classes",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "One-hot çıktıdaki sınıf sayısı",
+                "en": "Number of classes in the one-hot output"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(4, 3);\nMatrix b = Matrix::randn(4, 3);\n\nMatrix vertical = concat({a, b}, 0);   // (8 x 3)\nMatrix flat     = reshape(a, 2, 6);    // ayni eleman sayisi\n\nMatrix labels{{0.0f, 2.0f, 1.0f}};     // (1 x 3)\nMatrix oh = one_hot(labels, 3);        // (3 x 3)"
         },
@@ -205,9 +367,30 @@
             "en": "Comparison kernels return a **1.0f / 0.0f mask**, so their output composes directly with arithmetic ops (the language has no boolean tensor). `where` is the three-argument select; `apply_mask` replaces matching entries with `value`; `filter_by_mask` compacts only the selected entries into a (1 x count) row. `any`/`all` hand back a host bool directly and therefore act as a synchronization point."
           },
           "params": [
-            { "name": "condition", "type": "const Matrix&", "desc": { "tr": "Sıfırdan farklı elemanlar `true` sayılır", "en": "Non-zero entries count as `true`" } },
-            { "name": "mask", "type": "const Matrix&", "desc": { "tr": "Aynı şekilli 1.0f/0.0f maskesi", "en": "A same-shaped 1.0f/0.0f mask" } },
-            { "name": "value", "type": "float", "desc": { "tr": "Maskelenen konumlara yazılacak değer", "en": "Value written into the masked positions" } }
+            {
+              "name": "condition",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Sıfırdan farklı elemanlar `true` sayılır",
+                "en": "Non-zero entries count as `true`"
+              }
+            },
+            {
+              "name": "mask",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Aynı şekilli 1.0f/0.0f maskesi",
+                "en": "A same-shaped 1.0f/0.0f mask"
+              }
+            },
+            {
+              "name": "value",
+              "type": "float",
+              "desc": {
+                "tr": "Maskelenen konumlara yazılacak değer",
+                "en": "Value written into the masked positions"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(4, 4);\n\n// NaN / inf denetimi her zaman float maske dondurur\nMatrix bad = logical_or(isnan(x), isinf(x));\n\n// Klasik guvenli softmax oncesi: asiri degerleri kirp\nMatrix safe = where(greater(x, 50.0f), 50.0f, x);\n\n// Sifirlari degistir\nMatrix masked = apply_mask(x, less(x, 0.0f), 0.0f);"
         },
@@ -221,7 +404,14 @@
             "en": "Square-matrix quantities that are not full decompositions. `determinant` goes through LU; `inverse` uses `getrf` + `getri` and needs a square, non-singular input — a singular matrix raises `SolverError`. `condition_number` returns `||A|| * ||A^-1||` (a 1-norm estimate), a cheap indicator of how badly conditioned the matrix is. `covariance`/`correlation` treat every **row as one observation**."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "Kare matris (covariance için satırlar gözlemlerdir)", "en": "Square matrix (for covariance, rows are observations)" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Kare matris (covariance için satırlar gözlemlerdir)",
+                "en": "Square matrix (for covariance, rows are observations)"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(64, 64);\nMatrix spd = add(elementwise_multiply(a, a), Matrix::identity(64));\n\nfloat det = determinant(spd);\nfloat cond = condition_number(spd);\nMatrix inv = inverse(spd);\n\nMatrix data = Matrix::randn(100, 8);   // 100 gozlem, 8 ozellik\nMatrix cov = covariance(data);          // (8 x 8)"
         }
@@ -229,7 +419,10 @@
     },
     {
       "id": "broadcast",
-      "title": { "tr": "Yayınlama (Broadcasting)", "en": "Broadcasting" },
+      "title": {
+        "tr": "Yayınlama (Broadcasting)",
+        "en": "Broadcasting"
+      },
       "intro": {
         "tr": "Kütüphane NumPy tarzı 2B yayınlamayı destekler: her eksen ya eşit ya da bir tarafta 1 olmalıdır. Böylece `(M,1) op (1,N) -> (M,N)` klasik satır/kolon vektör kalıplarını açık kopyalama yapmadan yazabilirsiniz.",
         "en": "The library supports NumPy-style 2D broadcasting: each dimension must either match or be 1 on one side. That lets you write the classic `(M,1) op (1,N) -> (M,N)` row/column-vector patterns without any explicit tiling."
@@ -245,8 +438,22 @@
             "en": "The classic vector-broadcast helpers. `*_row_vector` applies the given vector to every **row**, `*_col_vector` to every **column**. `add_col_vector` is exactly how you add a bias: the same `(1 x n)` bias spreads across every row. A length mismatch raises `ShapeMismatchError`."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "Yayınlamanın uygulanacağı ana matris", "en": "The matrix the broadcast is applied to" } },
-            { "name": "vector", "type": "const Matrix&", "desc": { "tr": "(1 x cols) veya (rows x 1) vektör", "en": "A (1 x cols) or (rows x 1) vector" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Yayınlamanın uygulanacağı ana matris",
+                "en": "The matrix the broadcast is applied to"
+              }
+            },
+            {
+              "name": "vector",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(1 x cols) veya (rows x 1) vektör",
+                "en": "A (1 x cols) or (rows x 1) vector"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(512, 256);\nMatrix w = Matrix::glorot(256, 128);\nMatrix b = Matrix::zeros(1, 128);\n\nMatrix h = add_col_vector(multiply(x, w), b);   // bias her satira\n\nif (h.rows() != 512 || h.cols() != 128) return 1;"
         },
@@ -260,9 +467,30 @@
             "en": "The general 2D broadcast family: every combination such as `(M,N) + (1,N)`, `(M,N) * (M,1)`, `(M,1) / (1,N)`. `broadcast_backward` produces the **gradient** of a broadcast operand: it sums over the dimensions that were broadcast and returns a matrix shaped like `target` — the piece that reverses a broadcast step inside the autograd tape."
           },
           "params": [
-            { "name": "left, right", "type": "const Matrix&", "desc": { "tr": "Her eksende eşit veya 1 olan iki operand", "en": "Two operands that match or are 1 on every axis" } },
-            { "name": "grad", "type": "const Matrix&", "desc": { "tr": "Yukarı akış gradyanı (yayınlanmış şekil)", "en": "The upstream gradient (broadcast shape)" } },
-            { "name": "target", "type": "const Matrix&", "desc": { "tr": "Gradyanın indirgeneceği hedef şekil", "en": "Target shape the gradient is reduced back to" } }
+            {
+              "name": "left, right",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Her eksende eşit veya 1 olan iki operand",
+                "en": "Two operands that match or are 1 on every axis"
+              }
+            },
+            {
+              "name": "grad",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Yukarı akış gradyanı (yayınlanmış şekil)",
+                "en": "The upstream gradient (broadcast shape)"
+              }
+            },
+            {
+              "name": "target",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Gradyanın indirgeneceği hedef şekil",
+                "en": "Target shape the gradient is reduced back to"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(64, 32);\nMatrix row = Matrix::randn(1, 32);\nMatrix col = Matrix::randn(64, 1);\n\nMatrix y = broadcast_add(broadcast_multiply(a, col), row);  // (64 x 32)\n\n// Geri yayilim: yayinlanan eksenler boyunca topla\nMatrix dCol = broadcast_backward(y, col);   // (64 x 1)\nMatrix dRow = broadcast_backward(y, row);   // (1 x 32)"
         },
@@ -276,8 +504,22 @@
             "en": "Broadcast-aware **in-place** updates: `rhs` may be `(1x1)`, `(1xC)`, `(Rx1)` or `(RxC)`. No allocation, no extra memory pass — the standard route for weight updates in large-model training loops."
           },
           "params": [
-            { "name": "self", "type": "Matrix&", "desc": { "tr": "Yerinde güncellenecek matris (çıktının kendisi)", "en": "The matrix updated in place (and returned)" } },
-            { "name": "rhs", "type": "const Matrix&", "desc": { "tr": "Yayınlanacak sağ operand", "en": "Right-hand operand to broadcast" } }
+            {
+              "name": "self",
+              "type": "Matrix&",
+              "desc": {
+                "tr": "Yerinde güncellenecek matris (çıktının kendisi)",
+                "en": "The matrix updated in place (and returned)"
+              }
+            },
+            {
+              "name": "rhs",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Yayınlanacak sağ operand",
+                "en": "Right-hand operand to broadcast"
+              }
+            }
           ],
           "example": "Matrix w = Matrix::glorot(512, 512);\nMatrix grad = Matrix::randn(512, 512);\nMatrix m = Matrix::zeros(512, 512);   // momentum\n\nfloat lr = 0.01f, beta = 0.9f;\n\n// SGD + momentum: tahsis yok, uc bellek gecisi\nbroadcast_multiply_(m, Matrix::ones(1, 1) * beta);\nbroadcast_add_(m, grad);\nbroadcast_add_(w, multiply(m, -lr));"
         }
@@ -285,7 +527,10 @@
     },
     {
       "id": "cusolver",
-      "title": { "tr": "cuSOLVER İleri Cebir (SVD / QR / Eig)", "en": "cuSOLVER Linear Algebra (SVD / QR / Eig)" },
+      "title": {
+        "tr": "cuSOLVER İleri Cebir (SVD / QR / Eig)",
+        "en": "cuSOLVER Linear Algebra (SVD / QR / Eig)"
+      },
       "intro": {
         "tr": "Tüm dekompozisyonlar cuSOLVER'a delege edilir ve `float32 Matrix` döndürür; faktör şekilleri ince (thin) LAPACK konvansiyonunu izler. Başarısız bir çağrı `SolverError` fırlatır — sessizce bozuk bir faktör döndürülmez.",
         "en": "Every decomposition delegates to cuSOLVER and returns `float32 Matrix` values; factor shapes follow the thin LAPACK convention. A failed call raises `SolverError` — a corrupt factor is never handed back silently."
@@ -301,8 +546,22 @@
             "en": "Solves `A * x = b` directly (`getrf` + `getrs`). `A` must be square; `b` may be a single right-hand side (n x 1) or a bundle of n right-hand sides (n x k). The result has the same shape as `b`. A singular matrix raises `SolverError`; consider `pinv` or `solve_least_squares` in that case."
           },
           "params": [
-            { "name": "left", "type": "const Matrix&", "desc": { "tr": "(n x n) kare katsayı matrisi", "en": "(n x n) square coefficient matrix" } },
-            { "name": "rhs", "type": "const Matrix&", "desc": { "tr": "(n x 1) veya (n x k) sağ taraf", "en": "(n x 1) or (n x k) right-hand side" } }
+            {
+              "name": "left",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(n x n) kare katsayı matrisi",
+                "en": "(n x n) square coefficient matrix"
+              }
+            },
+            {
+              "name": "rhs",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(n x 1) veya (n x k) sağ taraf",
+                "en": "(n x 1) or (n x k) right-hand side"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(128, 128);\nMatrix spd = add(elementwise_multiply(a, a), Matrix::identity(128));\nMatrix b = Matrix::ones(128, 1);\n\nMatrix x = solve(spd, b);\nstd::cout << \"residual: \"\n          << l2_norm(subtract(multiply(spd, x), b));"
         },
@@ -316,7 +575,14 @@
             "en": "Singular value decomposition: `A = U * S * V^T`. `s` is returned as a full diagonal **matrix** (not a vector) because the library has no vector type, and this makes the `U * S * V^T` product directly constructible. Spectral norm, condition number, low-rank approximation and `pinv` are all built on this single primitive."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "(m x n) herhangi bir şekil; kare olmak zorunda değil", "en": "Any (m x n) shape; it need not be square" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(m x n) herhangi bir şekil; kare olmak zorunda değil",
+                "en": "Any (m x n) shape; it need not be square"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(64, 32);\nSVDResult d = svd(a);\n\nMatrix s = d.s;                        // diyagonal matris\nfloat spectral = max(s);\nfloat cond = (min(s) > 0.0f) ? max(s) / min(s) : 1e30f;\n\n// Dusuk-rank yaklasim: ilk 8 tekil deger\nMatrix u8 = slice(d.u, 0, 64, 0, 8);\nMatrix s8 = slice(d.s, 0, 8, 0, 8);\nMatrix v8 = slice(d.v, 0, 32, 0, 8);"
         },
@@ -330,7 +596,14 @@
             "en": "Thin QR decomposition: `A = Q * R`. The columns of `Q` are orthonormal and `R` is upper triangular. Least-squares problems, Gram-Schmidt style custom solvers and Householder-based numerically stable linear solves are all built on it. The factors follow the thin convention: `Q` is (m x min(m,n)) and `R` is (min(m,n) x n)."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "(m x n) ayrıştırılacak matris", "en": "The (m x n) matrix to factor" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(m x n) ayrıştırılacak matris",
+                "en": "The (m x n) matrix to factor"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(128, 64);\nQRResult q = qr(a);\n\nMatrix recon = multiply(q.q, q.r);      // A'yi yeniden kurar\nMatrix qtq = multiply(transpose(q.q), q.q);  // ortogonallik testi\nMatrix ident = Matrix::identity(q.q.cols());\nstd::cout << \"orthogonality: \"\n          << frobenius_norm(subtract(qtq, ident));"
         },
@@ -344,7 +617,14 @@
             "en": "Symmetric eigendecomposition: `A = V * D * V^T`. The input **must be symmetric**; otherwise the result is meaningless (the library does not validate symmetry, since that would add an O(n²) scan). Eigenvalues come back as a diagonal matrix in ascending order and the eigenvectors are orthonormal, one per column. PCA/correlation analysis and spectral filtering use this primitive."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "(n x n) simetrik matris", "en": "(n x n) symmetric matrix" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(n x n) simetrik matris",
+                "en": "(n x n) symmetric matrix"
+              }
+            }
           ],
           "example": "Matrix data = Matrix::randn(200, 16);\nMatrix cov = covariance(data);            // simetrik (16 x 16)\nEigenResult e = eigen(cov);\n\nMatrix d = e.eigenvalues;                 // artan ozdegerler\nMatrix v = e.eigenvectors;                // her kolon bir ozvektor\n\nd.download();                             // fail-fast: aynayi tazele\n\nfloat total = trace(cov);\nfloat top3  = d.at(15, 15) + d.at(14, 14) + d.at(13, 13);\nstd::cout << \"variance explained: \" << (top3 / total);"
         },
@@ -358,8 +638,22 @@
             "en": "`cholesky` returns the lower-triangular factor `L` for a symmetric positive-definite matrix (`A = L * L^T`) and raises `SolverError` when positive definiteness is violated. `pinv` builds the Moore-Penrose pseudo-inverse through the SVD — safe for singular and rectangular matrices. `rank` likewise reports the numerical rank through the SVD. `solve_least_squares` forms `x = pinv(A) * b` for rank-deficient/rectangular systems; use it when a gradient-based training loop needs a closed-form solve."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "cholesky için simetrik pozitif tanımlı; pinv/rank için herhangi bir şekil", "en": "Symmetric positive-definite for cholesky; any shape for pinv/rank" } },
-            { "name": "left, rhs", "type": "const Matrix&", "desc": { "tr": "En küçük kareler sistemi: A (m x n), b (m x k)", "en": "The least-squares system: A (m x n), b (m x k)" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "cholesky için simetrik pozitif tanımlı; pinv/rank için herhangi bir şekil",
+                "en": "Symmetric positive-definite for cholesky; any shape for pinv/rank"
+              }
+            },
+            {
+              "name": "left, rhs",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "En küçük kareler sistemi: A (m x n), b (m x k)",
+                "en": "The least-squares system: A (m x n), b (m x k)"
+              }
+            }
           ],
           "example": "Matrix a = Matrix::randn(64, 64);\nMatrix spd = add(elementwise_multiply(a, a), Matrix::identity(64));\n\nMatrix l = cholesky(spd);\nMatrix recon = multiply(l, transpose(l));   // SPD'yi yeniden kurar\n\nMatrix m = Matrix::randn(100, 20);   // rank-yetersiz olabilir\nMatrix p = pinv(m);                  // (20 x 100)\nstd::size_t r = rank(m);\n\nMatrix b = Matrix::ones(100, 1);\nMatrix x = solve_least_squares(m, b);"
         }
@@ -367,7 +661,10 @@
     },
     {
       "id": "nn-fused",
-      "title": { "tr": "Aktivasyon, Fused & In-Place", "en": "Activation, Fused & In-Place" },
+      "title": {
+        "tr": "Aktivasyon, Fused & In-Place",
+        "en": "Activation, Fused & In-Place"
+      },
       "intro": {
         "tr": "Sıcak eğitim döngülerinde kazanç iki yerden gelir: **daha az çekirdek** (fused) ve **daha az tahsis** (in-place). Bu üç başlık, `nn/activation.hpp`, `nn/fused.hpp` ve `nn/inplace.hpp` dosyalarını kapsar.",
         "en": "In hot training loops the win comes from two places: **fewer kernels** (fused) and **fewer allocations** (in-place). These three headers cover `nn/activation.hpp`, `nn/fused.hpp` and `nn/inplace.hpp`."
@@ -383,9 +680,30 @@
             "en": "A numerically stable activation family. `softplus` and `mish` need a dedicated fused kernel because the naive `log(1 + exp(x))` overflows; the kernel uses the asymptotic branch for large `x`. For `prelu`, `alpha` may be `1x1` (shared) or `rows x cols` (per element). The `*_backward` functions take the upstream gradient and the forward **input** — you never have to store the activation output."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "İleri geçiş girdisi (logits veya gizli katman)", "en": "Forward input (logits or a hidden layer)" } },
-            { "name": "alpha", "type": "const Matrix&", "desc": { "tr": "PReLU eğimi: 1x1 veya tam şekil", "en": "PReLU slope: 1x1 or full shape" } },
-            { "name": "input, grad", "type": "const Matrix&", "desc": { "tr": "Backward için ileri girdi ve dL/df", "en": "Forward input and dL/df for the backward pass" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "İleri geçiş girdisi (logits veya gizli katman)",
+                "en": "Forward input (logits or a hidden layer)"
+              }
+            },
+            {
+              "name": "alpha",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "PReLU eğimi: 1x1 veya tam şekil",
+                "en": "PReLU slope: 1x1 or full shape"
+              }
+            },
+            {
+              "name": "input, grad",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Backward için ileri girdi ve dL/df",
+                "en": "Forward input and dL/df for the backward pass"
+              }
+            }
           ],
           "example": "Matrix z = Matrix::randn(256, 128);\n\n// Kararli softplus (buyuk x icin asimptotik dal)\nMatrix sp = softplus(z);\n\n// Backward: ciktidan degil, girdiden hesaplanir\nMatrix g = Matrix::ones(256, 128);\nMatrix dx = softplus_backward(z, g);\n\n// PReLU: paylasimli tek egim\nMatrix alpha = Matrix::ones(1, 1);\nMatrix pr = prelu(z, alpha);"
         },
@@ -399,8 +717,22 @@
             "en": "The in-place variants use the **same vectorized kernels** but write back into the input buffer, saving one allocation plus one full memory pass per call. They return the `self` reference, so they chain (`relu_(x).add_scalar_(...);`). Note that because they are strictly elementwise, the operands must share the same shape."
           },
           "params": [
-            { "name": "self", "type": "Matrix&", "desc": { "tr": "Yerinde güncellenecek matris; aynı zamanda döndürülür", "en": "The matrix updated in place and returned" } },
-            { "name": "other", "type": "const Matrix&", "desc": { "tr": "Aynı şekilli ikinci operand", "en": "The second operand, same shape" } }
+            {
+              "name": "self",
+              "type": "Matrix&",
+              "desc": {
+                "tr": "Yerinde güncellenecek matris; aynı zamanda döndürülür",
+                "en": "The matrix updated in place and returned"
+              }
+            },
+            {
+              "name": "other",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Aynı şekilli ikinci operand",
+                "en": "The second operand, same shape"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(1024, 1024);\n\n// Tahsissiz zincir\nrelu_(x);\nadd_scalar_(x, 0.1f);\nclamp_(x, -5.0f, 5.0f);\n\n// Karsilastirma: yerinde olmayan surum 3 tahsis yapar\n// Matrix y = clamp(add_scalar(relu(x), 0.1f), -5.0f, 5.0f);"
         },
@@ -414,9 +746,30 @@
             "en": "**One kernel plus one global memory round-trip** for hot activation patterns. `fused_sigmoid_mul` is exactly the `sigmoid(x) * y` step of an LSTM/GRU gate. `fused_bias_gelu` merges the transformer step `gelu(x + bias)` into a single pass. The templated `fused_binary`/`fused_ternary` variants accept your own functor: `Op` must be trivially copyable and provide `__device__ float operator()(float, float)`. Every one of these kernels is **strictly elementwise and never broadcasts** — operands must share a shape; call `broadcast_add`/`broadcast_multiply` first if needed."
           },
           "params": [
-            { "name": "x, y", "type": "const Matrix&", "desc": { "tr": "Aynı şekilli operandlar", "en": "Operands of identical shape" } },
-            { "name": "scale, bias", "type": "float", "desc": { "tr": "`x*scale + bias` için skalerler", "en": "Scalars for `x*scale + bias`" } },
-            { "name": "op", "type": "Op", "desc": { "tr": "Trivially copyable `__device__` functor", "en": "A trivially copyable `__device__` functor" } }
+            {
+              "name": "x, y",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Aynı şekilli operandlar",
+                "en": "Operands of identical shape"
+              }
+            },
+            {
+              "name": "scale, bias",
+              "type": "float",
+              "desc": {
+                "tr": "`x*scale + bias` için skalerler",
+                "en": "Scalars for `x*scale + bias`"
+              }
+            },
+            {
+              "name": "op",
+              "type": "Op",
+              "desc": {
+                "tr": "Trivially copyable `__device__` functor",
+                "en": "A trivially copyable `__device__` functor"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(512, 512);\nMatrix y = Matrix::randn(512, 512);\n\n// GRU/LSTM kapisi: tek cekirdek, tek bellek turu\nMatrix gate = fused_sigmoid_mul(x, y);\n\n// Transformer: gelu(x + bias)\nMatrix bias = Matrix::zeros(1, 512);\nMatrix h = fused_bias_gelu(x, bias);\n\n// Karsilastirma: iki cekirdek + iki bellek turu\n// Matrix slow = elementwise_multiply(sigmoid(x), y);"
         },
@@ -430,8 +783,22 @@
             "en": "**Single-kernel** stable losses. `bce_with_logits_value` computes the mean over elements from the stable form `max(z,0) - z*t + log(1 + exp(-|z|))`; running sigmoid separately and then taking the log overflows/underflows. `softmax_cross_entropy_value` returns a **per-row** loss (rows x 1) for (rows x classes) logits and a one-hot target; the `_grad` version returns `dL/dlogits`. Because value and gradient come from the same kernel, consistency is guaranteed."
           },
           "params": [
-            { "name": "logits", "type": "const Matrix&", "desc": { "tr": "Normalize edilmemiş puanlar; BCE için herhangi bir şekil, CE için (rows x classes)", "en": "Un-normalized scores; any shape for BCE, (rows x classes) for CE" } },
-            { "name": "target", "type": "const Matrix&", "desc": { "tr": "BCE'de 0/1 hedef, CE'de one-hot satırlar", "en": "0/1 targets for BCE, one-hot rows for CE" } }
+            {
+              "name": "logits",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Normalize edilmemiş puanlar; BCE için herhangi bir şekil, CE için (rows x classes)",
+                "en": "Un-normalized scores; any shape for BCE, (rows x classes) for CE"
+              }
+            },
+            {
+              "name": "target",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "BCE'de 0/1 hedef, CE'de one-hot satırlar",
+                "en": "0/1 targets for BCE, one-hot rows for CE"
+              }
+            }
           ],
           "example": "Matrix logits = Matrix::randn(64, 10);\n\n// Ornek indeksler (64 x 1) -> one-hot hedef\nMatrix idx = Matrix::zeros(64, 1);\nMatrix target = one_hot(idx, 10);            // (64 x 10)\n\nMatrix perRow = softmax_cross_entropy_value(logits, target);  // (64 x 1)\nfloat loss = mean(perRow);\nMatrix grad = softmax_cross_entropy_grad(logits, target);     // dL/dlogits"
         }
@@ -439,7 +806,10 @@
     },
     {
       "id": "conv",
-      "title": { "tr": "2D Konvolüsyon, Pooling & Batched GEMM", "en": "2D Convolution, Pooling & Batched GEMM" },
+      "title": {
+        "tr": "2D Konvolüsyon, Pooling & Batched GEMM",
+        "en": "2D Convolution, Pooling & Batched GEMM"
+      },
       "intro": {
         "tr": "Bu aile rank-4 NCHW `Tensor` üzerinde çalışır. cuDNN bulunuyorsa (`MATRIX_PRO_HAS_CUDNN`) konvolüsyon cuDNN'e delege edilir; bulunmuyorsa elle yazılmış CUDA çekirdekleri devreye girer — **API ve sonuçlar her iki yolda da aynıdır**.",
         "en": "This family operates on rank-4 NCHW `Tensor` values. When cuDNN is available (`MATRIX_PRO_HAS_CUDNN`) convolution delegates to cuDNN; otherwise hand-written CUDA kernels take over — **the API and the results are identical on both paths**."
@@ -455,10 +825,38 @@
             "en": "Cross-correlation 2D convolution. Output dimensions follow `H_out = (H + 2*padding - kH) / stride + 1` (floor division). `bias` has shape (K) and is added to every output channel. Following the deep-learning convention the **kernel is not flipped** — this is what most frameworks call `conv2d`."
           },
           "params": [
-            { "name": "input", "type": "const Tensor&", "desc": { "tr": "(N, C, H, W) girdi tensörü", "en": "(N, C, H, W) input tensor" } },
-            { "name": "weights", "type": "const Tensor&", "desc": { "tr": "(K, C, kH, kW) çekirdek tensörü", "en": "(K, C, kH, kW) kernel tensor" } },
-            { "name": "bias", "type": "const Tensor&", "desc": { "tr": "(K) yanlılık vektörü", "en": "(K) bias vector" } },
-            { "name": "stride, padding", "type": "std::size_t", "desc": { "tr": "Adım ve dolgu; ikisi de kare kabul edilir", "en": "Stride and padding; both are assumed square" } }
+            {
+              "name": "input",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "(N, C, H, W) girdi tensörü",
+                "en": "(N, C, H, W) input tensor"
+              }
+            },
+            {
+              "name": "weights",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "(K, C, kH, kW) çekirdek tensörü",
+                "en": "(K, C, kH, kW) kernel tensor"
+              }
+            },
+            {
+              "name": "bias",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "(K) yanlılık vektörü",
+                "en": "(K) bias vector"
+              }
+            },
+            {
+              "name": "stride, padding",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Adım ve dolgu; ikisi de kare kabul edilir",
+                "en": "Stride and padding; both are assumed square"
+              }
+            }
           ],
           "example": "Tensor x({8, 3, 32, 32});                     // NCHW batch\nTensor w({16, 3, 3, 3});                     // 16 filtre, 3x3\nTensor b({16});\n\nTensor y = conv2d(x, w, b, /*stride=*/1, /*padding=*/1);\nstd::cout << y.shape()[1] << \"x\" << y.shape()[2]\n          << \"x\" << y.shape()[3];            // 16x32x32"
         },
@@ -472,8 +870,22 @@
             "en": "Pooling over NCHW tensors. `avg_pool2d` divides by `kernel_size^2`, i.e. the padding is **included in the count** (count-include-padding). That choice keeps the forward and backward passes consistent: `avg_pool2d_backward` spreads `grad / kernel_size^2` over each window so the total mass is preserved."
           },
           "params": [
-            { "name": "kernel_size", "type": "std::size_t", "desc": { "tr": "Kare havuzlama penceresinin kenar uzunluğu", "en": "Edge length of the square pooling window" } },
-            { "name": "stride, padding", "type": "std::size_t", "desc": { "tr": "Adım ve dolgu", "en": "Stride and padding" } }
+            {
+              "name": "kernel_size",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Kare havuzlama penceresinin kenar uzunluğu",
+                "en": "Edge length of the square pooling window"
+              }
+            },
+            {
+              "name": "stride, padding",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Adım ve dolgu",
+                "en": "Stride and padding"
+              }
+            }
           ],
           "example": "Tensor h = conv2d(x, w, b, 1, 1);\n\nTensor p = max_pool2d(h, /*kernel_size=*/2, /*stride=*/2);\nTensor a = avg_pool2d(h, 2, 2);\n\n// Kucultme: 32x32 -> 16x16\nstd::cout << p.shape()[2] << \"x\" << p.shape()[3];"
         },
@@ -487,8 +899,22 @@
             "en": "The backward passes of convolution and pooling. `conv2d_weight_backward` derives the kernel gradient from the input and the forward **output shape**; `conv2d_input_backward` produces the previous layer's gradient. `max_pool2d_backward` re-locates the maxima from the forward input — you never have to store a separate index buffer. `avg_pool2d_backward` distributes the gradient evenly across the window."
           },
           "params": [
-            { "name": "grad", "type": "const Tensor&", "desc": { "tr": "Bu katmana gelen yukarı akış gradyanı", "en": "Upstream gradient arriving at this layer" } },
-            { "name": "input", "type": "const Tensor&", "desc": { "tr": "İleri geçişin girdisi (pooling'de maksimum konumları için zorunlu)", "en": "The forward input (required by pooling to re-locate the maxima)" } }
+            {
+              "name": "grad",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "Bu katmana gelen yukarı akış gradyanı",
+                "en": "Upstream gradient arriving at this layer"
+              }
+            },
+            {
+              "name": "input",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "İleri geçişin girdisi (pooling'de maksimum konumları için zorunlu)",
+                "en": "The forward input (required by pooling to re-locate the maxima)"
+              }
+            }
           ],
           "example": "Tensor x({4, 1, 8, 8});\nTensor w({2, 1, 3, 3});\nTensor b({2});\nTensor y = conv2d(x, w, b, 1, 1);\n\n// Yukari akis gradyani (ornek: sifir)\nTensor g(y.shape());\n\nTensor dW = conv2d_weight_backward(g, x, w, 1, 1);\nTensor dX = conv2d_input_backward(g, x, w, 1, 1);\nTensor dB = conv2d_bias_backward(g);"
         },
@@ -502,9 +928,30 @@
             "en": "Batched GEMM over rank-3 tensors: `a=[batch,m,k]`, `b=[batch,k,n]` → `[batch,m,n]`. It multiplies independent sample groups (say, multiple attention heads) in one call. In the backward pass the `_left` gradient is the `G x B^T` product and the `_right` gradient is `A^T x G` — both executed batched as well."
           },
           "params": [
-            { "name": "left", "type": "const Tensor&", "desc": { "tr": "[batch, m, k] sol operand", "en": "[batch, m, k] left operand" } },
-            { "name": "right", "type": "const Tensor&", "desc": { "tr": "[batch, k, n] sağ operand", "en": "[batch, k, n] right operand" } },
-            { "name": "grad", "type": "const Tensor&", "desc": { "tr": "[batch, m, n] yukarı akış gradyanı", "en": "[batch, m, n] upstream gradient" } }
+            {
+              "name": "left",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "[batch, m, k] sol operand",
+                "en": "[batch, m, k] left operand"
+              }
+            },
+            {
+              "name": "right",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "[batch, k, n] sağ operand",
+                "en": "[batch, k, n] right operand"
+              }
+            },
+            {
+              "name": "grad",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "[batch, m, n] yukarı akış gradyanı",
+                "en": "[batch, m, n] upstream gradient"
+              }
+            }
           ],
           "example": "Tensor q({32, 64, 128});   // 32 bagimsiz ornek, 64x128\nTensor k({32, 128, 64});\n\nTensor scores = batch_matmul(q, k);        // [32, 64, 64]\n\nTensor g(scores.shape());\nTensor dQ = batch_matmul_backward_left(g, k);   // [32, 64, 128]\nTensor dK = batch_matmul_backward_right(g, q);  // [32, 128, 64]"
         }
@@ -512,7 +959,10 @@
     },
     {
       "id": "autograd",
-      "title": { "tr": "Autograd Ters-Mod Motoru", "en": "Autograd Reverse-Mode Engine" },
+      "title": {
+        "tr": "Autograd Ters-Mod Motoru",
+        "en": "Autograd Reverse-Mode Engine"
+      },
       "intro": {
         "tr": "`Variable` bir tape (kaset) düğümüdür: değeri, gradyanı ve `requires_grad` bayrağını taşır. İleri geçişte her operasyon tape'e bir geri çağrı kaydeder; `backward()` çağrısı topolojik sırayla tüm gradyanları biriktirir. Gradyanlar **biriktirilir** (üzerine yazılmaz), bu yüzden her adımda `zero_grad()` şarttır.",
         "en": "A `Variable` is a tape node: it carries a value, a gradient and a `requires_grad` flag. During the forward pass every operation records a callback on the tape; calling `backward()` accumulates all gradients in topological order. Gradients **accumulate** (they are never overwritten), which is why `zero_grad()` is mandatory each step."
@@ -528,8 +978,22 @@
             "en": "A tape node. All arithmetic goes through methods returning `Variable` (`add`, `matmul`, `relu`, `softmax` …); gradients are read with `grad()` and are `(rows x cols)` matrices. A variable created with `requires_grad = false` is not recorded on the tape (frozen layer, constant vector). `backward()` is called once and walks the internal nodes recursively, writing gradients into every `requires_grad` node."
           },
           "params": [
-            { "name": "value", "type": "const Matrix&", "desc": { "tr": "İleri geçiş değeri; aynı zamanda host değeri olarak da kullanılır", "en": "The forward value; also serves as the host value" } },
-            { "name": "requires_grad", "type": "bool", "desc": { "tr": "`false` ise bu değişken tape'e kaydedilmez", "en": "When `false` this variable is not recorded on the tape" } }
+            {
+              "name": "value",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "İleri geçiş değeri; aynı zamanda host değeri olarak da kullanılır",
+                "en": "The forward value; also serves as the host value"
+              }
+            },
+            {
+              "name": "requires_grad",
+              "type": "bool",
+              "desc": {
+                "tr": "`false` ise bu değişken tape'e kaydedilmez",
+                "en": "When `false` this variable is not recorded on the tape"
+              }
+            }
           ],
           "example": "using matrix_pro::Variable;\n\nVariable x(Matrix::randn(8, 4), true);\nVariable w(Matrix::glorot(4, 3), true);\n\nVariable y = x.matmul(w).relu();            // tape kaydi\nVariable target(Matrix::zeros(8, 3), false);\nVariable loss = mse_loss(y, target);\n\nw.zero_grad();                             // gradyanlar birikimli!\nloss.backward();\n\nMatrix dW = w.grad();                      // (4 x 3)"
         },
@@ -543,9 +1007,30 @@
             "en": "Losses ready to embed in the graph; **all of them use single-kernel fused versions**. `bce_with_logits_loss` merges sigmoid + BCE and `softmax_cross_entropy_loss` merges softmax + NLL — this preserves log-sum-exp stability and yields the analytic gradient. `mae_loss` uses 0 as the subgradient at `|d| = 0`. `huber_loss` behaves as L2 below the `delta` threshold and as L1 above it."
           },
           "params": [
-            { "name": "prediction / logits", "type": "const Variable&", "desc": { "tr": "Model çıktısı; CE için (rows x classes)", "en": "Model output; (rows x classes) for CE" } },
-            { "name": "target", "type": "const Variable&", "desc": { "tr": "Referans hedef; CE için one-hot satırlar", "en": "Reference target; one-hot rows for CE" } },
-            { "name": "delta", "type": "float", "desc": { "tr": "Huber kaybında L1'e geçiş eşiği", "en": "Huber threshold where the loss switches to L1" } }
+            {
+              "name": "prediction / logits",
+              "type": "const Variable&",
+              "desc": {
+                "tr": "Model çıktısı; CE için (rows x classes)",
+                "en": "Model output; (rows x classes) for CE"
+              }
+            },
+            {
+              "name": "target",
+              "type": "const Variable&",
+              "desc": {
+                "tr": "Referans hedef; CE için one-hot satırlar",
+                "en": "Reference target; one-hot rows for CE"
+              }
+            },
+            {
+              "name": "delta",
+              "type": "float",
+              "desc": {
+                "tr": "Huber kaybında L1'e geçiş eşiği",
+                "en": "Huber threshold where the loss switches to L1"
+              }
+            }
           ],
           "example": "Variable logits(Matrix::randn(32, 10), true);\nVariable target(one_hot(Matrix::zeros(32, 1), 10), false);\n\n// Fused softmax + NLL: kararlilik kaybolmaz\nVariable loss = softmax_cross_entropy_loss(logits, target);\n\nloss.backward();\nMatrix dlogits = logits.grad();   // (32 x 10) analitik gradyan"
         },
@@ -559,9 +1044,30 @@
             "en": "Extends the tape with your own operations. In `custom_unary`, `forward` maps the input to the output (any `Matrix` composition, even your own CUDA kernel) and `backward` receives `(grad_output, input, output)` and returns `dL/dinput` — since the output is available you can also express derivatives that depend on it. `custom_loss` is analogous: `forward` produces the scalar loss and `backward` produces `dL/dprediction` (the engine applies the upstream scaling)."
           },
           "params": [
-            { "name": "name", "type": "const std::string&", "desc": { "tr": "Tape/hatalarınızda görünecek operasyon adı", "en": "Operation name that shows up in the tape and error messages" } },
-            { "name": "forward", "type": "std::function<...>", "desc": { "tr": "Girdi → çıktı (veya prediction/target → skaler loss)", "en": "Input → output (or prediction/target → scalar loss)" } },
-            { "name": "backward", "type": "std::function<...>", "desc": { "tr": "(grad_output, input, output) → dL/dinput", "en": "(grad_output, input, output) → dL/dinput" } }
+            {
+              "name": "name",
+              "type": "const std::string&",
+              "desc": {
+                "tr": "Tape/hatalarınızda görünecek operasyon adı",
+                "en": "Operation name that shows up in the tape and error messages"
+              }
+            },
+            {
+              "name": "forward",
+              "type": "std::function<...>",
+              "desc": {
+                "tr": "Girdi → çıktı (veya prediction/target → skaler loss)",
+                "en": "Input → output (or prediction/target → scalar loss)"
+              }
+            },
+            {
+              "name": "backward",
+              "type": "std::function<...>",
+              "desc": {
+                "tr": "(grad_output, input, output) → dL/dinput",
+                "en": "(grad_output, input, output) → dL/dinput"
+              }
+            }
           ],
           "example": "Variable x(Matrix::randn(16, 8), true);\n\n// SiLU tureviyle birlikte ozel aktivasyon\nVariable y = x.custom_unary(\n    \"silu\",\n    [](const Matrix& v) { return elementwise_multiply(v, sigmoid(v)); },\n    [](const Matrix& g, const Matrix& in, const Matrix& out) {\n        // d/dx [x*sigmoid(x)] = sigmoid(x) * (1 + x*(1 - sigmoid(x)))\n        Matrix s = sigmoid(in);\n        Matrix inner = add_scalar(\n            elementwise_multiply(in, subtract(Matrix::ones(in.rows(), in.cols()), s)),\n            1.0f);\n        return elementwise_multiply(g, elementwise_multiply(s, inner));\n    });\n\ny.backward();\n\n// Ozel kayip: L2 + L1 karisimi\nVariable pred(Matrix::randn(8, 1), true);\nVariable ref(Matrix::zeros(8, 1), false);\nVariable l = custom_loss(pred, ref,\n    [](const Matrix& p, const Matrix& t) { return sum(abs(subtract(p, t))); },\n    [](const Matrix& p, const Matrix& t) {\n        Matrix d = subtract(p, t);\n        return where(greater(d, 0.0f), 1.0f, -1.0f);\n    });"
         },
@@ -575,8 +1081,22 @@
             "en": "Shares the same tape machinery as `Variable` but carries **rank-N data**. `conv2d`, `max_pool2d`, `avg_pool2d` and `batch_matmul` are differentiable; the weights (`[K,C,R,S]`) and bias (`[K]`) are passed as `VarTensor` and their gradients accumulate automatically. This is the library's CNN training path — you never wire the forward/backward pairs by hand."
           },
           "params": [
-            { "name": "value", "type": "const Tensor&", "desc": { "tr": "İleri geçiş tensörü (NCHW veya [batch,m,k])", "en": "The forward tensor (NCHW or [batch,m,k])" } },
-            { "name": "weights, bias", "type": "const VarTensor&", "desc": { "tr": "Öğrenilebilir parametreler; gradyanları otomatik toplanır", "en": "Learnable parameters; their gradients are collected automatically" } }
+            {
+              "name": "value",
+              "type": "const Tensor&",
+              "desc": {
+                "tr": "İleri geçiş tensörü (NCHW veya [batch,m,k])",
+                "en": "The forward tensor (NCHW or [batch,m,k])"
+              }
+            },
+            {
+              "name": "weights, bias",
+              "type": "const VarTensor&",
+              "desc": {
+                "tr": "Öğrenilebilir parametreler; gradyanları otomatik toplanır",
+                "en": "Learnable parameters; their gradients are collected automatically"
+              }
+            }
           ],
           "example": "using matrix_pro::VarTensor;\nusing matrix_pro::Tensor;\n\nVarTensor x(Tensor({4, 1, 28, 28}), true);\nVarTensor w(Tensor({8, 1, 3, 3}), true);\nVarTensor b(Tensor({8}), true);\n\n// Farklilastirilabilir CNN blogu: conv + pool\nVarTensor h = x.conv2d(w, b, /*stride=*/1, /*padding=*/1)\n               .max_pool2d(/*kernel_size=*/2, /*stride=*/2);\n\n// Kayip custom_loss(h, target, forward, backward) ile tanimlanir;\n// h.backward() cagrisindan sonra w.grad() ve b.grad() hazirdir."
         }
@@ -584,7 +1104,10 @@
     },
     {
       "id": "sparse",
-      "title": { "tr": "Seyrek Matrisler (Sparse CSR)", "en": "Sparse CSR Matrices" },
+      "title": {
+        "tr": "Seyrek Matrisler (Sparse CSR)",
+        "en": "Sparse CSR Matrices"
+      },
       "intro": {
         "tr": "CSR (Compressed Sparse Row) desteği embedding tabloları ve grafik modelleri için tasarlandı: değerler cihazda kalır, `row_ptr`/`col_idx` `int32` cihaz tamponları sınıf tarafından yönetilir. cuSPARSE varsa kullanılır, yoksa birleştirilmiş (coalesced) yedek çekirdek devreye girer.",
         "en": "CSR (Compressed Sparse Row) support targets embedding tables and graph models: the values stay on the device while `row_ptr`/`col_idx` are `int32` device buffers owned by the class. cuSPARSE is used when available, otherwise a coalesced fallback kernel takes over."
@@ -600,9 +1123,30 @@
             "en": "A sparse matrix container. `from_dense` builds CSR from dense data, dropping entries with `|v| <= threshold`; `from_coo` builds straight from triplets and **sums duplicate entries**. `sparsity()` reports the zero ratio. The structure is frozen: `nnz` never changes after construction and only the values are updated — the guarantee that an embedding table cannot densify."
           },
           "params": [
-            { "name": "dense", "type": "const Matrix&", "desc": { "tr": "`from_dense` için kaynak yoğun matris", "en": "Source dense matrix for `from_dense`" } },
-            { "name": "threshold", "type": "float", "desc": { "tr": "`|v| <= threshold` olan girişler atılır", "en": "Entries with `|v| <= threshold` are dropped" } },
-            { "name": "row_idx, col_idx, values", "type": "const std::vector<...>&", "desc": { "tr": "COO üçlüleri (host tarafında)", "en": "COO triplets (on the host)" } }
+            {
+              "name": "dense",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "`from_dense` için kaynak yoğun matris",
+                "en": "Source dense matrix for `from_dense`"
+              }
+            },
+            {
+              "name": "threshold",
+              "type": "float",
+              "desc": {
+                "tr": "`|v| <= threshold` olan girişler atılır",
+                "en": "Entries with `|v| <= threshold` are dropped"
+              }
+            },
+            {
+              "name": "row_idx, col_idx, values",
+              "type": "const std::vector<...>&",
+              "desc": {
+                "tr": "COO üçlüleri (host tarafında)",
+                "en": "COO triplets (on the host)"
+              }
+            }
           ],
           "example": "Matrix dense = Matrix::zeros(1000, 1000);\nSparseCSR sp = SparseCSR::from_dense(dense, /*threshold=*/1e-6f);\n\nSparseCSR embed = SparseCSR::from_coo(\n    50000, 128,\n    {0, 0, 7},      // satir indeksleri\n    {3, 5, 12},     // kolon indeksleri\n    {0.5f, -1.2f, 0.9f});\n\nstd::cout << \"nnz: \" << embed.nnz()\n          << \" sparsity: \" << embed.sparsity();"
         },
@@ -616,8 +1160,22 @@
             "en": "Mixed sparse-dense products. `spmv` is the classic sparse matrix × dense vector operation (`A: m x n`, `x: n x 1` → `m x 1`). `sparse_matmul` covers the general case (sparse `A` of `m x k`, dense `B` of `k x n` → dense `m x n`). Both iterate only over the **stored** entries, so the cost is linear in `nnz`, not in `rows*cols`."
           },
           "params": [
-            { "name": "a", "type": "const SparseCSR&", "desc": { "tr": "Seyrek sol operand", "en": "Sparse left operand" } },
-            { "name": "x / b", "type": "const Matrix&", "desc": { "tr": "Yoğun sağ operand", "en": "Dense right operand" } }
+            {
+              "name": "a",
+              "type": "const SparseCSR&",
+              "desc": {
+                "tr": "Seyrek sol operand",
+                "en": "Sparse left operand"
+              }
+            },
+            {
+              "name": "x / b",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Yoğun sağ operand",
+                "en": "Dense right operand"
+              }
+            }
           ],
           "example": "SparseCSR adjacency = SparseCSR::from_dense(adj, 1e-6f);\nMatrix features = Matrix::randn(adj.cols(), 64);\n\nMatrix h1 = sparse_matmul(adjacency, features);   // (rows x 64)\nMatrix score = spmv(adjacency, Matrix::ones(adj.cols(), 1));"
         },
@@ -631,8 +1189,22 @@
             "en": "Folds a dense product into an **existing sparsity pattern** while keeping the structure frozen: for every stored entry `(r, c)`, `acc[r][c] += (a * b)[r][c]`. This is the classic embedding-table gradient update: the pattern stays exactly as sparse as it was, so the table never densifies. The accumulation runs on the host and uploads the updated values, so it is meant for **periodic (per-step) updates**, not for hot inner loops."
           },
           "params": [
-            { "name": "acc", "type": "SparseCSR&", "desc": { "tr": "Donmuş desenli biriktirici; şekli (m x n) olmalı", "en": "Accumulator with the frozen pattern; shape must be (m x n)" } },
-            { "name": "a, b", "type": "const Matrix&", "desc": { "tr": "Yoğun çarpım operandları: (m x k) ve (k x n)", "en": "Dense product operands: (m x k) and (k x n)" } }
+            {
+              "name": "acc",
+              "type": "SparseCSR&",
+              "desc": {
+                "tr": "Donmuş desenli biriktirici; şekli (m x n) olmalı",
+                "en": "Accumulator with the frozen pattern; shape must be (m x n)"
+              }
+            },
+            {
+              "name": "a, b",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Yoğun çarpım operandları: (m x k) ve (k x n)",
+                "en": "Dense product operands: (m x k) and (k x n)"
+              }
+            }
           ],
           "example": "SparseCSR table = SparseCSR::from_dense(embedding_weights, 1e-6f);\n\nMatrix gradOut = Matrix::randn(16, 128);              // (m x k)\nMatrix oneHot  = one_hot(Matrix::zeros(16, 1), 128);  // (k x n)\n\n// Desen sabit kalir: tablo yogunlasmaz\nsparse_outer_accumulate(table, gradOut, oneHot);"
         }
@@ -640,7 +1212,10 @@
     },
     {
       "id": "indexing",
-      "title": { "tr": "İndeksleme & Embedding", "en": "Indexing & Embedding" },
+      "title": {
+        "tr": "İndeksleme & Embedding",
+        "en": "Indexing & Embedding"
+      },
       "intro": {
         "tr": "Attention ve embedding katmanlarının ihtiyaç duyduğu toplama/dağıtma primitifleri. Tüm indeksler `one_hot()` konvansiyonuyla **float kodlanmış tam sayılardır** ve `(n x 1)` ya da `(1 x n)` şeklindedir.",
         "en": "The gather/scatter primitives that attention and embedding layers need. Every index is a **float-encoded integer** following the `one_hot()` convention, shaped `(n x 1)` or `(1 x n)`."
@@ -656,10 +1231,38 @@
             "en": "`index_select` (known as `gather` in PyTorch) collects the rows/columns picked by `indices`; axis 0 = rows, 1 = columns. An out-of-range index raises `OutOfRangeError`. `scatter_add` runs the opposite way and **accumulates** with `atomicAdd`: `out[index[i]][c] += src[i][c]` — i.e. `index[i]` is the **destination** row of source row `i`, and duplicate indices accumulate. That is exactly what an embedding gradient needs."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "Kaynak matris (gather)", "en": "Source matrix (gather)" } },
-            { "name": "indices", "type": "const Matrix&", "desc": { "tr": "Float kodlanmış indeksler: (k x 1) veya (1 x k)", "en": "Float-encoded indices: (k x 1) or (1 x k)" } },
-            { "name": "axis", "type": "std::size_t", "desc": { "tr": "0 = satırlar, 1 = kolonlar", "en": "0 = rows, 1 = columns" } },
-            { "name": "rows, cols", "type": "std::size_t", "desc": { "tr": "scatter çıktısının şekli", "en": "Shape of the scatter output" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Kaynak matris (gather)",
+                "en": "Source matrix (gather)"
+              }
+            },
+            {
+              "name": "indices",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Float kodlanmış indeksler: (k x 1) veya (1 x k)",
+                "en": "Float-encoded indices: (k x 1) or (1 x k)"
+              }
+            },
+            {
+              "name": "axis",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "0 = satırlar, 1 = kolonlar",
+                "en": "0 = rows, 1 = columns"
+              }
+            },
+            {
+              "name": "rows, cols",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "scatter çıktısının şekli",
+                "en": "Shape of the scatter output"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(10, 4);\nMatrix idx{{7.0f, 2.0f, 2.0f}};      // (1 x 3)\n\nMatrix picked = gather(x, idx, /*axis=*/0);   // (3 x 4)\n\n// Yinelenen indeks (2) iki kez toplanir\nMatrix src = Matrix::ones(3, 4);\nMatrix acc = scatter_add(src, idx, /*rows=*/10);   // (10 x 4)"
         },
@@ -673,10 +1276,38 @@
             "en": "`embedding` is a dictionary lookup: it selects the `indices` rows from the `weight` (vocab x dim) table and returns (n x dim). `embedding_backward` accumulates the gradient rows into a zero `vocab x dim` matrix with **scatter-add**; this handles tokens that appear multiple times in one batch correctly — gradients accumulate instead of being overwritten."
           },
           "params": [
-            { "name": "weight", "type": "const Matrix&", "desc": { "tr": "(vocab x dim) embedding tablosu", "en": "(vocab x dim) embedding table" } },
-            { "name": "indices", "type": "const Matrix&", "desc": { "tr": "(n x 1) token indeksleri", "en": "(n x 1) token indices" } },
-            { "name": "grad", "type": "const Matrix&", "desc": { "tr": "(n x dim) yukarı akış gradyanı", "en": "(n x dim) upstream gradient" } },
-            { "name": "vocab_size", "type": "std::size_t", "desc": { "tr": "Çıktı gradyanının satır sayısı", "en": "Number of rows in the output gradient" } }
+            {
+              "name": "weight",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(vocab x dim) embedding tablosu",
+                "en": "(vocab x dim) embedding table"
+              }
+            },
+            {
+              "name": "indices",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(n x 1) token indeksleri",
+                "en": "(n x 1) token indices"
+              }
+            },
+            {
+              "name": "grad",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(n x dim) yukarı akış gradyanı",
+                "en": "(n x dim) upstream gradient"
+              }
+            },
+            {
+              "name": "vocab_size",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Çıktı gradyanının satır sayısı",
+                "en": "Number of rows in the output gradient"
+              }
+            }
           ],
           "example": "std::size_t vocab = 50000, dim = 128;\nMatrix table = Matrix::randn(vocab, dim);\nMatrix tokens{{12.0f, 7.0f, 12.0f}};      // (1 x 3)\n\nMatrix e = embedding(table, tokens);      // (3 x 128)\n\nMatrix dE = Matrix::ones(3, dim);\nMatrix dTable = embedding_backward(dE, tokens, vocab);  // (50000 x 128)"
         }
@@ -684,7 +1315,10 @@
     },
     {
       "id": "view",
-      "title": { "tr": "Sıfır Kopyalama Görünümleri (View)", "en": "Zero-Copy Views" },
+      "title": {
+        "tr": "Sıfır Kopyalama Görünümleri (View)",
+        "en": "Zero-Copy Views"
+      },
       "intro": {
         "tr": "`MatrixView` cihaz belleği üzerinde **sahiplenmeyen** bir işaretçi + stride çiftidir: hiç tahsis yapmaz, hiç kopyalamaz. Karşılığında katı bir yaşam süresi sözleşmesi getirir: ana `Matrix` bozulduğunda (yok edilme, atama, yeniden tahsis) görünüm geçersizleşir.",
         "en": "A `MatrixView` is a **non-owning** pointer plus strides over device memory: it never allocates and never copies. In exchange it comes with a strict lifetime contract: once the parent `Matrix` is disturbed (destruction, assignment, reallocation) the view becomes invalid."
@@ -700,9 +1334,30 @@
             "en": "A non-owning strided view. `contiguous()` tells you whether the view is plain row-major — if so, vectorized kernels can be used. `at_ptr(row, col)` computes the element address as `data + row*row_stride + col*col_stride`; this host-side helper exists for your own kernels. The constructor accepts an optional `owner` token, but no constructor in the library passes one yet — meaning there is **no** automatic lifetime extension."
           },
           "params": [
-            { "name": "data", "type": "float*", "desc": { "tr": "Ana matrisin cihaz işaretçisi (`device_data()`)", "en": "The parent matrix's device pointer (`device_data()`)" } },
-            { "name": "row_stride, col_stride", "type": "std::size_t", "desc": { "tr": "Eleman cinsinden adımlar; transpose için satır/kolon yer değiştirir", "en": "Strides in elements; transpose swaps them" } },
-            { "name": "owner", "type": "std::shared_ptr<void>", "desc": { "tr": "Rezerve edilmiş sahiplik token'ı (şu an kullanılmıyor)", "en": "Reserved ownership token (currently unused)" } }
+            {
+              "name": "data",
+              "type": "float*",
+              "desc": {
+                "tr": "Ana matrisin cihaz işaretçisi (`device_data()`)",
+                "en": "The parent matrix's device pointer (`device_data()`)"
+              }
+            },
+            {
+              "name": "row_stride, col_stride",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Eleman cinsinden adımlar; transpose için satır/kolon yer değiştirir",
+                "en": "Strides in elements; transpose swaps them"
+              }
+            },
+            {
+              "name": "owner",
+              "type": "std::shared_ptr<void>",
+              "desc": {
+                "tr": "Rezerve edilmiş sahiplik token'ı (şu an kullanılmıyor)",
+                "en": "Reserved ownership token (currently unused)"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(64, 32);\n\n// Cihaz bellegi uzerinde kopyasiz 32x64 transpoz\nMatrixView t(x.device_data(),\n             x.cols(), x.rows(),   // roller degisti\n             /*row_stride=*/1, /*col_stride=*/x.rows());\n\nstd::cout << \"contiguous: \" << t.contiguous()   // 0\n          << \" elems: \" << t.size();"
         },
@@ -716,10 +1371,38 @@
             "en": "The ready-made view constructors perform **zero copies**. `transpose_view` swaps the strides; `slice_view` exposes a sub-matrix; `reshape_view` is only valid for **contiguous** matrices (it throws otherwise). `as_strided_view` yields a fully general view from an offset plus custom strides and checks bounds. `materialize` dumps a view back into a dense `Matrix` (one copy); `copy_view_to` writes into an existing matrix; `add_views`/`multiply_views` combine two views in a broadcast-aware way."
           },
           "params": [
-            { "name": "matrix", "type": "Matrix&", "desc": { "tr": "Ana matris; görünümden **uzun** yaşamalıdır", "en": "Parent matrix; it must **outlive** the view" } },
-            { "name": "row_start, row_end", "type": "std::size_t", "desc": { "tr": "Yarı-açık satır aralığı", "en": "Half-open row range" } },
-            { "name": "offset", "type": "std::size_t", "desc": { "tr": "Eleman cinsinden başlangıç kayması", "en": "Starting offset in elements" } },
-            { "name": "dst", "type": "Matrix&", "desc": { "tr": "Kopyanın yazılacağı yoğun matris (şekil uyumlu olmalı)", "en": "Dense destination matrix (shape must match)" } }
+            {
+              "name": "matrix",
+              "type": "Matrix&",
+              "desc": {
+                "tr": "Ana matris; görünümden **uzun** yaşamalıdır",
+                "en": "Parent matrix; it must **outlive** the view"
+              }
+            },
+            {
+              "name": "row_start, row_end",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Yarı-açık satır aralığı",
+                "en": "Half-open row range"
+              }
+            },
+            {
+              "name": "offset",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Eleman cinsinden başlangıç kayması",
+                "en": "Starting offset in elements"
+              }
+            },
+            {
+              "name": "dst",
+              "type": "Matrix&",
+              "desc": {
+                "tr": "Kopyanın yazılacağı yoğun matris (şekil uyumlu olmalı)",
+                "en": "Dense destination matrix (shape must match)"
+              }
+            }
           ],
           "example": "Matrix x = Matrix::randn(128, 64);\n\n// Kopyasiz transpoz / dilim\nMatrixView t = transpose_view(x);                 // 64 x 128\nMatrixView s = slice_view(x, 0, 32, 8, 40);       // 32 x 32\n\n// Gerekince yogunlastir (tek kopya)\nMatrix dense = materialize(s);\n\n// Iki gorunumu birlestir\nMatrix sum2 = add_views(t, transpose_view(dense));"
         }
@@ -727,7 +1410,10 @@
     },
     {
       "id": "rng",
-      "title": { "tr": "Cihaz İçi RNG (Device RNG)", "en": "Device RNG" },
+      "title": {
+        "tr": "Cihaz İçi RNG (Device RNG)",
+        "en": "Device RNG"
+      },
       "intro": {
         "tr": "Rastgelelik **sayaç tabanlıdır** ve cihazda üretilir: her eleman bitlerini `hash_mix(seed ^ stream_counter)` (MurmurHash3 tarzı finalizer) ile türetir. cuRAND bilinçli olarak kullanılmaz; bu yaklaşım her fabrikayı tekrarlanabilir ve tahsissiz kılar.",
         "en": "Randomness is **counter-based** and generated on the device: each element derives its bits from `hash_mix(seed ^ stream_counter)` (a MurmurHash3-style finalizer). cuRAND is deliberately not used; this scheme keeps every factory reproducible and allocation-free."
@@ -743,9 +1429,30 @@
             "en": "Global seed control plus device-side generation. `randn_gpu` applies Box-Muller with two counters per element; `uniform_gpu` generates uniformly over the given range. `dropout_gpu` produces the inverted dropout mask **on the device** — in a single kernel with zero host traffic. Set the seed with `rng_seed` and read it back with `rng_seed_value()` to make experiments fully reproducible."
           },
           "params": [
-            { "name": "seed", "type": "unsigned long long", "desc": { "tr": "Global tohum; tüm cihaz fabrikalarını etkiler", "en": "Global seed; affects every device factory" } },
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "Dropout maskesinin uygulanacağı girdi", "en": "Input the dropout mask is applied to" } },
-            { "name": "probability", "type": "float", "desc": { "tr": "Elemanın sıfırlanma olasılığı; kalanlar `1/(1-p)` ile ölçeklenir", "en": "Probability that an element is zeroed; the rest is scaled by `1/(1-p)`" } }
+            {
+              "name": "seed",
+              "type": "unsigned long long",
+              "desc": {
+                "tr": "Global tohum; tüm cihaz fabrikalarını etkiler",
+                "en": "Global seed; affects every device factory"
+              }
+            },
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Dropout maskesinin uygulanacağı girdi",
+                "en": "Input the dropout mask is applied to"
+              }
+            },
+            {
+              "name": "probability",
+              "type": "float",
+              "desc": {
+                "tr": "Elemanın sıfırlanma olasılığı; kalanlar `1/(1-p)` ile ölçeklenir",
+                "en": "Probability that an element is zeroed; the rest is scaled by `1/(1-p)`"
+              }
+            }
           ],
           "example": "#include \"matrix_pro/rng/rng.hpp\"\n\nrng_seed(2024ull);                       // tekrarlanabilir\n\nMatrix noise = randn_gpu(512, 512);\nMatrix uni   = uniform_gpu(512, 512, -0.1f, 0.1f);\n\nMatrix h = Matrix::randn(512, 512);\nMatrix dropped = dropout_gpu(h, /*probability=*/0.2f);\n\nstd::cout << \"seed: \" << rng_seed_value();"
         }
@@ -753,7 +1460,10 @@
     },
     {
       "id": "streams",
-      "title": { "tr": "Stream Havuzu & Asenkron", "en": "Stream Pool & Async" },
+      "title": {
+        "tr": "Stream Havuzu & Asenkron",
+        "en": "Stream Pool & Async"
+      },
       "intro": {
         "tr": "Varsayılan yol değişmez: `compute_stream()` her (thread, cihaz) çifti için tek bir non-blocking stream döndürür. Havuz bunun üzerine **4 ek stream** ekler; böylece bağımsız işler (örneğin iki ağırlık güncellemesi) birbirini beklemeden örtüşebilir.",
         "en": "The default path is unchanged: `compute_stream()` returns a single non-blocking stream per (thread, device) pair. The pool adds **4 extra streams** on top, so independent work (say, two weight updates) can overlap instead of waiting on each other."
@@ -769,9 +1479,30 @@
             "en": "`pool_stream(slot)` lazily creates the pool stream numbered `slot % kStreamPoolSize` for the current device and **never returns `compute_stream()`**. `launch_on_pool` runs the given work on a pool stream and records the `done` event; the caller can wait on that event instead of blocking the whole device. `synchronize_pool()` waits only on the pool streams and never touches `compute_stream()`."
           },
           "params": [
-            { "name": "slot", "type": "int", "desc": { "tr": "Havuz yuvası; `slot % 4` stream'e eşlenir", "en": "Pool slot; maps onto `slot % 4` streams" } },
-            { "name": "fn", "type": "const std::function<void(cudaStream_t)>&", "desc": { "tr": "Havuz stream'ini alan iş yükü", "en": "The work item receiving the pool stream" } },
-            { "name": "done", "type": "cudaEvent_t", "desc": { "tr": "İş bitiminde kaydedilecek olay", "en": "Event recorded when the work finishes" } }
+            {
+              "name": "slot",
+              "type": "int",
+              "desc": {
+                "tr": "Havuz yuvası; `slot % 4` stream'e eşlenir",
+                "en": "Pool slot; maps onto `slot % 4` streams"
+              }
+            },
+            {
+              "name": "fn",
+              "type": "const std::function<void(cudaStream_t)>&",
+              "desc": {
+                "tr": "Havuz stream'ini alan iş yükü",
+                "en": "The work item receiving the pool stream"
+              }
+            },
+            {
+              "name": "done",
+              "type": "cudaEvent_t",
+              "desc": {
+                "tr": "İş bitiminde kaydedilecek olay",
+                "en": "Event recorded when the work finishes"
+              }
+            }
           ],
           "example": "#include \"matrix_pro/streams/stream_pool.hpp\"\n\nMatrix w1 = Matrix::glorot(2048, 2048);\nMatrix g1 = Matrix::randn(2048, 2048);\nMatrix w2 = Matrix::glorot(2048, 2048);\nMatrix g2 = Matrix::randn(2048, 2048);\n\ncudaEvent_t e1 = make_event();\ncudaEvent_t e2 = make_event();\n\n// Iki bagimsiz guncelleme ortusur\nlaunch_on_pool(0, [&](cudaStream_t s) { (void)s; broadcast_add_(w1, multiply(g1, -0.01f)); }, e1);\nlaunch_on_pool(1, [&](cudaStream_t s) { (void)s; broadcast_add_(w2, multiply(g2, -0.01f)); }, e2);\n\nsynchronize_pool();\ndestroy_event(e1);\ndestroy_event(e2);"
         },
@@ -785,9 +1516,30 @@
             "en": "Asynchronous reductions write the result into `*out` and do **not** block the caller; once the value is ready `callback(*out)` is invoked from a CUDA stream callback. `out` must point at **page-locked (pinned) host memory** — allocate it with `pin_host` and release it with `unpin_host`. This removes the pipeline stalls that argmax/argmin otherwise cause inside a training loop."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "Redüksiyonu alınacak matris", "en": "Matrix to reduce" } },
-            { "name": "out", "type": "std::size_t*", "desc": { "tr": "Pinned host bellek slotu (`pin_host` ile ayrılmış)", "en": "Pinned host memory slot (allocated with `pin_host`)" } },
-            { "name": "callback", "type": "const std::function<void(std::size_t)>&", "desc": { "tr": "Değer hazır olduğunda çağrılır; boş bırakılabilir", "en": "Called once the value is ready; may be left empty" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "Redüksiyonu alınacak matris",
+                "en": "Matrix to reduce"
+              }
+            },
+            {
+              "name": "out",
+              "type": "std::size_t*",
+              "desc": {
+                "tr": "Pinned host bellek slotu (`pin_host` ile ayrılmış)",
+                "en": "Pinned host memory slot (allocated with `pin_host`)"
+              }
+            },
+            {
+              "name": "callback",
+              "type": "const std::function<void(std::size_t)>&",
+              "desc": {
+                "tr": "Değer hazır olduğunda çağrılır; boş bırakılabilir",
+                "en": "Called once the value is ready; may be left empty"
+              }
+            }
           ],
           "example": "Matrix logits = Matrix::randn(4096, 1000);\n\n// Pinned yuva ayir\nstd::size_t* slot = static_cast<std::size_t*>(pin_host(sizeof(std::size_t)));\n\nargmax_async(logits, slot, [](std::size_t idx) {\n    // Stream callback icinden: pipeline bloke edilmedi\n    std::cout << \"argmax: \" << idx << \"\\n\";\n});\n\n// ... baska isler yap ...\nunpin_host(slot);"
         }
@@ -795,7 +1547,10 @@
     },
     {
       "id": "ml",
-      "title": { "tr": "Normalizasyon & Dropout", "en": "Normalization & Dropout" },
+      "title": {
+        "tr": "Normalizasyon & Dropout",
+        "en": "Normalization & Dropout"
+      },
       "intro": {
         "tr": "Eğitim odaklı GPU çekirdekleri: batch normalization her **özellik kolonunu**, layer normalization her **satırı** normalize eder. Dropout ters (inverted) biçimdedir, yani test zamanında hiçbir ölçekleme gerekmez.",
         "en": "Training-oriented GPU kernels: batch normalization normalizes each **feature column**, layer normalization normalizes each **row**. Dropout is of the inverted kind, so no rescaling is needed at test time."
@@ -811,10 +1566,38 @@
             "en": "`batch_norm` normalizes each column to zero mean and unit variance (statistics over the batch). `layer_norm` does the same per row and therefore works independently of the batch dimension in sequence models. `epsilon` is the numerical-stability term and must be positive (`InvalidArgumentError` otherwise). `dropout` is inverted and reproducible when a seed is supplied; `seed = 0` consumes the global device RNG state."
           },
           "params": [
-            { "name": "matrix", "type": "const Matrix&", "desc": { "tr": "(batch x features) gizli katman çıktısı", "en": "(batch x features) hidden-layer output" } },
-            { "name": "epsilon", "type": "float", "desc": { "tr": "Varyans paydasına eklenen kararlılık terimi (> 0)", "en": "Stability term added to the variance denominator (> 0)" } },
-            { "name": "probability", "type": "float", "desc": { "tr": "Dropout olasılığı; `0 <= p < 1`", "en": "Dropout probability; `0 <= p < 1`" } },
-            { "name": "seed", "type": "unsigned long long", "desc": { "tr": "`0` = global cihaz RNG durumu", "en": "`0` = the global device RNG state" } }
+            {
+              "name": "matrix",
+              "type": "const Matrix&",
+              "desc": {
+                "tr": "(batch x features) gizli katman çıktısı",
+                "en": "(batch x features) hidden-layer output"
+              }
+            },
+            {
+              "name": "epsilon",
+              "type": "float",
+              "desc": {
+                "tr": "Varyans paydasına eklenen kararlılık terimi (> 0)",
+                "en": "Stability term added to the variance denominator (> 0)"
+              }
+            },
+            {
+              "name": "probability",
+              "type": "float",
+              "desc": {
+                "tr": "Dropout olasılığı; `0 <= p < 1`",
+                "en": "Dropout probability; `0 <= p < 1`"
+              }
+            },
+            {
+              "name": "seed",
+              "type": "unsigned long long",
+              "desc": {
+                "tr": "`0` = global cihaz RNG durumu",
+                "en": "`0` = the global device RNG state"
+              }
+            }
           ],
           "example": "#include \"matrix_pro/nn/ml.hpp\"\n\nMatrix h = Matrix::randn(64, 256);\n\nMatrix bn = batch_norm(h, 1e-5f);   // her kolon ~N(0,1)\nMatrix ln = layer_norm(h, 1e-5f);   // her satir ~N(0,1)\n\nMatrix d = dropout(h, /*probability=*/0.1f, /*seed=*/1234ull);\nstd::cout << \"mean(bn): \" << mean(bn);"
         }
@@ -822,7 +1605,10 @@
     },
     {
       "id": "device",
-      "title": { "tr": "Cihaz Yönetimi, DType & CUDA Yardımcıları", "en": "Device Management, DType & CUDA Utilities" },
+      "title": {
+        "tr": "Cihaz Yönetimi, DType & CUDA Yardımcıları",
+        "en": "Device Management, DType & CUDA Utilities"
+      },
       "intro": {
         "tr": "Kütüphane her **(host thread, CUDA cihaz)** çifti için bir yürütme bağlamı tutar: CUDA stream + cuBLAS/cuSOLVER/cuDNN tutamaçları. Böylece farklı thread'ler stream paylaşmaz ve bağımsız cihazlar kendi tutamaçlarını alır — çoklu thread'den çalıştırma güvenlidir.",
         "en": "The library keeps one execution context per **(host thread, CUDA device)** pair: a CUDA stream plus the cuBLAS/cuSOLVER/cuDNN handles. Different threads therefore never share a stream and independent devices get their own handles — concurrent execution from multiple threads is safe."
@@ -838,9 +1624,30 @@
             "en": "The compute kernels stay float32; this header adds a thin type layer around them. `TypedBuffer<T>` is a RAII device buffer without a host mirror (double/half/float). `sum_f64`/`mean_f64`/`l2_norm_f64` are **double-accumulated reference reductions** — use them to validate float32 results and to write accuracy tests. `pack_f16`/`unpack_f16` convert float32 device data to `__half` memory (and back), typically paired with `matmul_half`."
           },
           "params": [
-            { "name": "dt", "type": "DType", "desc": { "tr": "Tip etiketi; `dtype_size` bayt sayısını verir", "en": "Type tag; `dtype_size` yields the byte count" } },
-            { "name": "count", "type": "std::size_t", "desc": { "tr": "Dönüştürülecek eleman sayısı", "en": "Number of elements to convert" } },
-            { "name": "src, dst_half", "type": "float* / void*", "desc": { "tr": "Kaynak float tamponu ve hedef half tamponu (çağıran ayırır)", "en": "Source float buffer and destination half buffer (caller-allocated)" } }
+            {
+              "name": "dt",
+              "type": "DType",
+              "desc": {
+                "tr": "Tip etiketi; `dtype_size` bayt sayısını verir",
+                "en": "Type tag; `dtype_size` yields the byte count"
+              }
+            },
+            {
+              "name": "count",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Dönüştürülecek eleman sayısı",
+                "en": "Number of elements to convert"
+              }
+            },
+            {
+              "name": "src, dst_half",
+              "type": "float* / void*",
+              "desc": {
+                "tr": "Kaynak float tamponu ve hedef half tamponu (çağıran ayırır)",
+                "en": "Source float buffer and destination half buffer (caller-allocated)"
+              }
+            }
           ],
           "example": "#include \"matrix_pro/core/dtype.hpp\"\n#include <cmath>\n\nMatrix m = Matrix::randn(1024, 1024);\n\n// float32 vs double referans kiyasi\nfloat  s32 = sum(m);\ndouble s64 = sum_f64(m);\nstd::cout << \"abs error: \" << std::abs(static_cast<double>(s32) - s64);\n\nstd::cout << dtype_name(DType::f16) << \" \" << dtype_size(DType::f16);  // f16 2"
         },
@@ -854,11 +1661,342 @@
             "en": "Device selection and low-level resources. `DeviceScope` is RAII and restores the previous device on scope exit; its destructor **never throws** (use `set_device` when you need error reporting). `zero_device_memory` clears freshly allocated memory and is mandatory for kernels that accumulate with `atomicAdd`. `sm_count()` caches the SM count of the current device; it is used to size persistent-style reduction grids."
           },
           "params": [
-            { "name": "device", "type": "int", "desc": { "tr": "0 tabanlı cihaz indeksi; `device_count()` ile denetleyin", "en": "Zero-based device index; check against `device_count()`" } },
-            { "name": "bytes", "type": "std::size_t", "desc": { "tr": "Ayrılacak/sıfırlanacak bayt sayısı", "en": "Number of bytes to allocate or clear" } },
-            { "name": "operation", "type": "const char*", "desc": { "tr": "Hata mesajına eklenecek bağlam etiketi", "en": "Context label prepended to the error message" } }
+            {
+              "name": "device",
+              "type": "int",
+              "desc": {
+                "tr": "0 tabanlı cihaz indeksi; `device_count()` ile denetleyin",
+                "en": "Zero-based device index; check against `device_count()`"
+              }
+            },
+            {
+              "name": "bytes",
+              "type": "std::size_t",
+              "desc": {
+                "tr": "Ayrılacak/sıfırlanacak bayt sayısı",
+                "en": "Number of bytes to allocate or clear"
+              }
+            },
+            {
+              "name": "operation",
+              "type": "const char*",
+              "desc": {
+                "tr": "Hata mesajına eklenecek bağlam etiketi",
+                "en": "Context label prepended to the error message"
+              }
+            }
           ],
           "example": "#include \"matrix_pro/core/cuda_utils.hpp\"\n\nstd::cout << \"devices: \" << device_count() << \"\\n\";\n\n// Coklu GPU: kapsam cikisinda onceki cihaz geri gelir\n{\n    DeviceScope scope(1);\n    std::cout << \"now on: \" << current_device()\n              << \" SMs: \" << sm_count() << \"\\n\";\n}\n\n// Alt seviye tampon: sifirlamadan atomicAdd guvenli degildir\nvoid* buf = allocate_device_memory(1024 * sizeof(float));\nzero_device_memory(buf, 1024 * sizeof(float));\nfree_device_memory(buf);\n\nsynchronize_all_devices();"
+        }
+      ]
+    },
+    {
+      "id": "math-engine",
+      "title": {
+        "tr": "Math & Operator Motoru (Trigonometri, Erf, Rsqrt...)",
+        "en": "Math & Operator Engine (Trigonometry, Erf, Rsqrt...)"
+      },
+      "intro": {
+        "tr": "Genişletilmiş matematik motoru: tüm trigonometrik, hiperbolik, yuvarlama ve özel fonksiyonlar float4 vektörize ve CUDA donanım intrinsics (__sinf, __frsqrt_rn, __frcp_rn) kullanarak SFU üzerinde tek çevrimde çalışır. Sıfır host trafiği ile MemoryMode::device_only çıktısı üretir.",
+        "en": "Extended mathematical engine: all trigonometric, hyperbolic, rounding, and special functions are float4-vectorized using CUDA hardware intrinsics (__sinf, __frsqrt_rn, __frcp_rn) running in single cycle on the Special Function Units (SFU). Produces MemoryMode::device_only outputs with zero host traffic."
+      },
+      "entries": [
+        {
+          "name": "Trigonometrik & Hiperbolik Operatörler",
+          "signature": "Matrix sin(const Matrix& m);\nMatrix cos(const Matrix& m);\nMatrix tan(const Matrix& m);\nMatrix asin(const Matrix& m);\nMatrix acos(const Matrix& m);\nMatrix atan(const Matrix& m);\nMatrix atan2(const Matrix& y, const Matrix& x);\nMatrix sinh(const Matrix& m);\nMatrix cosh(const Matrix& m);",
+          "badge": "Math",
+          "returns": "Matrix",
+          "text": {
+            "tr": "Matrisin tüm elemanlarına donanım hızlandırmalı trigonometrik veya hiperbolik fonksiyon uygular. atan2 iki matris alır ve şekil uyuşmazlığında ShapeMismatchError fırlatır.",
+            "en": "Applies hardware-accelerated trigonometric or hyperbolic functions elementwise. atan2 takes two matrices and throws ShapeMismatchError on dimension mismatch."
+          },
+          "example": "#include \"matrix_pro/ops/math.hpp\"\n\nMatrix x = Matrix::uniform(1024, 1024, 0.0f, 3.14159f);\nMatrix s = matrix_pro::sin(x);\nMatrix c = matrix_pro::cos(x);\n// s^2 + c^2 == 1"
+        },
+        {
+          "name": "Özel Fonksiyonlar & Hızlı Tersler",
+          "signature": "Matrix erf(const Matrix& m);\nMatrix erfc(const Matrix& m);\nMatrix erfinv(const Matrix& m);\nMatrix lgamma(const Matrix& m);\nMatrix rsqrt(const Matrix& m);\nMatrix reciprocal(const Matrix& m);\nMatrix lerp(const Matrix& a, const Matrix& b, float t);\nMatrix addcmul(const Matrix& self, const Matrix& t1, const Matrix& t2, float alpha = 1.0f);",
+          "badge": "Math",
+          "returns": "Matrix",
+          "text": {
+            "tr": "rsqrt ve reciprocal doğrudan donanım SFU intrinsics (__frsqrt_rn, __frcp_rn) kullanır ve 1/x veya 1/sqrt(x) işlemlerinden kat kat hızlıdır. erfinv yüksek hassasiyetli rasyonel Chebyshev polinom yaklaşımıyla GPU üzerinde paralel çalışır. addcmul 3-girdi tek geçişli fused çekirdektir.",
+            "en": "rsqrt and reciprocal leverage native SFU intrinsics directly (__frsqrt_rn, __frcp_rn) providing massive speedups over generic divisions. erfinv uses high-precision rational polynomial approximation on GPU. addcmul is a 3-operand single-pass fused kernel."
+          },
+          "example": "Matrix x = Matrix::randn(2048, 2048);\nMatrix inv_sqrt = matrix_pro::rsqrt(x.abs());\nMatrix p = matrix_pro::addcmul(x, x, x, 0.5f); // x + 0.5 * x * x in single pass"
+        }
+      ]
+    },
+    {
+      "id": "linalg-extended",
+      "title": {
+        "tr": "Gelişmiş Lineer Cebir (LU, TRSM, Matris Üs/Exp, Batch)",
+        "en": "Extended Linear Algebra (LU, TRSM, Matrix Power/Exp, Batch)"
+      },
+      "intro": {
+        "tr": "cuSOLVER ve cuBLAS hızlandırmalı gelişmiş cebir motoru: PA = LU ayrıştırması, üçgensel çözücüler (TRSM), üçgensel çarpım (TRMM), Padé yaklaşımıyla matris üsteli, tekrarlı kare alma ile matris kuvveti ve rank-3 Tensörler üzerinde toplu (batched) işlemler.",
+        "en": "cuSOLVER and cuBLAS accelerated advanced algebra engine: PA = LU decomposition, triangular solves (TRSM), triangular multiply (TRMM), matrix exponential via Padé approximation, matrix power via repeated squaring, and batched linear algebra on rank-3 Tensors."
+      },
+      "entries": [
+        {
+          "name": "lu",
+          "signature": "LUResult lu(const Matrix& A);\nstruct LUResult { Matrix L; Matrix U; Matrix P; };",
+          "badge": "LinAlg",
+          "returns": "LUResult",
+          "text": {
+            "tr": "cuSOLVER cusolverDnSgetrf kullanarak PA = LU ayrıştırması yapar. Permütasyon vektörünü P matrisine çevirir, L (diyagonalde 1'ler) ve U (üst üçgen) matrislerini GPU üzerinde paralel olarak ayıklar.",
+            "en": "Computes PA = LU factorization using cusolverDnSgetrf. Converts pivot indices to permutation matrix P and extracts L (unit diagonal) and U (upper triangular) concurrently on GPU."
+          },
+          "example": "#include \"matrix_pro/ops/linalg_extended.hpp\"\n\nMatrix A = Matrix::randn(512, 512);\nLUResult res = matrix_pro::lu(A);\n// res.P * A == res.L * res.U"
+        },
+        {
+          "name": "trsm & trmm",
+          "signature": "Matrix trsm(const Matrix& A, const Matrix& B, bool upper = true, bool left = true, bool unit_diag = false);\nMatrix trmm(const Matrix& A, const Matrix& B, bool upper = true, bool left = true);",
+          "badge": "LinAlg",
+          "returns": "Matrix",
+          "text": {
+            "tr": "cuBLAS cublasStrsm ve cublasStrmm kullanarak üçgensel lineer sistemleri AX = B veya XA = B çözer ve çarpar. Bellek tahsisini optimize eder ve donanım tepe noktasına yakın verim sağlar.",
+            "en": "Solves AX = B or XA = B for triangular A using cuBLAS cublasStrsm and computes triangular matrix products with cublasStrmm with near-peak hardware efficiency."
+          }
+        },
+        {
+          "name": "matrix_power & matrix_exp",
+          "signature": "Matrix matrix_power(const Matrix& A, int n);\nMatrix matrix_exp(const Matrix& A, int order = 13);\nfloat log_determinant(const Matrix& A);",
+          "badge": "LinAlg",
+          "returns": "Matrix / float",
+          "text": {
+            "tr": "matrix_power O(log n) GEMM adımıyla ikili üs alma (repeated squaring) yapar. matrix_exp scaling and squaring yöntemi ve 13. derece Padé rasyonel yaklaşımıyla hesaplar. log_determinant overflow/underflow olmaksızın stabil log determinant döner.",
+            "en": "matrix_power uses binary exponentiation in O(log n) GEMM steps. matrix_exp implements Higham's scaling-and-squaring with order-13 Padé approximation. log_determinant yields numerically stable log-det without overflow."
+          }
+        }
+      ]
+    },
+    {
+      "id": "memory-engine",
+      "title": {
+        "tr": "Bellek Motoru & Birleşik Bellek (Memory Engine)",
+        "en": "Memory Engine & Unified Memory"
+      },
+      "intro": {
+        "tr": "Akıllı bellek yönetimi: allocation istatistikleri, tepe bellek izleme, önbellek temizleme (empty_cache) ve CPU/GPU arasında donanım geçişli birleşik bellek (Unified Memory).",
+        "en": "Intelligent device memory management: allocation analytics, peak memory tracking, cache recycling (empty_cache), and page-migrated Unified Memory between CPU and GPU."
+      },
+      "entries": [
+        {
+          "name": "MemoryStats & empty_cache",
+          "signature": "MemoryStats memory_stats();\nvoid reset_peak_memory();\nvoid empty_cache();\nvoid set_memory_limit(std::size_t bytes);",
+          "badge": "Memory",
+          "returns": "MemoryStats / void",
+          "text": {
+            "tr": "Dahili DeviceMemoryPool'un anlık durumunu sorgular: aktif ayrılmış bellek, tepe bellek (peak), havuzda tutulan geri dönüşümlü önbellek ve önbellek isabet oranı. empty_cache() kullanılmayan blokları anında serbest bırakarak GPU VRAM'i boşa çıkarır.",
+            "en": "Queries DeviceMemoryPool telemetry: currently allocated bytes, peak usage, cached blocks, and cache hit rate. empty_cache() immediately releases unused pool memory to the OS/driver."
+          },
+          "example": "#include \"matrix_pro/core/memory_pool.hpp\"\n\nMemoryStats stats = matrix_pro::memory_stats();\nstd::cout << stats.summary() << \"\\n\";\nmatrix_pro::empty_cache(); // reclaim VRAM"
+        },
+        {
+          "name": "Unified Memory",
+          "signature": "void* allocate_unified_memory(std::size_t bytes);\nvoid free_unified_memory(void* ptr);\nvoid prefetch_to_device(void* ptr, std::size_t bytes, int device = -1);\nvoid prefetch_to_host(void* ptr, std::size_t bytes);",
+          "badge": "Memory",
+          "returns": "void* / void",
+          "text": {
+            "tr": "cudaMallocManaged tabanlı birleşik bellek ayırır. Sayfa hataları (page faults) olmadan maksimum bant genişliği için prefetch_to_device ve prefetch_to_host asenkron önbelleğe alma sağlar.",
+            "en": "Allocates managed memory accessible from both CPU and GPU seamlessly. prefetch_to_device and prefetch_to_host eliminate page faults by staging data asynchronously before kernel execution."
+          }
+        }
+      ]
+    },
+    {
+      "id": "backend-engine",
+      "title": {
+        "tr": "Backend Motoru & Cihaz Yetenekleri (Backend Engine)",
+        "en": "Backend Engine & Multi-GPU"
+      },
+      "intro": {
+        "tr": "Donanım mimarisini ve CUDA çekirdek sınırlarını sorgulayan, eşler arası (peer-to-peer) bellek erişimini ve çoklu GPU transferlerini yöneten backend katmanı.",
+        "en": "Hardware architecture discovery and execution constraints inspector, managing peer-to-peer (P2P) memory access and multi-GPU distributed data transfers."
+      },
+      "entries": [
+        {
+          "name": "DeviceInfo & get_device_info",
+          "signature": "DeviceInfo get_device_info(int device = -1);\nstd::vector<DeviceInfo> get_all_devices();",
+          "badge": "Backend",
+          "returns": "DeviceInfo",
+          "text": {
+            "tr": "GPU'nun SM sayısı, saat frekansı, bellek bant genişliği, teorik TFLOPS, TF32/FP16/BF16 tensor çekirdek desteği ve PCIe bus bilgilerini raporlar.",
+            "en": "Reports GPU SM count, clock rate, peak memory bandwidth, theoretical TFLOPS, TF32/FP16/BF16 tensor core capabilities, and PCIe topology."
+          },
+          "example": "#include \"matrix_pro/core/backend.hpp\"\n\nDeviceInfo info = matrix_pro::get_device_info();\nstd::cout << info.summary() << \"\\n\";\nstd::cout << \"Peak GB/s: \" << info.peak_bandwidth_gbps() << \"\\n\";"
+        },
+        {
+          "name": "Multi-GPU P2P Primitives",
+          "signature": "void enable_peer_access(int device_a, int device_b);\nvoid peer_copy_async(float* dst, int dst_device, const float* src, int src_device, std::size_t count);",
+          "badge": "Backend",
+          "returns": "void",
+          "text": {
+            "tr": "İki GPU arasında NVLink veya PCIe üzerinden doğrudan bellek erişimini etkinleştirir. Host RAM'e uğramadan GPU'dan GPU'ya tepe hızda veri kopyalar.",
+            "en": "Enables direct NVLink or PCIe P2P access between GPU pairs. Copies data directly GPU-to-GPU at interconnect wire speed bypassing host memory entirely."
+          }
+        }
+      ]
+    },
+    {
+      "id": "execution-engine",
+      "title": {
+        "tr": "Yürütme Motoru (CUDA Graph, Pipeline & Profiler)",
+        "en": "Execution Engine (CUDA Graph, Pipeline & Profiler)"
+      },
+      "intro": {
+        "tr": "Kernel başlatma gecikmesini (overhead) ortadan kaldıran CUDA Graph capture & replay motoru, hesaplama ve transferi örtüştüren çok aşamalı Pipeline ve CUDA olay tabanlı alt-milisaniye profiler.",
+        "en": "CUDA Graph capture & replay engine eliminating kernel launch latencies, multi-stage Pipeline overlapping compute with transfers, and sub-millisecond CUDA event profiler."
+      },
+      "entries": [
+        {
+          "name": "CudaGraph",
+          "signature": "class CudaGraph {\n    void begin_capture();\n    void end_capture();\n    void replay();\n    bool is_capturing() const noexcept;\n    bool is_compiled() const noexcept;\n    void reset();\n};",
+          "badge": "Execution",
+          "text": {
+            "tr": "CUDA stream üzerindeki kernel dizisini yakalar, GPU donanım yürütme grafiğine derler ve CPU etkileşimi olmadan ~10-50 kat daha düşük gecikmeyle tekrar tekrar çalıştırır.",
+            "en": "Captures a sequence of kernel launches on a CUDA stream, compiles it into a hardware execution graph, and replays it with 10-50x lower CPU launch latency."
+          },
+          "example": "#include \"matrix_pro/streams/execution.hpp\"\n\nCudaGraph graph;\ngraph.begin_capture();\nMatrix c = a * b + bias;\ngraph.end_capture();\n\n// Ultra-fast zero-overhead execution\nfor (int i = 0; i < 1000; ++i) {\n    graph.replay();\n}"
+        },
+        {
+          "name": "Pipeline & ExecutionProfiler",
+          "signature": "class Pipeline {\n    explicit Pipeline(int num_stages = 4);\n    void enqueue(std::function<void()> fn);\n    void barrier();\n    void synchronize();\n};\n\nclass ExecutionProfiler {\n    void begin(const std::string& label = \"\");\n    void end();\n    float last_elapsed_ms() const;\n    std::string summary() const;\n};",
+          "badge": "Execution",
+          "text": {
+            "tr": "Pipeline bağımsız CUDA stream'ler ve olay bariyerleri üzerinden ardışık aşamaları paralel yürütür. ExecutionProfiler donanım saatlerini kullanarak her bölgenin süresini ölçer.",
+            "en": "Pipeline overlaps computation and PCIe copies across round-robin CUDA streams with event barriers. ExecutionProfiler captures exact kernel execution timings using hardware timers."
+          }
+        }
+      ]
+    },
+    {
+      "id": "serialization-engine",
+      "title": {
+        "tr": "Serileştirme Motoru (Checkpoint, Tensor I/O)",
+        "en": "Serialization Engine (Checkpoint & Tensor I/O)"
+      },
+      "intro": {
+        "tr": "Çoklu tensör ve matris ağırlıklarını, metadata ve model durumlarını disk üzerinde kompakt ikili formatta saklayan ve disk bant genişliğinde yükleyen serileştirme motoru.",
+        "en": "Serialization engine storing multi-tensor state dictionaries, metadata, and model parameters in compact binary formats (.mfc, .mft) loading at raw NVMe disk throughput."
+      },
+      "entries": [
+        {
+          "name": "save_tensor & load_tensor",
+          "signature": "void save_tensor(const Tensor& tensor, const std::string& filename);\nTensor load_tensor(const std::string& filename);",
+          "badge": "Serialization",
+          "returns": "void / Tensor",
+          "text": {
+            "tr": "Rank-N tensörleri sihirli bayt (MFTP), versiyon ve boyut başlığıyla birlikte diske ikili olarak kaydeder ve geri yükler. Başarısızlıkta IoError atar.",
+            "en": "Saves and loads rank-N tensors in binary format with magic header (MFTP), version, rank, and shape. Throws IoError on file access issues."
+          }
+        },
+        {
+          "name": "Checkpoint",
+          "signature": "class Checkpoint {\n    void add(const std::string& name, const Matrix& matrix);\n    void add(const std::string& name, const Tensor& tensor);\n    void save(const std::string& filename) const;\n    static Checkpoint load(const std::string& filename);\n    Matrix get_matrix(const std::string& name) const;\n    Tensor get_tensor(const std::string& name) const;\n    void set_metadata(const std::string& key, const std::string& value);\n    std::string get_metadata(const std::string& key) const;\n};",
+          "badge": "Serialization",
+          "returns": "Checkpoint / Matrix / Tensor",
+          "text": {
+            "tr": "PyTorch state_dict benzeri çoklu katman saklama sınıfı. Modelin ağırlıklarını, bias tensörlerini ve eğitim hiperparametrelerini (epoch, lr, loss) tek bir .mfc dosyasında paketler.",
+            "en": "PyTorch state_dict equivalent checkpoint container. Packs matrix weights, tensor biases, and training metadata into a unified binary .mfc archive."
+          },
+          "example": "#include \"matrix_pro/core/serialization.hpp\"\n\nCheckpoint ckpt;\nckpt.add(\"w1\", layer1_weights);\nckpt.add(\"b1\", layer1_bias);\nckpt.set_metadata(\"epoch\", \"100\");\nckpt.save(\"model.mfc\");\n\nCheckpoint loaded = Checkpoint::load(\"model.mfc\");\nMatrix w = loaded.get_matrix(\"w1\");"
+        }
+      ]
+    },
+    {
+      "id": "sparse-engine",
+      "title": {
+        "tr": "Genişletilmiş Seyrek Matris Motoru (COO, CSC, SpGEMM)",
+        "en": "Extended Sparse Matrix Engine (COO, CSC, SpGEMM)"
+      },
+      "intro": {
+        "tr": "CSR'a ek olarak COO (Coordinate) ve CSC (Compressed Sparse Column) formatlarını destekleyen, cuSPARSE SpGEMM (seyrek matris × seyrek matris) ile donanım hızlandırmalı seyrek motor.",
+        "en": "Expands sparse matrix operations to COO (Coordinate) and CSC (Compressed Sparse Column) formats, featuring hardware-accelerated cuSPARSE SpGEMM for sparse-sparse matrix multiplication."
+      },
+      "entries": [
+        {
+          "name": "SparseCOO & SparseCSC",
+          "signature": "class SparseCOO {\n    static SparseCOO from_triplets(std::size_t rows, std::size_t cols, const std::vector<int>& r, const std::vector<int>& c, const std::vector<float>& v);\n    Matrix to_dense() const;\n    SparseCSR to_csr() const;\n};\n\nclass SparseCSC {\n    static SparseCSC from_dense(const Matrix& dense, float threshold = 0.0f);\n    Matrix spmv(const Matrix& x) const;\n    Matrix to_dense() const;\n};",
+          "badge": "Sparse",
+          "text": {
+            "tr": "Seyrek verileri satır-sütun-değer üçlüsü (COO) veya sütun-sıkıştırılmış (CSC) olarak temsil eder. Biçimler arasında (COO ↔ CSR ↔ CSC) GPU üzerinde paralel dönüşüm sağlar.",
+            "en": "Represents sparse matrices via coordinate triplets (COO) or column pointers (CSC). Features ultra-fast GPU kernels for zero-host conversion between all three formats."
+          }
+        },
+        {
+          "name": "spgemm & sparse_add",
+          "signature": "SparseCSR spgemm(const SparseCSR& A, const SparseCSR& B);\nSparseCSR sparse_add(const SparseCSR& A, const SparseCSR& B, float alpha = 1.0f, float beta = 1.0f);",
+          "badge": "Sparse",
+          "returns": "SparseCSR",
+          "text": {
+            "tr": "spgemm cuSPARSE kütüphanesini kullanarak iki seyrek CSR matrisi doğrudan çarpar (C = A * B) ve sonucu seyrek CSR olarak üretir. sparse_add seyrek matris toplamı yapar.",
+            "en": "spgemm computes sparse-sparse products (C = A * B) directly using cuSPARSE SpGEMM returning an optimized CSR matrix. sparse_add computes linear combinations of sparse matrices."
+          }
+        }
+      ]
+    },
+    {
+      "id": "autograd-extended",
+      "title": {
+        "tr": "Gelişmiş Autograd Motoru (NoGrad, Checkpoint, Clipping)",
+        "en": "Extended Autograd Engine (NoGrad, Checkpoint, Clipping)"
+      },
+      "intro": {
+        "tr": "Çıkarım sırasında gereksiz gradyan izlemeyi kapatan RAII NoGradGuard, büyük modellerde GPU VRAM kullanımını %60 azaltan aktivasyon checkpointing ve eğitim kararlılığı için gradyan kırpma (clipping).",
+        "en": "RAII NoGradGuard disabling tape tracking during inference, activation checkpointing cutting peak VRAM consumption by up to 60%, and gradient clipping for training stability."
+      },
+      "entries": [
+        {
+          "name": "NoGradGuard & is_grad_enabled",
+          "signature": "class NoGradGuard {\n    NoGradGuard();\n    ~NoGradGuard();\n};\nbool is_grad_enabled();\nvoid set_grad_enabled(bool enabled);",
+          "badge": "Autograd",
+          "text": {
+            "tr": "PyTorch torch.no_grad() eşdeğeri thread-local RAII kapsam koruyucusu. Kapsam içinde autograd computation graph oluşturulmaz; çıkarım (inference) hızlanır ve VRAM harcanmaz.",
+            "en": "Thread-local RAII scope guard equivalent to torch.no_grad(). Disables computation graph allocation during inference to maximize speed and prevent memory consumption."
+          },
+          "example": "#include \"matrix_pro/autograd/autograd.hpp\"\n\n{\n    NoGradGuard no_grad;\n    Variable pred = model.forward(x);\n    // Zero autograd overhead during inference\n}"
+        },
+        {
+          "name": "clip_grad_norm_ & checkpoint",
+          "signature": "static void Variable::clip_grad_norm_(std::vector<Variable>& params, float max_norm, float norm_type = 2.0f);\nstatic void Variable::clip_grad_value_(std::vector<Variable>& params, float clip_value);\nstatic Variable Variable::checkpoint(std::function<Variable(const Variable&)> fn, const Variable& input);",
+          "badge": "Autograd",
+          "returns": "void / Variable",
+          "text": {
+            "tr": "clip_grad_norm_ parametrelerin toplam gradyan normunu hesaplayıp eşik değerine ölçekler; patlayan gradyanları (exploding gradients) önler. checkpoint ara katman aktivasyonlarını saklamaz, geri yayılımda tekrar hesaplar.",
+            "en": "clip_grad_norm_ prevents exploding gradients by scaling gradients to a maximum L2 threshold. checkpoint trades compute for memory by recomputing forward activations during backward pass."
+          }
+        }
+      ]
+    },
+    {
+      "id": "rng-extended",
+      "title": {
+        "tr": "Genişletilmiş RNG Motoru (Bernoulli, Poisson, Randperm, State)",
+        "en": "Extended RNG Engine (Bernoulli, Poisson, Randperm, State)"
+      },
+      "intro": {
+        "tr": "MurmurHash3 sayaç tabanlı deterministik ve çok iş parçacıklı GPU rastgele sayı üreteci: Bernoulli, Poisson, Üstel, Cauchy, Log-Normal, Randperm ve bağımsız RNGState jeneratörü.",
+        "en": "MurmurHash3 counter-based deterministic and multithreaded GPU random number generator: Bernoulli, Poisson, Exponential, Cauchy, Log-Normal, Randperm, and isolated RNGState."
+      },
+      "entries": [
+        {
+          "name": "Genişletilmiş Dağılımlar",
+          "signature": "Matrix bernoulli_gpu(std::size_t rows, std::size_t cols, float prob);\nMatrix exponential_gpu(std::size_t rows, std::size_t cols, float lambda = 1.0f);\nMatrix poisson_gpu(std::size_t rows, std::size_t cols, float lambda);\nMatrix randint_gpu(std::size_t rows, std::size_t cols, int low, int high);\nMatrix randperm_gpu(std::size_t n);",
+          "badge": "RNG",
+          "returns": "Matrix",
+          "text": {
+            "tr": "Tamamen GPU üzerinde paralelleştirilmiş yeni dağılımlar. randperm_gpu 0'dan n-1'e kadar tamsayıların rastgele permütasyonunu üretir.",
+            "en": "New distributions evaluated purely on the GPU. randperm_gpu produces a randomized permutation of integers from 0 to n-1."
+          }
+        },
+        {
+          "name": "RNGState",
+          "signature": "class RNGState {\n    explicit RNGState(unsigned long long seed = 42);\n    void manual_seed(unsigned long long seed);\n    unsigned long long seed() const noexcept;\n    Matrix randn(std::size_t rows, std::size_t cols);\n    Matrix uniform(std::size_t rows, std::size_t cols, float low = 0.0f, float high = 1.0f);\n    Matrix bernoulli(std::size_t rows, std::size_t cols, float prob);\n};",
+          "badge": "RNG",
+          "text": {
+            "tr": "Global RNG durumundan bağımsız, izole edilmiş deterministik jeneratör nesnesi. Farklı thread'ler veya modeller birbirini etkilemeden bağımsız rastgelelik dizileri üretir.",
+            "en": "Isolated deterministic generator object independent from global state. Enables separate threads or models to generate reproducible random sequences concurrently without interference."
+          }
         }
       ]
     }

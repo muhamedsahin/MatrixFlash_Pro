@@ -8,8 +8,8 @@ import { ApiEntry } from '@/components/docs/api-entry'
 import { Reveal } from '@/components/reveal'
 import type { DocPageData } from '@/lib/types/doc'
 import { useLanguage } from '@/lib/hooks/use-language'
+import { useEffect } from 'react'
 
-/** Skeleton shown while the JSON content is loading. */
 function DocSkeleton() {
   return (
     <div className="animate-pulse space-y-6" aria-busy="true">
@@ -26,7 +26,6 @@ function DocSkeleton() {
   )
 }
 
-/** Generic documentation page renderer driven by API JSON content. */
 export function DocPageRenderer({
   data,
   loading,
@@ -40,6 +39,42 @@ export function DocPageRenderer({
 }) {
   const { lang, t } = useLanguage()
 
+  // ✅ TÜM hook'lar burada, herhangi bir return'den ÖNCE.
+  useEffect(() => {
+    if (!data) return
+    const scrollToTarget = (hash: string) => {
+      if (!hash) return
+      const cleanHash = hash.replace('#', '')
+      const el = document.getElementById(cleanHash)
+      if (el) {
+        const yOffset = -85
+        const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset
+        window.scrollTo({ top: y, behavior: 'smooth' })
+        el.classList.remove('section-highlight')
+        void el.offsetWidth
+        el.classList.add('section-highlight')
+      }
+    }
+
+    if (window.location.hash) {
+      setTimeout(() => scrollToTarget(window.location.hash), 120)
+    }
+
+    const onHashChange = () => scrollToTarget(window.location.hash)
+    const onCustomNav = (e: Event) => {
+      const customEvent = e as CustomEvent<{ hash: string }>
+      if (customEvent.detail?.hash) scrollToTarget(customEvent.detail.hash)
+    }
+
+    window.addEventListener('hashchange', onHashChange)
+    window.addEventListener('doc-navigate-hash', onCustomNav)
+    return () => {
+      window.removeEventListener('hashchange', onHashChange)
+      window.removeEventListener('doc-navigate-hash', onCustomNav)
+    }
+  }, [data])
+
+  // ✅ Artık tüm early-return'ler hook'lardan SONRA
   if (loading) return <DocSkeleton />
 
   if (error || !data) {
@@ -62,7 +97,6 @@ export function DocPageRenderer({
         description={meta.description[lang]}
       />
 
-      {/* Syllabus / TOC quick bar */}
       <Reveal className="rounded-2xl border border-border/80 glass-panel surface-shine p-5">
         <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
           {t('İÇİNDEKİLER', 'TABLE OF CONTENTS')}
@@ -80,48 +114,52 @@ export function DocPageRenderer({
         </div>
       </Reveal>
 
-      {sections.map((section, idx) => (
-        <Reveal key={section.id} delay={idx * 40}>
-          <DocSection id={section.id} title={section.title[lang]}>
-            {section.intro && (
-              <p>
-                <T value={section.intro} />
-              </p>
-            )}
-            {section.blocks && <BlockList blocks={section.blocks} />}
-          </DocSection>
+      {
+        sections.map((section, idx) => (
+          <Reveal key={section.id} delay={idx * 40}>
+            <DocSection id={section.id} title={section.title[lang]}>
+              {section.intro && (
+                <p>
+                  <T value={section.intro} />
+                </p>
+              )}
+              {section.blocks && <BlockList blocks={section.blocks} />}
+            </DocSection>
 
-          {section.entries?.map((entry) => (
-            <ApiEntry
-              key={entry.name}
-              name={entry.name}
-              signature={entry.signature}
-              badge={entry.badge}
-              returns={entry.returns}
-              params={entry.params?.map((p) => ({
-                name: p.name,
-                type: p.type,
-                desc: p.desc[lang],
-              }))}
-              example={entry.example}
+            {section.entries?.map((entry) => (
+              <ApiEntry
+                key={entry.name}
+                name={entry.name}
+                signature={entry.signature}
+                badge={entry.badge}
+                returns={entry.returns}
+                params={entry.params?.map((p) => ({
+                  name: p.name,
+                  type: p.type,
+                  desc: p.desc[lang],
+                }))}
+                example={entry.example}
+              >
+                <T value={entry.text} />
+              </ApiEntry>
+            ))}
+          </Reveal>
+        ))
+      }
+
+      {
+        next && (
+          <div className="flex items-center justify-between border-t border-border/80 pt-6">
+            <Link
+              href={next.href}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
             >
-              <T value={entry.text} />
-            </ApiEntry>
-          ))}
-        </Reveal>
-      ))}
-
-      {next && (
-        <div className="flex items-center justify-between border-t border-border/80 pt-6">
-          <Link
-            href={next.href}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-          >
-            {next.label[lang]}
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      )}
-    </article>
+              {next.label[lang]}
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        )
+      }
+    </article >
   )
 }

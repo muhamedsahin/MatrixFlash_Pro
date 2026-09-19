@@ -82,6 +82,9 @@ const BenchmarkInfo& comparison_benchmark();
 const BenchmarkInfo& external_gemm_benchmark();
 const BenchmarkInfo& external_linalg_benchmark();
 const BenchmarkInfo& external_sparse_benchmark();
+const BenchmarkInfo& math_benchmark();
+const BenchmarkInfo& execution_benchmark();
+const BenchmarkInfo& serialization_benchmark();
 
 // Every known workload, in run order.
 std::vector<BenchmarkInfo> all_benchmarks();

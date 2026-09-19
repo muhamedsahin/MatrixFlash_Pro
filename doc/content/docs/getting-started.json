@@ -1,8 +1,14 @@
 {
   "slug": "getting-started",
   "meta": {
-    "eyebrow": { "tr": "BAŞLANGIÇ KILAVUZU", "en": "GETTING STARTED GUIDE" },
-    "title": { "tr": "Kurulum, Mimari ve İlk GPU Programı", "en": "Installation, Architecture and Your First GPU Program" },
+    "eyebrow": {
+      "tr": "BAŞLANGIÇ KILAVUZU",
+      "en": "GETTING STARTED GUIDE"
+    },
+    "title": {
+      "tr": "Kurulum, Mimari ve İlk GPU Programı",
+      "en": "Installation, Architecture and Your First GPU Program"
+    },
     "description": {
       "tr": "MatrixFlash-Pro'yu CMake preset'leri ile derleyin, bellek modlarını ve fail-fast sözleşmesini öğrenin, ilk cuBLAS GEMM programınızı 30 satırda çalıştırın.",
       "en": "Build MatrixFlash-Pro with CMake presets, learn the memory-mode and fail-fast contracts, and run your first cuBLAS GEMM program in under 30 lines."
@@ -11,7 +17,10 @@
   "sections": [
     {
       "id": "genel-bakis",
-      "title": { "tr": "Genel Bakış & Modül Haritası", "en": "Overview & Module Map" },
+      "title": {
+        "tr": "Genel Bakış & Modül Haritası",
+        "en": "Overview & Module Map"
+      },
       "intro": {
         "tr": "MatrixFlash-Pro, C++17 ile yazılmış GPU hesaplama kütüphanesidir. Tek bir şemsiye başlık (`matrix_pro/matrix_pro.hpp`) tüm genel API'yi açar; ağır CUDA çekirdekleri kütüphane içinde derlenir ve istemci koduna sızmaz.",
         "en": "MatrixFlash-Pro is a GPU compute library written in C++17. A single umbrella header (`matrix_pro/matrix_pro.hpp`) exposes the entire public API; the heavy CUDA kernels are compiled inside the library and never leak into client code."
@@ -20,79 +29,273 @@
         {
           "type": "list",
           "items": [
-            { "tr": "**Shape-aware GEMM** — mikro / GEMV / algo-cache’li cublasLt / TENSOR_OP; `multiply_into` ile cuBLAS-sınıfı hot path.", "en": "**Shape-aware GEMM** — micro / GEMV / algo-cached cublasLt / TENSOR_OP; `multiply_into` for a cuBLAS-class hot path." },
-            { "tr": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` tek çağrıda; zincire göre 1–6×.", "en": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` in one call; 1–6× over the chain." },
-            { "tr": "**cuBLAS GEMM** — TF32 Tensor Core hızlı yolu, boyut eşiği aşıldığında otomatik.", "en": "**cuBLAS GEMM** — TF32 Tensor Core fast path activates automatically once size crosses the threshold." },
-            { "tr": "**Autograd tape motoru** — `Variable` ve `VarTensor` ile ters-mod otomatik türev; CNN ve batched GEMM dahil.", "en": "**Autograd tape engine** — reverse-mode automatic differentiation via `Variable` and `VarTensor`, including CNN ops and batched GEMM." },
-            { "tr": "**cuSOLVER doğrusal cebir** — QR, SVD, özdeğer, Cholesky, pseudo-inverse, rank, least-squares.", "en": "**cuSOLVER linear algebra** — QR, SVD, eigen, Cholesky, pseudo-inverse, rank and least squares." },
-            { "tr": "**Seyrek CSR matrisler** — `spmv`, sparse-dense matmul ve donmuş desenli embedding gradyanı.", "en": "**Sparse CSR matrices** — `spmv`, sparse-dense matmul and frozen-pattern embedding gradients." },
-            { "tr": "**Zero-copy `MatrixView`** — transpose/slice/reshape için kopyasız strided görünümler.", "en": "**Zero-copy `MatrixView`** — strided views for transpose/slice/reshape with no bytes copied." },
-            { "tr": "**Stream havuzu** — 4 ek stream, asenkron argmax/argmin ve pinned-host sonuç slotları.", "en": "**Stream pool** — 4 extra streams, asynchronous argmax/argmin and pinned-host result slots." }
+            {
+              "tr": "**11 Temel Motor Sistemi (v1.1)** — Tensor Engine (N-D strided), Math Engine, Extended LinAlg (LU/TRSM), Memory Engine, Backend Engine, Extended RNG, Autograd Engine (NoGrad/Checkpoint), Sparse Formats (COO/CSC/SpGEMM), Execution Engine (CUDA Graph/Pipeline), Serialization (Checkpoint/Tensor I/O) ve Test/Benchmark.",
+              "en": "**11 Core Engine Systems (v1.1)** — Tensor Engine (N-D strided), Math Engine, Extended LinAlg (LU/TRSM), Memory Engine, Backend Engine, Extended RNG, Autograd Engine (NoGrad/Checkpoint), Sparse Formats (COO/CSC/SpGEMM), Execution Engine (CUDA Graph/Pipeline), Serialization (Checkpoint/Tensor I/O), and Testing/Benchmarking."
+            },
+            {
+              "tr": "**Shape-aware GEMM** — mikro / GEMV / algo-cache’li cublasLt / TENSOR_OP; `multiply_into` ile cuBLAS-sınıfı hot path.",
+              "en": "**Shape-aware GEMM** — micro / GEMV / algo-cached cublasLt / TENSOR_OP; `multiply_into` for a cuBLAS-class hot path."
+            },
+            {
+              "tr": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` tek çağrıda; zincire göre 1–6×.",
+              "en": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` in one call; 1–6× over the chain."
+            },
+            {
+              "tr": "**cuBLAS GEMM** — TF32 Tensor Core hızlı yolu, boyut eşiği aşıldığında otomatik.",
+              "en": "**cuBLAS GEMM** — TF32 Tensor Core fast path activates automatically once size crosses the threshold."
+            },
+            {
+              "tr": "**Autograd tape motoru** — `Variable` ve `VarTensor` ile ters-mod otomatik türev; CNN ve batched GEMM dahil.",
+              "en": "**Autograd tape engine** — reverse-mode automatic differentiation via `Variable` and `VarTensor`, including CNN ops and batched GEMM."
+            },
+            {
+              "tr": "**cuSOLVER doğrusal cebir** — QR, SVD, özdeğer, Cholesky, pseudo-inverse, rank, least-squares.",
+              "en": "**cuSOLVER linear algebra** — QR, SVD, eigen, Cholesky, pseudo-inverse, rank and least squares."
+            },
+            {
+              "tr": "**Seyrek CSR matrisler** — `spmv`, sparse-dense matmul ve donmuş desenli embedding gradyanı.",
+              "en": "**Sparse CSR matrices** — `spmv`, sparse-dense matmul and frozen-pattern embedding gradients."
+            },
+            {
+              "tr": "**Zero-copy `MatrixView`** — transpose/slice/reshape için kopyasız strided görünümler.",
+              "en": "**Zero-copy `MatrixView`** — strided views for transpose/slice/reshape with no bytes copied."
+            },
+            {
+              "tr": "**Stream havuzu** — 4 ek stream, asenkron argmax/argmin ve pinned-host sonuç slotları.",
+              "en": "**Stream pool** — 4 extra streams, asynchronous argmax/argmin and pinned-host result slots."
+            }
           ]
         },
         {
           "type": "h3",
-          "text": { "tr": "Başlık (header) yerleşimi", "en": "Header layout" }
+          "text": {
+            "tr": "Başlık (header) yerleşimi",
+            "en": "Header layout"
+          }
         },
         {
           "type": "table",
           "headers": [
-            { "tr": "Modül", "en": "Module" },
-            { "tr": "Başlık", "en": "Header" },
-            { "tr": "Ne sağlar", "en": "What it provides" }
+            {
+              "tr": "Modül",
+              "en": "Module"
+            },
+            {
+              "tr": "Başlık",
+              "en": "Header"
+            },
+            {
+              "tr": "Ne sağlar",
+              "en": "What it provides"
+            }
           ],
           "rows": [
             [
-              { "tr": "Çekirdek", "en": "Core" },
-              { "tr": "`core/matrix.hpp`", "en": "`core/matrix.hpp`" },
-              { "tr": "`Matrix` sınıfı, operatörler, tüm konfor metotları", "en": "The `Matrix` class, operators, every convenience method" }
+              {
+                "tr": "Çekirdek",
+                "en": "Core"
+              },
+              {
+                "tr": "`core/matrix.hpp`",
+                "en": "`core/matrix.hpp`"
+              },
+              {
+                "tr": "`Matrix` sınıfı, operatörler, tüm konfor metotları",
+                "en": "The `Matrix` class, operators, every convenience method"
+              }
             ],
             [
-              { "tr": "Çekirdek", "en": "Core" },
-              { "tr": "`core/tensor.hpp`", "en": "`core/tensor.hpp`" },
-              { "tr": "Rank-N `Tensor` (NCHW conv için)", "en": "Rank-N `Tensor` (for NCHW conv)" }
+              {
+                "tr": "Çekirdek",
+                "en": "Core"
+              },
+              {
+                "tr": "`core/tensor.hpp`",
+                "en": "`core/tensor.hpp`"
+              },
+              {
+                "tr": "Rank-N `Tensor` (NCHW conv için)",
+                "en": "Rank-N `Tensor` (for NCHW conv)"
+              }
             ],
             [
-              { "tr": "Çekirdek", "en": "Core" },
-              { "tr": "`core/memory_mode.hpp`", "en": "`core/memory_mode.hpp`" },
-              { "tr": "`host_and_device` / `device_only` bellek politikası", "en": "`host_and_device` / `device_only` memory policy" }
+              {
+                "tr": "Çekirdek",
+                "en": "Core"
+              },
+              {
+                "tr": "`core/memory_mode.hpp`",
+                "en": "`core/memory_mode.hpp`"
+              },
+              {
+                "tr": "`host_and_device` / `device_only` bellek politikası",
+                "en": "`host_and_device` / `device_only` memory policy"
+              }
             ],
             [
-              { "tr": "Çekirdek", "en": "Core" },
-              { "tr": "`core/errors.hpp`", "en": "`core/errors.hpp`" },
-              { "tr": "`MatrixProError` kök sınıfı + 6 türev", "en": "`MatrixProError` root type + 6 derived classes" }
+              {
+                "tr": "Çekirdek",
+                "en": "Core"
+              },
+              {
+                "tr": "`core/errors.hpp`",
+                "en": "`core/errors.hpp`"
+              },
+              {
+                "tr": "`MatrixProError` kök sınıfı + 6 türev",
+                "en": "`MatrixProError` root type + 6 derived classes"
+              }
             ],
             [
-              { "tr": "Operasyonlar", "en": "Ops" },
-              { "tr": "`ops/*.hpp`", "en": "`ops/*.hpp`" },
-              { "tr": "Elementwise, product, reduction, broadcast, shape, masking, linalg", "en": "Elementwise, product, reduction, broadcast, shape, masking, linalg" }
+              {
+                "tr": "Operasyonlar",
+                "en": "Ops"
+              },
+              {
+                "tr": "`ops/*.hpp`",
+                "en": "`ops/*.hpp`"
+              },
+              {
+                "tr": "Elementwise, product, reduction, broadcast, shape, masking, linalg",
+                "en": "Elementwise, product, reduction, broadcast, shape, masking, linalg"
+              }
             ],
             [
-              { "tr": "Sinir Ağı", "en": "Neural Nets" },
-              { "tr": "`nn/*.hpp`", "en": "`nn/*.hpp`" },
-              { "tr": "Aktivasyon + backward, loss, normalize/dropout, conv/pool, fused, in-place", "en": "Activations + backward, losses, norm/dropout, conv/pool, fused, in-place" }
+              {
+                "tr": "Sinir Ağı",
+                "en": "Neural Nets"
+              },
+              {
+                "tr": "`nn/*.hpp`",
+                "en": "`nn/*.hpp`"
+              },
+              {
+                "tr": "Aktivasyon + backward, loss, normalize/dropout, conv/pool, fused, in-place",
+                "en": "Activations + backward, losses, norm/dropout, conv/pool, fused, in-place"
+              }
             ],
             [
-              { "tr": "Autograd", "en": "Autograd" },
-              { "tr": "`autograd/autograd.hpp`", "en": "`autograd/autograd.hpp`" },
-              { "tr": "`Variable`, `VarTensor`, hazır loss'lar", "en": "`Variable`, `VarTensor`, ready-made losses" }
+              {
+                "tr": "Autograd",
+                "en": "Autograd"
+              },
+              {
+                "tr": "`autograd/autograd.hpp`",
+                "en": "`autograd/autograd.hpp`"
+              },
+              {
+                "tr": "`Variable`, `VarTensor`, hazır loss'lar",
+                "en": "`Variable`, `VarTensor`, ready-made losses"
+              }
             ],
             [
-              { "tr": "Seyrek", "en": "Sparse" },
-              { "tr": "`sparse/sparse.hpp`", "en": "`sparse/sparse.hpp`" },
-              { "tr": "`SparseCSR`, `spmv`, `sparse_matmul`", "en": "`SparseCSR`, `spmv`, `sparse_matmul`" }
+              {
+                "tr": "Seyrek",
+                "en": "Sparse"
+              },
+              {
+                "tr": "`sparse/sparse.hpp`",
+                "en": "`sparse/sparse.hpp`"
+              },
+              {
+                "tr": "`SparseCSR`, `spmv`, `sparse_matmul`",
+                "en": "`SparseCSR`, `spmv`, `sparse_matmul`"
+              }
             ],
             [
-              { "tr": "Altyapı", "en": "Infrastructure" },
-              { "tr": "`view/`, `rng/`, `streams/`, `indexing/`", "en": "`view/`, `rng/`, `streams/`, `indexing/`" },
-              { "tr": "Görünümler, cihaz RNG, stream havuzu, gather/scatter/embedding", "en": "Views, device RNG, stream pool, gather/scatter/embedding" }
+              {
+                "tr": "Altyapı",
+                "en": "Infrastructure"
+              },
+              {
+                "tr": "`view/`, `rng/`, `streams/`, `indexing/`",
+                "en": "`view/`, `rng/`, `streams/`, `indexing/`"
+              },
+              {
+                "tr": "Görünümler, cihaz RNG, stream havuzu, gather/scatter/embedding",
+                "en": "Views, device RNG, stream pool, gather/scatter/embedding"
+              }
+            ],
+            [
+              {
+                "tr": "Math Motoru",
+                "en": "Math Engine"
+              },
+              {
+                "tr": "`ops/math.hpp`",
+                "en": "`ops/math.hpp`"
+              },
+              {
+                "tr": "Trigonometrik, hiperbolik, erf/erfinv, rsqrt, reciprocal, addcmul",
+                "en": "Trigonometric, hyperbolic, erf/erfinv, rsqrt, reciprocal, addcmul"
+              }
+            ],
+            [
+              {
+                "tr": "Gelişmiş Cebir",
+                "en": "Extended LinAlg"
+              },
+              {
+                "tr": "`ops/linalg_extended.hpp`",
+                "en": "`ops/linalg_extended.hpp`"
+              },
+              {
+                "tr": "PA=LU ayrıştırma, trsm, trmm, matris kuvveti, matris üsteli, batched linalg",
+                "en": "PA=LU factorization, trsm, trmm, matrix power, matrix exp, batched linalg"
+              }
+            ],
+            [
+              {
+                "tr": "Bellek & Backend",
+                "en": "Memory & Backend"
+              },
+              {
+                "tr": "`core/memory_pool.hpp`, `core/backend.hpp`",
+                "en": "`core/memory_pool.hpp`, `core/backend.hpp`"
+              },
+              {
+                "tr": "MemoryStats telemetrisi, empty_cache, Unified Memory, DeviceInfo, P2P peer erişimi",
+                "en": "MemoryStats telemetry, empty_cache, Unified Memory, DeviceInfo, P2P peer access"
+              }
+            ],
+            [
+              {
+                "tr": "Yürütme & Serileştirme",
+                "en": "Execution & Serialization"
+              },
+              {
+                "tr": "`streams/execution.hpp`, `core/serialization.hpp`",
+                "en": "`streams/execution.hpp`, `core/serialization.hpp`"
+              },
+              {
+                "tr": "CUDA Graph capture/replay, Pipeline, ExecutionProfiler, Checkpoint (.mfc), save/load_tensor",
+                "en": "CUDA Graph capture/replay, Pipeline, ExecutionProfiler, Checkpoint (.mfc), save/load_tensor"
+              }
+            ],
+            [
+              {
+                "tr": "Seyrek Biçimler",
+                "en": "Sparse Formats"
+              },
+              {
+                "tr": "`sparse/sparse_formats.hpp`",
+                "en": "`sparse/sparse_formats.hpp`"
+              },
+              {
+                "tr": "SparseCOO, SparseCSC, COO/CSR/CSC dönüşümleri, cuSPARSE SpGEMM",
+                "en": "SparseCOO, SparseCSC, COO/CSR/CSC conversions, cuSPARSE SpGEMM"
+              }
             ]
           ]
         },
         {
           "type": "callout",
           "variant": "info",
-          "title": { "tr": "Header-first ≠ header-only", "en": "Header-first ≠ header-only" },
+          "title": {
+            "tr": "Header-first ≠ header-only",
+            "en": "Header-first ≠ header-only"
+          },
           "text": {
             "tr": "Şablonlu `fused_binary`/`fused_ternary` yardımcıları ve `matrix_pro/detail/*.cuh` çekirdekleri **derlenmiş kütüphaneye** aittir. Bunları `.cpp` dosyasından `#include` etmeyin; yalnızca kendi `.cu` dosyanızdan kullanın.",
             "en": "The templated `fused_binary`/`fused_ternary` helpers and `matrix_pro/detail/*.cuh` kernels belong to the **compiled library**. Never `#include` them from a `.cpp` file — only from your own `.cu` translation units."
@@ -102,7 +305,10 @@
     },
     {
       "id": "gereksinimler",
-      "title": { "tr": "Ön Gereksinimler", "en": "Prerequisites" },
+      "title": {
+        "tr": "Ön Gereksinimler",
+        "en": "Prerequisites"
+      },
       "intro": {
         "tr": "Kütüphane CUDA araç zincirine sıkı sıkıya bağlıdır: `__global__` çekirdekleri barındırır ve cuBLAS, cuSOLVER, opsiyonel cuDNN ile cuSPARSE kullanır. Aşağıdaki minimumlar test edilmiş konfigürasyondur.",
         "en": "The library is tightly coupled to the CUDA toolchain: it ships `__global__` kernels and uses cuBLAS, cuSOLVER, optionally cuDNN and cuSPARSE. The minimums below are the tested configuration."
@@ -111,46 +317,112 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Bileşen", "en": "Component" },
-            { "tr": "Minimum", "en": "Minimum" },
-            { "tr": "Not", "en": "Notes" }
+            {
+              "tr": "Bileşen",
+              "en": "Component"
+            },
+            {
+              "tr": "Minimum",
+              "en": "Minimum"
+            },
+            {
+              "tr": "Not",
+              "en": "Notes"
+            }
           ],
           "rows": [
             [
-              { "tr": "C++ standardı", "en": "C++ standard" },
-              { "tr": "C++17", "en": "C++17" },
-              { "tr": "`if constexpr`, `std::optional`, structured bindings kullanılır", "en": "`if constexpr`, `std::optional` and structured bindings are used throughout" }
+              {
+                "tr": "C++ standardı",
+                "en": "C++ standard"
+              },
+              {
+                "tr": "C++17",
+                "en": "C++17"
+              },
+              {
+                "tr": "`if constexpr`, `std::optional`, structured bindings kullanılır",
+                "en": "`if constexpr`, `std::optional` and structured bindings are used throughout"
+              }
             ],
             [
-              { "tr": "CUDA Toolkit", "en": "CUDA Toolkit" },
-              { "tr": "12.3", "en": "12.3" },
-              { "tr": "TF32 GEMM ve modern cuSOLVER API'leri için; `nvcc` PATH'te olmalı", "en": "Required for TF32 GEMM and the modern cuSOLVER APIs; `nvcc` must be on PATH" }
+              {
+                "tr": "CUDA Toolkit",
+                "en": "CUDA Toolkit"
+              },
+              {
+                "tr": "12.3",
+                "en": "12.3"
+              },
+              {
+                "tr": "TF32 GEMM ve modern cuSOLVER API'leri için; `nvcc` PATH'te olmalı",
+                "en": "Required for TF32 GEMM and the modern cuSOLVER APIs; `nvcc` must be on PATH"
+              }
             ],
             [
-              { "tr": "CMake", "en": "CMake" },
-              { "tr": "3.24", "en": "3.24" },
-              { "tr": "`CMakePresets.json` v3 ve `CMAKE_CUDA_ARCHITECTURES=native` için", "en": "For `CMakePresets.json` v3 and `CMAKE_CUDA_ARCHITECTURES=native`" }
+              {
+                "tr": "CMake",
+                "en": "CMake"
+              },
+              {
+                "tr": "3.24",
+                "en": "3.24"
+              },
+              {
+                "tr": "`CMakePresets.json` v3 ve `CMAKE_CUDA_ARCHITECTURES=native` için",
+                "en": "For `CMakePresets.json` v3 and `CMAKE_CUDA_ARCHITECTURES=native`"
+              }
             ],
             [
-              { "tr": "Derleyici", "en": "Compiler" },
-              { "tr": "MSVC 19.3x / GCC 12 / Clang 16", "en": "MSVC 19.3x / GCC 12 / Clang 16" },
-              { "tr": "Windows'ta Visual Studio 2022 Build Tools önerilir", "en": "Visual Studio 2022 Build Tools is recommended on Windows" }
+              {
+                "tr": "Derleyici",
+                "en": "Compiler"
+              },
+              {
+                "tr": "MSVC 19.3x / GCC 12 / Clang 16",
+                "en": "MSVC 19.3x / GCC 12 / Clang 16"
+              },
+              {
+                "tr": "Windows'ta Visual Studio 2022 Build Tools önerilir",
+                "en": "Visual Studio 2022 Build Tools is recommended on Windows"
+              }
             ],
             [
-              { "tr": "GPU", "en": "GPU" },
-              { "tr": "Compute Capability 7.0+", "en": "Compute Capability 7.0+" },
-              { "tr": "Tensor Core kullanımı için 7.5+ (Turing ve üzeri)", "en": "7.5+ (Turing or newer) to actually exercise the Tensor Cores" }
+              {
+                "tr": "GPU",
+                "en": "GPU"
+              },
+              {
+                "tr": "Compute Capability 7.0+",
+                "en": "Compute Capability 7.0+"
+              },
+              {
+                "tr": "Tensor Core kullanımı için 7.5+ (Turing ve üzeri)",
+                "en": "7.5+ (Turing or newer) to actually exercise the Tensor Cores"
+              }
             ],
             [
-              { "tr": "cuDNN (opsiyonel)", "en": "cuDNN (optional)" },
-              { "tr": "9.x", "en": "9.x" },
-              { "tr": "Bulunursa `MATRIX_PRO_HAS_CUDNN` tanımlanır ve conv2d cuDNN'e delege edilir", "en": "When present, `MATRIX_PRO_HAS_CUDNN` is defined and conv2d delegates to cuDNN" }
+              {
+                "tr": "cuDNN (opsiyonel)",
+                "en": "cuDNN (optional)"
+              },
+              {
+                "tr": "9.x",
+                "en": "9.x"
+              },
+              {
+                "tr": "Bulunursa `MATRIX_PRO_HAS_CUDNN` tanımlanır ve conv2d cuDNN'e delege edilir",
+                "en": "When present, `MATRIX_PRO_HAS_CUDNN` is defined and conv2d delegates to cuDNN"
+              }
             ]
           ]
         },
         {
           "type": "h3",
-          "text": { "tr": "GEMM yük eşiği neden önemli?", "en": "Why the GEMM workload threshold matters" }
+          "text": {
+            "tr": "GEMM yük eşiği neden önemli?",
+            "en": "Why the GEMM workload threshold matters"
+          }
         },
         {
           "type": "math",
@@ -167,7 +439,10 @@
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "`nvcc` mimari uyumu", "en": "`nvcc` architecture match" },
+          "title": {
+            "tr": "`nvcc` mimari uyumu",
+            "en": "`nvcc` architecture match"
+          },
           "text": {
             "tr": "`CMAKE_CUDA_ARCHITECTURES=native` host GPU'ya göre derler. Kodu farklı bir makinede çalıştıracaksanız preset'i `-DCMAKE_CUDA_ARCHITECTURES=75;80;86;89` gibi açık bir listeyle geçersiz kılın; aksi hâlde `no kernel image is available for execution` hatası alırsınız.",
             "en": "`CMAKE_CUDA_ARCHITECTURES=native` targets the host GPU. If you intend to run the binary on a different machine, override the preset with an explicit list such as `-DCMAKE_CUDA_ARCHITECTURES=75;80;86;89`; otherwise you will hit `no kernel image is available for execution`."
@@ -177,7 +452,10 @@
     },
     {
       "id": "kurulum",
-      "title": { "tr": "Derleme & Kurulum", "en": "Build & Installation" },
+      "title": {
+        "tr": "Derleme & Kurulum",
+        "en": "Build & Installation"
+      },
       "intro": {
         "tr": "Depo, `CMakePresets.json` ile dört hazır konfigürasyon sunar. Hiçbir uzun `-D` bayrağı yazmadan, tek satırda yapılandırıp derleyebilirsiniz.",
         "en": "The repository ships four ready-made configurations in `CMakePresets.json`. You can configure and build in a single command without typing a wall of `-D` flags."
@@ -187,20 +465,44 @@
           "type": "steps",
           "items": [
             {
-              "title": { "tr": "Depoyu klonlayın", "en": "Clone the repository" },
-              "text": { "tr": "Alt modüller dahil tam kaynak ağacını indirin.", "en": "Fetch the full source tree including any submodules." }
+              "title": {
+                "tr": "Depoyu klonlayın",
+                "en": "Clone the repository"
+              },
+              "text": {
+                "tr": "Alt modüller dahil tam kaynak ağacını indirin.",
+                "en": "Fetch the full source tree including any submodules."
+              }
             },
             {
-              "title": { "tr": "Preset ile yapılandırın", "en": "Configure with a preset" },
-              "text": { "tr": "`release` preset'i testleri, benchmark'ları ve örnekleri açar; kütüphaneyi -O3 ile derler.", "en": "The `release` preset enables tests, benchmarks and examples and builds the library with -O3." }
+              "title": {
+                "tr": "Preset ile yapılandırın",
+                "en": "Configure with a preset"
+              },
+              "text": {
+                "tr": "`release` preset'i testleri, benchmark'ları ve örnekleri açar; kütüphaneyi -O3 ile derler.",
+                "en": "The `release` preset enables tests, benchmarks and examples and builds the library with -O3."
+              }
             },
             {
-              "title": { "tr": "Derleyin", "en": "Build" },
-              "text": { "tr": "`--parallel` sürücüsü `jobs: 0` ayarını kullanarak tüm çekirdekleri meşgul eder.", "en": "`--parallel` consumes every core through the `jobs: 0` setting in the build preset." }
+              "title": {
+                "tr": "Derleyin",
+                "en": "Build"
+              },
+              "text": {
+                "tr": "`--parallel` sürücüsü `jobs: 0` ayarını kullanarak tüm çekirdekleri meşgul eder.",
+                "en": "`--parallel` consumes every core through the `jobs: 0` setting in the build preset."
+              }
             },
             {
-              "title": { "tr": "Testleri koşun", "en": "Run the tests" },
-              "text": { "tr": "`release-tests` preset'i etiketli test setlerini (unit / integration) çalıştırır ve başarısızlıkta çıktıyı gösterir.", "en": "The `release-tests` preset runs the labelled suites (unit / integration) and prints output on failure." }
+              "title": {
+                "tr": "Testleri koşun",
+                "en": "Run the tests"
+              },
+              "text": {
+                "tr": "`release-tests` preset'i etiketli test setlerini (unit / integration) çalıştırır ve başarısızlıkta çıktıyı gösterir.",
+                "en": "The `release-tests` preset runs the labelled suites (unit / integration) and prints output on failure."
+              }
             }
           ]
         },
@@ -212,41 +514,92 @@
         },
         {
           "type": "h3",
-          "text": { "tr": "Hazır preset'ler", "en": "Available presets" }
+          "text": {
+            "tr": "Hazır preset'ler",
+            "en": "Available presets"
+          }
         },
         {
           "type": "table",
           "headers": [
-            { "tr": "Preset", "en": "Preset" },
-            { "tr": "Amaç", "en": "Purpose" },
-            { "tr": "Açtığı bayraklar", "en": "Flags enabled" }
+            {
+              "tr": "Preset",
+              "en": "Preset"
+            },
+            {
+              "tr": "Amaç",
+              "en": "Purpose"
+            },
+            {
+              "tr": "Açtığı bayraklar",
+              "en": "Flags enabled"
+            }
           ],
           "rows": [
             [
-              { "tr": "`release`", "en": "`release`" },
-              { "tr": "Optimize kütüphane + benchmark + örnekler", "en": "Optimized library + benchmarks + examples" },
-              { "tr": "`BUILD_TESTS=ON`, `BUILD_BENCHMARKS=ON`, `BUILD_EXAMPLES=ON`", "en": "`BUILD_TESTS=ON`, `BUILD_BENCHMARKS=ON`, `BUILD_EXAMPLES=ON`" }
+              {
+                "tr": "`release`",
+                "en": "`release`"
+              },
+              {
+                "tr": "Optimize kütüphane + benchmark + örnekler",
+                "en": "Optimized library + benchmarks + examples"
+              },
+              {
+                "tr": "`BUILD_TESTS=ON`, `BUILD_BENCHMARKS=ON`, `BUILD_EXAMPLES=ON`",
+                "en": "`BUILD_TESTS=ON`, `BUILD_BENCHMARKS=ON`, `BUILD_EXAMPLES=ON`"
+              }
             ],
             [
-              { "tr": "`debug`", "en": "`debug`" },
-              { "tr": "Assertion'lı geliştirme derlemesi", "en": "Development build with assertions on" },
-              { "tr": "Aynı bayraklar + `-g` / `CMAKE_BUILD_TYPE=Debug`", "en": "Same flags plus `-g` / `CMAKE_BUILD_TYPE=Debug`" }
+              {
+                "tr": "`debug`",
+                "en": "`debug`"
+              },
+              {
+                "tr": "Assertion'lı geliştirme derlemesi",
+                "en": "Development build with assertions on"
+              },
+              {
+                "tr": "Aynı bayraklar + `-g` / `CMAKE_BUILD_TYPE=Debug`",
+                "en": "Same flags plus `-g` / `CMAKE_BUILD_TYPE=Debug`"
+              }
             ],
             [
-              { "tr": "`lib-only`", "en": "`lib-only`" },
-              { "tr": "Yalnızca kütüphane; CI/üretim için hızlı", "en": "Library only; fastest for CI and production" },
-              { "tr": "Tüm `MATRIX_PRO_BUILD_*` seçenekleri `OFF`", "en": "Every `MATRIX_PRO_BUILD_*` option set to `OFF`" }
+              {
+                "tr": "`lib-only`",
+                "en": "`lib-only`"
+              },
+              {
+                "tr": "Yalnızca kütüphane; CI/üretim için hızlı",
+                "en": "Library only; fastest for CI and production"
+              },
+              {
+                "tr": "Tüm `MATRIX_PRO_BUILD_*` seçenekleri `OFF`",
+                "en": "Every `MATRIX_PRO_BUILD_*` option set to `OFF`"
+              }
             ],
             [
-              { "tr": "`unit` / `integration`", "en": "`unit` / `integration`" },
-              { "tr": "Etiket filtreli test koşuları", "en": "Label-filtered test runs" },
-              { "tr": "`noTestsAction: error`, `stopOnFailure: false`", "en": "`noTestsAction: error`, `stopOnFailure: false`" }
+              {
+                "tr": "`unit` / `integration`",
+                "en": "`unit` / `integration`"
+              },
+              {
+                "tr": "Etiket filtreli test koşuları",
+                "en": "Label-filtered test runs"
+              },
+              {
+                "tr": "`noTestsAction: error`, `stopOnFailure: false`",
+                "en": "`noTestsAction: error`, `stopOnFailure: false`"
+              }
             ]
           ]
         },
         {
           "type": "h3",
-          "text": { "tr": "Kendi projenize bağlama", "en": "Linking into your own project" }
+          "text": {
+            "tr": "Kendi projenize bağlama",
+            "en": "Linking into your own project"
+          }
         },
         {
           "type": "p",
@@ -264,7 +617,10 @@
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Sadece ihtiyacınız olanı dahil edin", "en": "Include only what you need" },
+          "title": {
+            "tr": "Sadece ihtiyacınız olanı dahil edin",
+            "en": "Include only what you need"
+          },
           "text": {
             "tr": "Şemsiye başlık kolaylık sağlar ama derleme süresini artırır. Sadece matris çarpımı kullanıyorsanız `#include \"matrix_pro/ops/product.hpp\"` yeterlidir — `matrix_pro/ops/operations.hpp` sürümü tüm alt başlıkları çeker.",
             "en": "The umbrella header is convenient but increases compile time. If you only need matrix multiplication, `#include \"matrix_pro/ops/product.hpp\"` suffices — including `matrix_pro/ops/operations.hpp` pulls in every granular op header."
@@ -274,7 +630,10 @@
     },
     {
       "id": "hizli-baslangic",
-      "title": { "tr": "Hızlı Başlangıç (Quickstart)", "en": "Quickstart" },
+      "title": {
+        "tr": "Hızlı Başlangıç (Quickstart)",
+        "en": "Quickstart"
+      },
       "intro": {
         "tr": "Aşağıdaki program host'ta 2x2 bir matris kurar, onu GPU'ya yollar, cuBLAS ile birim matrisle çarpar, ReLU uygular ve sonucu geri okur. Kütüphanenin tüm yaşam döngüsünü tek dosyada gösterir.",
         "en": "The program below builds a 2x2 matrix on the host, ships it to the GPU, multiplies it by an identity via cuBLAS, applies ReLU and reads the result back. It demonstrates the entire library lifecycle in a single file."
@@ -288,7 +647,10 @@
         },
         {
           "type": "h3",
-          "text": { "tr": "Beklenen çıktı", "en": "Expected output" }
+          "text": {
+            "tr": "Beklenen çıktı",
+            "en": "Expected output"
+          }
         },
         {
           "type": "code",
@@ -300,18 +662,39 @@
           "type": "list",
           "ordered": true,
           "items": [
-            { "tr": "`Matrix a{{...}}` — initializer-list kurucusu değerleri host vektörüne kopyalar ve `upload()` çağrısına gerek kalmadan cihaza yollar.", "en": "`Matrix a{{...}}` — the initializer-list constructor copies the values into the host vector and pushes them to the device, so no explicit `upload()` is needed." },
-            { "tr": "`Matrix::identity(2)` — fabrika GPU üzerinde üretir, host'a hiç dokunmaz.", "en": "`Matrix::identity(2)` — the factory generates on the GPU and never touches the host." },
-            { "tr": "`a * b` — `operator*` sürücüyü seçer: boyut yeterince büyükse Tensor Core yolu, değilse SIMT yolu.", "en": "`a * b` — `operator*` picks the driver path: the Tensor Core route when the size is large enough, SIMT otherwise." },
-            { "tr": "`.relu()` ve `.add_scalar()` — zincirlenebilir konfor metotları; her biri tek bir GPU çekirdeği çalıştırır.", "en": "`.relu()` and `.add_scalar()` — chainable convenience methods, each launching exactly one GPU kernel." },
-            { "tr": "`c.download()` — fail-fast sözleşmesini tatmin eder ve host aynamasını tazeler.", "en": "`c.download()` — satisfies the fail-fast contract and refreshes the host mirror." },
-            { "tr": "`c.sum()` — cihaz tarafı redüksiyon: tek çekirdek + tek host okuması, ara kopya yok.", "en": "`c.sum()` — a device-side reduction: one kernel plus a single host read, with no intermediate copies." }
+            {
+              "tr": "`Matrix a{{...}}` — initializer-list kurucusu değerleri host vektörüne kopyalar ve `upload()` çağrısına gerek kalmadan cihaza yollar.",
+              "en": "`Matrix a{{...}}` — the initializer-list constructor copies the values into the host vector and pushes them to the device, so no explicit `upload()` is needed."
+            },
+            {
+              "tr": "`Matrix::identity(2)` — fabrika GPU üzerinde üretir, host'a hiç dokunmaz.",
+              "en": "`Matrix::identity(2)` — the factory generates on the GPU and never touches the host."
+            },
+            {
+              "tr": "`a * b` — `operator*` sürücüyü seçer: boyut yeterince büyükse Tensor Core yolu, değilse SIMT yolu.",
+              "en": "`a * b` — `operator*` picks the driver path: the Tensor Core route when the size is large enough, SIMT otherwise."
+            },
+            {
+              "tr": "`.relu()` ve `.add_scalar()` — zincirlenebilir konfor metotları; her biri tek bir GPU çekirdeği çalıştırır.",
+              "en": "`.relu()` and `.add_scalar()` — chainable convenience methods, each launching exactly one GPU kernel."
+            },
+            {
+              "tr": "`c.download()` — fail-fast sözleşmesini tatmin eder ve host aynamasını tazeler.",
+              "en": "`c.download()` — satisfies the fail-fast contract and refreshes the host mirror."
+            },
+            {
+              "tr": "`c.sum()` — cihaz tarafı redüksiyon: tek çekirdek + tek host okuması, ara kopya yok.",
+              "en": "`c.sum()` — a device-side reduction: one kernel plus a single host read, with no intermediate copies."
+            }
           ]
         },
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Zincirleme maliyetsiz değildir", "en": "Chaining is not free" },
+          "title": {
+            "tr": "Zincirleme maliyetsiz değildir",
+            "en": "Chaining is not free"
+          },
           "text": {
             "tr": "Her zincir halkası ayrı bir çekirdek başlatır. Sıcak döngülerde `fused_relu_add` veya `fused_bias_gelu` gibi birleşik (fused) sürümleri kullanın: aynı sonuç, tek bellek turu.",
             "en": "Every link in the chain launches a separate kernel. Inside hot loops prefer fused kernels such as `fused_relu_add` or `fused_bias_gelu`: same result, one memory round-trip."
@@ -321,7 +704,10 @@
     },
     {
       "id": "yasam-dongusu",
-      "title": { "tr": "Yaşam Döngüsü & Çağrı Sırası", "en": "Lifecycle & Calling Sequence" },
+      "title": {
+        "tr": "Yaşam Döngüsü & Çağrı Sırası",
+        "en": "Lifecycle & Calling Sequence"
+      },
       "intro": {
         "tr": "Bir `Matrix` nesnesinin üç durumu vardır: host'ta kirli (dirty), cihazda güncel (current) ve cihaza özel (device-only). Kütüphane bu durumu `host_current_` bayrağıyla izler ve yanlış tarafta okuma yapmanızı engeller.",
         "en": "A `Matrix` object has three states: host-dirty, device-current and device-only. The library tracks this with the `host_current_` flag and refuses to let you read from the wrong side."
@@ -331,24 +717,54 @@
           "type": "steps",
           "items": [
             {
-              "title": { "tr": "Tahsis (allocation)", "en": "Allocation" },
-              "text": { "tr": "`Matrix(rows, cols)` hem host vektörünü hem cihaz tamponunu ayırır. `device_only` modunda host vektörü boş kalır.", "en": "`Matrix(rows, cols)` allocates both the host vector and the device buffer. In `device_only` mode the host vector stays empty." }
+              "title": {
+                "tr": "Tahsis (allocation)",
+                "en": "Allocation"
+              },
+              "text": {
+                "tr": "`Matrix(rows, cols)` hem host vektörünü hem cihaz tamponunu ayırır. `device_only` modunda host vektörü boş kalır.",
+                "en": "`Matrix(rows, cols)` allocates both the host vector and the device buffer. In `device_only` mode the host vector stays empty."
+              }
             },
             {
-              "title": { "tr": "Yükleme (upload)", "en": "Upload" },
-              "text": { "tr": "Kurucular ve `upload()` host verisini cihaza kopyalar ve `host_current_` bayrağını `true` yapar.", "en": "Constructors and `upload()` copy host data to the device and set `host_current_` to `true`." }
+              "title": {
+                "tr": "Yükleme (upload)",
+                "en": "Upload"
+              },
+              "text": {
+                "tr": "Kurucular ve `upload()` host verisini cihaza kopyalar ve `host_current_` bayrağını `true` yapar.",
+                "en": "Constructors and `upload()` copy host data to the device and set `host_current_` to `true`."
+              }
             },
             {
-              "title": { "tr": "GPU hesaplaması", "en": "GPU computation" },
-              "text": { "tr": "Cihaz üzerinde veri üreten her operasyon çıktısında `mark_host_stale()` çağırır.", "en": "Every operation that produces data on the device calls `mark_host_stale()` on its output." }
+              "title": {
+                "tr": "GPU hesaplaması",
+                "en": "GPU computation"
+              },
+              "text": {
+                "tr": "Cihaz üzerinde veri üreten her operasyon çıktısında `mark_host_stale()` çağırır.",
+                "en": "Every operation that produces data on the device calls `mark_host_stale()` on its output."
+              }
             },
             {
-              "title": { "tr": "İndirme (download)", "en": "Download" },
-              "text": { "tr": "`download()` cihaz tamponunu host aynamasına kopyalar ve bayrağı yeniden `true` yapar.", "en": "`download()` copies the device buffer into the host mirror and flips the flag back to `true`." }
+              "title": {
+                "tr": "İndirme (download)",
+                "en": "Download"
+              },
+              "text": {
+                "tr": "`download()` cihaz tamponunu host aynamasına kopyalar ve bayrağı yeniden `true` yapar.",
+                "en": "`download()` copies the device buffer into the host mirror and flips the flag back to `true`."
+              }
             },
             {
-              "title": { "tr": "Host okuması", "en": "Host read" },
-              "text": { "tr": "`at()` ve `data()` yalnızca bayrak `true` iken çalışır; aksi hâlde istisna atar.", "en": "`at()` and `data()` only work while the flag is `true`; otherwise they throw." }
+              "title": {
+                "tr": "Host okuması",
+                "en": "Host read"
+              },
+              "text": {
+                "tr": "`at()` ve `data()` yalnızca bayrak `true` iken çalışır; aksi hâlde istisna atar.",
+                "en": "`at()` and `data()` only work while the flag is `true`; otherwise they throw."
+              }
             }
           ]
         },
@@ -361,40 +777,103 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Çağrı", "en": "Call" },
-            { "tr": "`host_current()` sonrası", "en": "`host_current()` afterwards" },
-            { "tr": "Etki", "en": "Effect" }
+            {
+              "tr": "Çağrı",
+              "en": "Call"
+            },
+            {
+              "tr": "`host_current()` sonrası",
+              "en": "`host_current()` afterwards"
+            },
+            {
+              "tr": "Etki",
+              "en": "Effect"
+            }
           ],
           "rows": [
             [
-              { "tr": "`Matrix(rows, cols)`", "en": "`Matrix(rows, cols)`" },
-              { "tr": "`true`", "en": "`true`" },
-              { "tr": "Host ve cihaz sıfırlanır; `ensure_host_buffer()` çalışır", "en": "Host and device are zeroed; `ensure_host_buffer()` runs" }
+              {
+                "tr": "`Matrix(rows, cols)`",
+                "en": "`Matrix(rows, cols)`"
+              },
+              {
+                "tr": "`true`",
+                "en": "`true`"
+              },
+              {
+                "tr": "Host ve cihaz sıfırlanır; `ensure_host_buffer()` çalışır",
+                "en": "Host and device are zeroed; `ensure_host_buffer()` runs"
+              }
             ],
             [
-              { "tr": "`upload()`", "en": "`upload()`" },
-              { "tr": "`true`", "en": "`true`" },
-              { "tr": "Host → cihaz kopyası", "en": "Host → device copy" }
+              {
+                "tr": "`upload()`",
+                "en": "`upload()`"
+              },
+              {
+                "tr": "`true`",
+                "en": "`true`"
+              },
+              {
+                "tr": "Host → cihaz kopyası",
+                "en": "Host → device copy"
+              }
             ],
             [
-              { "tr": "`a * b`, `relu()`, `exp()` …", "en": "`a * b`, `relu()`, `exp()` …" },
-              { "tr": "`false`", "en": "`false`" },
-              { "tr": "Çıktı cihazda üretilir, ayna bayat kalır", "en": "The output is produced on the device; the mirror goes stale" }
+              {
+                "tr": "`a * b`, `relu()`, `exp()` …",
+                "en": "`a * b`, `relu()`, `exp()` …"
+              },
+              {
+                "tr": "`false`",
+                "en": "`false`"
+              },
+              {
+                "tr": "Çıktı cihazda üretilir, ayna bayat kalır",
+                "en": "The output is produced on the device; the mirror goes stale"
+              }
             ],
             [
-              { "tr": "`fill(v)`", "en": "`fill(v)`" },
-              { "tr": "`false`", "en": "`false`" },
-              { "tr": "Cihaz `memset` benzeri doldurma", "en": "Device-side memset-like fill" }
+              {
+                "tr": "`fill(v)`",
+                "en": "`fill(v)`"
+              },
+              {
+                "tr": "`false`",
+                "en": "`false`"
+              },
+              {
+                "tr": "Cihaz `memset` benzeri doldurma",
+                "en": "Device-side memset-like fill"
+              }
             ],
             [
-              { "tr": "`download()`", "en": "`download()`" },
-              { "tr": "`true`", "en": "`true`" },
-              { "tr": "Cihaz → host kopyası", "en": "Device → host copy" }
+              {
+                "tr": "`download()`",
+                "en": "`download()`"
+              },
+              {
+                "tr": "`true`",
+                "en": "`true`"
+              },
+              {
+                "tr": "Cihaz → host kopyası",
+                "en": "Device → host copy"
+              }
             ],
             [
-              { "tr": "`synchronize()`", "en": "`synchronize()`" },
-              { "tr": "değişmez", "en": "unchanged" },
-              { "tr": "Yalnızca stream'i bekler, veri taşımaz", "en": "Only waits on the stream; transfers no data" }
+              {
+                "tr": "`synchronize()`",
+                "en": "`synchronize()`"
+              },
+              {
+                "tr": "değişmez",
+                "en": "unchanged"
+              },
+              {
+                "tr": "Yalnızca stream'i bekler, veri taşımaz",
+                "en": "Only waits on the stream; transfers no data"
+              }
             ]
           ]
         }
@@ -402,7 +881,10 @@
     },
     {
       "id": "bellek-modu",
-      "title": { "tr": "Bellek Modları & Fail-Fast Güvenlik", "en": "Memory Modes & Fail-Fast Safety" },
+      "title": {
+        "tr": "Bellek Modları & Fail-Fast Güvenlik",
+        "en": "Memory Modes & Fail-Fast Safety"
+      },
       "intro": {
         "tr": "`MemoryMode` iki politika tanımlar: `host_and_device` (varsayılan, her zaman okunabilir host aynaması) ve `device_only` (tembel host aynaması, daha az RAM ve daha az PCIe trafiği).",
         "en": "`MemoryMode` defines two policies: `host_and_device` (the default, an always-readable host mirror) and `device_only` (a lazy host mirror, less RAM and less PCIe traffic)."
@@ -411,23 +893,59 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Mod", "en": "Mode" },
-            { "tr": "Host aynaması", "en": "Host mirror" },
-            { "tr": "RAM maliyeti", "en": "RAM cost" },
-            { "tr": "Ne zaman seçilmeli", "en": "When to choose it" }
+            {
+              "tr": "Mod",
+              "en": "Mode"
+            },
+            {
+              "tr": "Host aynaması",
+              "en": "Host mirror"
+            },
+            {
+              "tr": "RAM maliyeti",
+              "en": "RAM cost"
+            },
+            {
+              "tr": "Ne zaman seçilmeli",
+              "en": "When to choose it"
+            }
           ],
           "rows": [
             [
-              { "tr": "`host_and_device`", "en": "`host_and_device`" },
-              { "tr": "Kurucuda ayrılır ve güncel tutulur", "en": "Allocated in the constructor and kept current" },
-              { "tr": "2× (host + cihaz)", "en": "2× (host + device)" },
-              { "tr": "Varsayılan: küçük/orta matrisler, sık host okuması", "en": "Default: small/medium matrices, frequent host reads" }
+              {
+                "tr": "`host_and_device`",
+                "en": "`host_and_device`"
+              },
+              {
+                "tr": "Kurucuda ayrılır ve güncel tutulur",
+                "en": "Allocated in the constructor and kept current"
+              },
+              {
+                "tr": "2× (host + cihaz)",
+                "en": "2× (host + device)"
+              },
+              {
+                "tr": "Varsayılan: küçük/orta matrisler, sık host okuması",
+                "en": "Default: small/medium matrices, frequent host reads"
+              }
             ],
             [
-              { "tr": "`device_only`", "en": "`device_only`" },
-              { "tr": "İlk `download()`/`at()` çağrısına kadar **yok**", "en": "**Absent** until the first `download()`/`at()` call" },
-              { "tr": "1× (yalnızca cihaz)", "en": "1× (device only)" },
-              { "tr": "Aktivasyonlar, ara tamponlar, büyük katmanlar, grad yığınları", "en": "Activations, scratch buffers, large layers, gradient stacks" }
+              {
+                "tr": "`device_only`",
+                "en": "`device_only`"
+              },
+              {
+                "tr": "İlk `download()`/`at()` çağrısına kadar **yok**",
+                "en": "**Absent** until the first `download()`/`at()` call"
+              },
+              {
+                "tr": "1× (yalnızca cihaz)",
+                "en": "1× (device only)"
+              },
+              {
+                "tr": "Aktivasyonlar, ara tamponlar, büyük katmanlar, grad yığınları",
+                "en": "Activations, scratch buffers, large layers, gradient stacks"
+              }
             ]
           ]
         },
@@ -440,7 +958,10 @@
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "Fail-fast sözleşmesi", "en": "The fail-fast contract" },
+          "title": {
+            "tr": "Fail-fast sözleşmesi",
+            "en": "The fail-fast contract"
+          },
           "text": {
             "tr": "`device_only` bir matriste `at()` veya `data()` çağırmak aynamayı **tembel olarak** üretir; ancak ayna bayatsa (`host_current() == false`) çağrı `MatrixProError` fırlatır. Yani kütüphane sizi ya doğru sıraya zorlar ya da sessizce yanlış sonuç vermeyi reddeder — üçüncü bir seçenek yoktur.",
             "en": "Calling `at()` or `data()` on a `device_only` matrix **lazily** produces the mirror; but if the mirror is stale (`host_current() == false`) the call throws `MatrixProError`. The library either forces you into the correct order or refuses to hand back a silently wrong result — there is no third option."
@@ -449,17 +970,32 @@
         {
           "type": "list",
           "items": [
-            { "tr": "`host_materialized()` aynanın fiziksel olarak var olup olmadığını söyler (boyut kontrolü).", "en": "`host_materialized()` tells you whether the mirror physically exists (a size check)." },
-            { "tr": "`host_current()` aynanın **içeriğinin** güncel olup olmadığını söyler (bayrak kontrolü).", "en": "`host_current()` tells you whether the mirror's **contents** are up to date (the flag check)." },
-            { "tr": "`mark_host_stale()` / `mark_host_current()` manuel kontrol içindir; kendi çekirdeğinizi yazdığınızda kullanın.", "en": "`mark_host_stale()` / `mark_host_current()` are for manual control; use them when you write your own kernel." },
-            { "tr": "`fill(value)` cihaz tarafında doldurup aynayı **bayat bırakır** — host'ta aynı değeri beklemeyin.", "en": "`fill(value)` fills on the device and leaves the mirror **stale** — do not expect the same value on the host." }
+            {
+              "tr": "`host_materialized()` aynanın fiziksel olarak var olup olmadığını söyler (boyut kontrolü).",
+              "en": "`host_materialized()` tells you whether the mirror physically exists (a size check)."
+            },
+            {
+              "tr": "`host_current()` aynanın **içeriğinin** güncel olup olmadığını söyler (bayrak kontrolü).",
+              "en": "`host_current()` tells you whether the mirror's **contents** are up to date (the flag check)."
+            },
+            {
+              "tr": "`mark_host_stale()` / `mark_host_current()` manuel kontrol içindir; kendi çekirdeğinizi yazdığınızda kullanın.",
+              "en": "`mark_host_stale()` / `mark_host_current()` are for manual control; use them when you write your own kernel."
+            },
+            {
+              "tr": "`fill(value)` cihaz tarafında doldurup aynayı **bayat bırakır** — host'ta aynı değeri beklemeyin.",
+              "en": "`fill(value)` fills on the device and leaves the mirror **stale** — do not expect the same value on the host."
+            }
           ]
         }
       ]
     },
     {
       "id": "hata-yonetimi",
-      "title": { "tr": "İstisna & Hata Yönetimi", "en": "Exception & Error Handling" },
+      "title": {
+        "tr": "İstisna & Hata Yönetimi",
+        "en": "Exception & Error Handling"
+      },
       "intro": {
         "tr": "Kütüphanenin attığı **her** istisna `matrix_pro::MatrixProError` türünden türer ve `std::runtime_error`'dan gelir. Tek bir `catch` bloğu ile tüm kütüphane hatalarını yakalayabilir, ama nedene özel tepki vermek için türevleri kullanabilirsiniz.",
         "en": "**Every** exception thrown by the library derives from `matrix_pro::MatrixProError`, which itself derives from `std::runtime_error`. A single `catch` block handles all library failures, while the derived types let you react to a specific cause."
@@ -468,40 +1004,103 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "İstisna", "en": "Exception" },
-            { "tr": "Ne zaman atılır", "en": "Thrown when" },
-            { "tr": "Tipik kaynak", "en": "Typical source" }
+            {
+              "tr": "İstisna",
+              "en": "Exception"
+            },
+            {
+              "tr": "Ne zaman atılır",
+              "en": "Thrown when"
+            },
+            {
+              "tr": "Tipik kaynak",
+              "en": "Typical source"
+            }
           ],
           "rows": [
             [
-              { "tr": "`InvalidArgumentError`", "en": "`InvalidArgumentError`" },
-              { "tr": "Şekil dışında bir argüman reddedilir", "en": "An argument other than a shape is rejected" },
-              { "tr": "Geçersiz olasılık, negatif epsilon, boş operand, aralık dışı cihaz indeksi", "en": "Bad probability, negative epsilon, empty operand, out-of-range device index" }
+              {
+                "tr": "`InvalidArgumentError`",
+                "en": "`InvalidArgumentError`"
+              },
+              {
+                "tr": "Şekil dışında bir argüman reddedilir",
+                "en": "An argument other than a shape is rejected"
+              },
+              {
+                "tr": "Geçersiz olasılık, negatif epsilon, boş operand, aralık dışı cihaz indeksi",
+                "en": "Bad probability, negative epsilon, empty operand, out-of-range device index"
+              }
             ],
             [
-              { "tr": "`ShapeMismatchError`", "en": "`ShapeMismatchError`" },
-              { "tr": "Operand şekilleri veya eleman sayıları uyuşmaz", "en": "Operand shapes or element counts do not agree" },
-              { "tr": "`A(3x4) * B(5x2)`, farklı boyutlu elementwise toplama", "en": "`A(3x4) * B(5x2)`, elementwise add of mismatched matrices" }
+              {
+                "tr": "`ShapeMismatchError`",
+                "en": "`ShapeMismatchError`"
+              },
+              {
+                "tr": "Operand şekilleri veya eleman sayıları uyuşmaz",
+                "en": "Operand shapes or element counts do not agree"
+              },
+              {
+                "tr": "`A(3x4) * B(5x2)`, farklı boyutlu elementwise toplama",
+                "en": "`A(3x4) * B(5x2)`, elementwise add of mismatched matrices"
+              }
             ],
             [
-              { "tr": "`OutOfRangeError`", "en": "`OutOfRangeError`" },
-              { "tr": "İndeks, dilim veya aralık sınırları aşar", "en": "An index, slice or range escapes its bounds" },
-              { "tr": "`gather` indeksi, `slice(0, 99, ...)`, `as_strided_view` sınır kontrolü", "en": "A `gather` index, `slice(0, 99, ...)`, `as_strided_view` bounds check" }
+              {
+                "tr": "`OutOfRangeError`",
+                "en": "`OutOfRangeError`"
+              },
+              {
+                "tr": "İndeks, dilim veya aralık sınırları aşar",
+                "en": "An index, slice or range escapes its bounds"
+              },
+              {
+                "tr": "`gather` indeksi, `slice(0, 99, ...)`, `as_strided_view` sınır kontrolü",
+                "en": "A `gather` index, `slice(0, 99, ...)`, `as_strided_view` bounds check"
+              }
             ],
             [
-              { "tr": "`CudaError`", "en": "`CudaError`" },
-              { "tr": "CUDA runtime, cuBLAS veya cuDNN çağrısı başarısız", "en": "A CUDA runtime, cuBLAS or cuDNN call failed" },
-              { "tr": "`checkCuda()` içinden; OOM, geçersiz handle, kernel başlatma hatası", "en": "From inside `checkCuda()`; OOM, invalid handle, kernel launch failure" }
+              {
+                "tr": "`CudaError`",
+                "en": "`CudaError`"
+              },
+              {
+                "tr": "CUDA runtime, cuBLAS veya cuDNN çağrısı başarısız",
+                "en": "A CUDA runtime, cuBLAS or cuDNN call failed"
+              },
+              {
+                "tr": "`checkCuda()` içinden; OOM, geçersiz handle, kernel başlatma hatası",
+                "en": "From inside `checkCuda()`; OOM, invalid handle, kernel launch failure"
+              }
             ],
             [
-              { "tr": "`SolverError`", "en": "`SolverError`" },
-              { "tr": "cuSOLVER dekompozisyonu veya çözücü başarısız", "en": "A cuSOLVER decomposition or solver failed" },
-              { "tr": "Tekil matris, yakınsamayan özdeğer iterasyonu", "en": "Singular matrix, non-converging eigen iteration" }
+              {
+                "tr": "`SolverError`",
+                "en": "`SolverError`"
+              },
+              {
+                "tr": "cuSOLVER dekompozisyonu veya çözücü başarısız",
+                "en": "A cuSOLVER decomposition or solver failed"
+              },
+              {
+                "tr": "Tekil matris, yakınsamayan özdeğer iterasyonu",
+                "en": "Singular matrix, non-converging eigen iteration"
+              }
             ],
             [
-              { "tr": "`IoError`", "en": "`IoError`" },
-              { "tr": "Dosya / serileştirme işlemi başarısız", "en": "A file or serialization operation failed" },
-              { "tr": "`Matrix::save()` / `Matrix::load()`", "en": "`Matrix::save()` / `Matrix::load()`" }
+              {
+                "tr": "`IoError`",
+                "en": "`IoError`"
+              },
+              {
+                "tr": "Dosya / serileştirme işlemi başarısız",
+                "en": "A file or serialization operation failed"
+              },
+              {
+                "tr": "`Matrix::save()` / `Matrix::load()`",
+                "en": "`Matrix::save()` / `Matrix::load()`"
+              }
             ]
           ]
         },
@@ -514,7 +1113,10 @@
         {
           "type": "callout",
           "variant": "info",
-          "title": { "tr": "Sıralama önemlidir", "en": "Order matters" },
+          "title": {
+            "tr": "Sıralama önemlidir",
+            "en": "Order matters"
+          },
           "text": {
             "tr": "Türev sınıfları **spesifikten genele** doğru yakalayın. `catch (const MatrixProError&)` bloğunu en üste koyarsanız derleyici uyarır, ama çalışma zamanında da türev bloklarınız asla çalışmaz.",
             "en": "Catch derivations **from specific to general**. If you place the `catch (const MatrixProError&)` block first, the compiler will warn — and at runtime your derived-class blocks would never run."
@@ -523,7 +1125,10 @@
         {
           "type": "callout",
           "variant": "warn",
-          "title": { "tr": "Fail-fast istisnasını yakalamayın", "en": "Do not swallow the fail-fast exception" },
+          "title": {
+            "tr": "Fail-fast istisnasını yakalamayın",
+            "en": "Do not swallow the fail-fast exception"
+          },
           "text": {
             "tr": "Bayat host aynası istisnasını `catch` edip yok saymak, tam olarak kütüphanenin önlemeye çalıştığı hatayı üretir. Doğru tepki `download()` çağırmak veya okumayı yeniden sıralamaktır.",
             "en": "Catching and ignoring the stale-mirror exception reproduces exactly the bug the library set out to prevent. The correct response is to call `download()` or reorder the read."
@@ -533,7 +1138,10 @@
     },
     {
       "id": "performans-ipuclari",
-      "title": { "tr": "Performans İpuçları & Ayar Rehberi", "en": "Performance Tips & Tuning Guide" },
+      "title": {
+        "tr": "Performans İpuçları & Ayar Rehberi",
+        "en": "Performance Tips & Tuning Guide"
+      },
       "intro": {
         "tr": "GPU kodu yazarken kazanç neredeyse her zaman **bellek trafiğinde** ve **çekirdek sayısında** saklıdır, ham aritmetikte değil. Aşağıdaki teknikler bu kütüphanenin tasarımına gömülüdür.",
         "en": "In GPU code the win almost always hides in **memory traffic** and **kernel count**, not in raw arithmetic. The techniques below are baked into this library's design."
@@ -542,87 +1150,216 @@
         {
           "type": "table",
           "headers": [
-            { "tr": "Teknik", "en": "Technique" },
-            { "tr": "API", "en": "API" },
-            { "tr": "Kazanç", "en": "Benefit" }
+            {
+              "tr": "Teknik",
+              "en": "Technique"
+            },
+            {
+              "tr": "API",
+              "en": "API"
+            },
+            {
+              "tr": "Kazanç",
+              "en": "Benefit"
+            }
           ],
           "rows": [
             [
-              { "tr": "Tahsissiz GEMM hot path", "en": "Allocation-free GEMM hot path" },
-              { "tr": "`multiply_into(A, B, Out)`", "en": "`multiply_into(A, B, Out)`" },
-              { "tr": "cuBLAS ile aynı koşul; operator* tahsisini eker", "en": "Same condition as cuBLAS; skips operator* allocation" }
+              {
+                "tr": "Tahsissiz GEMM hot path",
+                "en": "Allocation-free GEMM hot path"
+              },
+              {
+                "tr": "`multiply_into(A, B, Out)`",
+                "en": "`multiply_into(A, B, Out)`"
+              },
+              {
+                "tr": "cuBLAS ile aynı koşul; operator* tahsisini eker",
+                "en": "Same condition as cuBLAS; skips operator* allocation"
+              }
             ],
             [
-              { "tr": "Fused GEMM + bias + act", "en": "Fused GEMM + bias + act" },
-              { "tr": "`gemm_bias_relu`, `gemm_bias_gelu`", "en": "`gemm_bias_relu`, `gemm_bias_gelu`" },
-              { "tr": "3 kernel → 1 cublasLt epilogue (1–6×)", "en": "3 kernels → 1 cublasLt epilogue (1–6×)" }
+              {
+                "tr": "Fused GEMM + bias + act",
+                "en": "Fused GEMM + bias + act"
+              },
+              {
+                "tr": "`gemm_bias_relu`, `gemm_bias_gelu`",
+                "en": "`gemm_bias_relu`, `gemm_bias_gelu`"
+              },
+              {
+                "tr": "3 kernel → 1 cublasLt epilogue (1–6×)",
+                "en": "3 kernels → 1 cublasLt epilogue (1–6×)"
+              }
             ],
             [
-              { "tr": "Birleşik çekirdek (fusion)", "en": "Kernel fusion" },
-              { "tr": "`fused_relu_add`, `fused_bias_gelu`, `fused_scale_bias`", "en": "`fused_relu_add`, `fused_bias_gelu`, `fused_scale_bias`" },
-              { "tr": "N çekirdek → 1; N−1 global bellek turu tasarrufu", "en": "N kernels → 1; saves N−1 global memory round-trips" }
+              {
+                "tr": "Birleşik çekirdek (fusion)",
+                "en": "Kernel fusion"
+              },
+              {
+                "tr": "`fused_relu_add`, `fused_bias_gelu`, `fused_scale_bias`",
+                "en": "`fused_relu_add`, `fused_bias_gelu`, `fused_scale_bias`"
+              },
+              {
+                "tr": "N çekirdek → 1; N−1 global bellek turu tasarrufu",
+                "en": "N kernels → 1; saves N−1 global memory round-trips"
+              }
             ],
             [
-              { "tr": "Yerinde (in-place) güncelleme", "en": "In-place updates" },
-              { "tr": "`relu_`, `add_`, `broadcast_add_`, `gelu_`", "en": "`relu_`, `add_`, `broadcast_add_`, `gelu_`" },
-              { "tr": "Çağrı başına 1 tahsis + 1 tam bellek geçişi tasarrufu", "en": "Saves one allocation plus one full memory pass per call" }
+              {
+                "tr": "Yerinde (in-place) güncelleme",
+                "en": "In-place updates"
+              },
+              {
+                "tr": "`relu_`, `add_`, `broadcast_add_`, `gelu_`",
+                "en": "`relu_`, `add_`, `broadcast_add_`, `gelu_`"
+              },
+              {
+                "tr": "Çağrı başına 1 tahsis + 1 tam bellek geçişi tasarrufu",
+                "en": "Saves one allocation plus one full memory pass per call"
+              }
             ],
             [
-              { "tr": "Cihaza özel bellek", "en": "Device-only memory" },
-              { "tr": "`MemoryMode::device_only`", "en": "`MemoryMode::device_only`" },
-              { "tr": "Yarı RAM; ara tensörler için PCIe trafiği sıfır", "en": "Half the RAM; zero PCIe traffic for intermediate tensors" }
+              {
+                "tr": "Cihaza özel bellek",
+                "en": "Device-only memory"
+              },
+              {
+                "tr": "`MemoryMode::device_only`",
+                "en": "`MemoryMode::device_only`"
+              },
+              {
+                "tr": "Yarı RAM; ara tensörler için PCIe trafiği sıfır",
+                "en": "Half the RAM; zero PCIe traffic for intermediate tensors"
+              }
             ],
             [
-              { "tr": "Karışık hassasiyet", "en": "Mixed precision" },
-              { "tr": "`matmul_half`, `pack_f16`/`unpack_f16`", "en": "`matmul_half`, `pack_f16`/`unpack_f16`" },
-              { "tr": "Tensor Core üzerinden 2–8× GEMM verimi; veri %50 küçük", "en": "2–8× GEMM throughput via Tensor Cores; 50% smaller payloads" }
+              {
+                "tr": "Karışık hassasiyet",
+                "en": "Mixed precision"
+              },
+              {
+                "tr": "`matmul_half`, `pack_f16`/`unpack_f16`",
+                "en": "`matmul_half`, `pack_f16`/`unpack_f16`"
+              },
+              {
+                "tr": "Tensor Core üzerinden 2–8× GEMM verimi; veri %50 küçük",
+                "en": "2–8× GEMM throughput via Tensor Cores; 50% smaller payloads"
+              }
             ],
             [
-              { "tr": "fp64 referans yolu", "en": "fp64 reference path" },
-              { "tr": "`matmul_double_accumulate`, `sum_f64`, `l2_norm_f64`", "en": "`matmul_double_accumulate`, `sum_f64`, `l2_norm_f64`" },
-              { "tr": "Kayan nokta doğruluğu testlerinde güvenilir kıyas", "en": "A trustworthy baseline for numerical-accuracy tests" }
+              {
+                "tr": "fp64 referans yolu",
+                "en": "fp64 reference path"
+              },
+              {
+                "tr": "`matmul_double_accumulate`, `sum_f64`, `l2_norm_f64`",
+                "en": "`matmul_double_accumulate`, `sum_f64`, `l2_norm_f64`"
+              },
+              {
+                "tr": "Kayan nokta doğruluğu testlerinde güvenilir kıyas",
+                "en": "A trustworthy baseline for numerical-accuracy tests"
+              }
             ],
             [
-              { "tr": "Stream paralelliği", "en": "Stream parallelism" },
-              { "tr": "`pool_stream(slot)`, `launch_on_pool`", "en": "`pool_stream(slot)`, `launch_on_pool`" },
-              { "tr": "Bağımsız işler (örn. iki ağırlık güncellemesi) örtüşür", "en": "Independent work (e.g. two weight updates) overlaps" }
+              {
+                "tr": "Stream paralelliği",
+                "en": "Stream parallelism"
+              },
+              {
+                "tr": "`pool_stream(slot)`, `launch_on_pool`",
+                "en": "`pool_stream(slot)`, `launch_on_pool`"
+              },
+              {
+                "tr": "Bağımsız işler (örn. iki ağırlık güncellemesi) örtüşür",
+                "en": "Independent work (e.g. two weight updates) overlaps"
+              }
             ],
             [
-              { "tr": "Asenkron redüksiyon", "en": "Async reductions" },
-              { "tr": "`argmax_async`, `argmin_async`, `pin_host`", "en": "`argmax_async`, `argmin_async`, `pin_host`" },
-              { "tr": "Pipeline duraklaması olmadan argmax/argmin", "en": "argmax/argmin without stalling the pipeline" }
+              {
+                "tr": "Asenkron redüksiyon",
+                "en": "Async reductions"
+              },
+              {
+                "tr": "`argmax_async`, `argmin_async`, `pin_host`",
+                "en": "`argmax_async`, `argmin_async`, `pin_host`"
+              },
+              {
+                "tr": "Pipeline duraklaması olmadan argmax/argmin",
+                "en": "argmax/argmin without stalling the pipeline"
+              }
             ],
             [
-              { "tr": "Zero-copy görünümler", "en": "Zero-copy views" },
-              { "tr": "`transpose_view`, `slice_view`, `as_strided_view`", "en": "`transpose_view`, `slice_view`, `as_strided_view`" },
-              { "tr": "Transpose/slice için hiç kopya yok", "en": "No copy at all for transpose/slice" }
+              {
+                "tr": "Zero-copy görünümler",
+                "en": "Zero-copy views"
+              },
+              {
+                "tr": "`transpose_view`, `slice_view`, `as_strided_view`",
+                "en": "`transpose_view`, `slice_view`, `as_strided_view`"
+              },
+              {
+                "tr": "Transpose/slice için hiç kopya yok",
+                "en": "No copy at all for transpose/slice"
+              }
             ],
             [
-              { "tr": "Sabitlenmiş (pinned) yuva", "en": "Pinned result slot" },
-              { "tr": "`pin_host(bytes)`, `unpin_host(ptr)`", "en": "`pin_host(bytes)`, `unpin_host(ptr)`" },
-              { "tr": "Page-locked host bellek ile hızlı DMA", "en": "Fast DMA through page-locked host memory" }
+              {
+                "tr": "Sabitlenmiş (pinned) yuva",
+                "en": "Pinned result slot"
+              },
+              {
+                "tr": "`pin_host(bytes)`, `unpin_host(ptr)`",
+                "en": "`pin_host(bytes)`, `unpin_host(ptr)`"
+              },
+              {
+                "tr": "Page-locked host bellek ile hızlı DMA",
+                "en": "Fast DMA through page-locked host memory"
+              }
             ]
           ]
         },
         {
           "type": "h3",
-          "text": { "tr": "Eğitim döngüsü için altın kurallar", "en": "Golden rules for a training loop" }
+          "text": {
+            "tr": "Eğitim döngüsü için altın kurallar",
+            "en": "Golden rules for a training loop"
+          }
         },
         {
           "type": "list",
           "ordered": true,
           "items": [
-            { "tr": "Model ağırlıklarını `host_and_device`, aktivasyonları `device_only` tutun.", "en": "Keep model weights in `host_and_device` and activations in `device_only`." },
-            { "tr": "Gradyan biriktiricilerini her adımda `zero()` ile sıfırlayın — `Tensor::zero()` host turu yapmaz.", "en": "Zero your gradient accumulators with `zero()` each step — `Tensor::zero()` avoids a host round-trip." },
-            { "tr": "`(a * b).relu().add_scalar(x)` yerine `fused_relu_add` ve `_` varyantlarını tercih edin.", "en": "Prefer `fused_relu_add` plus the `_` variants over `(a * b).relu().add_scalar(x)`." },
-            { "tr": "Kayıp değerini her adımda değil, her K adımda indirin (`download()`).", "en": "Download the loss value every K steps, not every step (`download()`)." },
-            { "tr": "Loss hesabında `softmax_cross_entropy_grad` kullanın: softmax'ı ayrı çalıştırmak log-sum-exp kararlılığını kaybettirir.", "en": "Use `softmax_cross_entropy_grad` in the loss computation: running softmax separately loses the log-sum-exp stability." }
+            {
+              "tr": "Model ağırlıklarını `host_and_device`, aktivasyonları `device_only` tutun.",
+              "en": "Keep model weights in `host_and_device` and activations in `device_only`."
+            },
+            {
+              "tr": "Gradyan biriktiricilerini her adımda `zero()` ile sıfırlayın — `Tensor::zero()` host turu yapmaz.",
+              "en": "Zero your gradient accumulators with `zero()` each step — `Tensor::zero()` avoids a host round-trip."
+            },
+            {
+              "tr": "`(a * b).relu().add_scalar(x)` yerine `fused_relu_add` ve `_` varyantlarını tercih edin.",
+              "en": "Prefer `fused_relu_add` plus the `_` variants over `(a * b).relu().add_scalar(x)`."
+            },
+            {
+              "tr": "Kayıp değerini her adımda değil, her K adımda indirin (`download()`).",
+              "en": "Download the loss value every K steps, not every step (`download()`)."
+            },
+            {
+              "tr": "Loss hesabında `softmax_cross_entropy_grad` kullanın: softmax'ı ayrı çalıştırmak log-sum-exp kararlılığını kaybettirir.",
+              "en": "Use `softmax_cross_entropy_grad` in the loss computation: running softmax separately loses the log-sum-exp stability."
+            }
           ]
         },
         {
           "type": "callout",
           "variant": "tip",
-          "title": { "tr": "Ölçmeden optimize etmeyin", "en": "Do not optimize without measuring" },
+          "title": {
+            "tr": "Ölçmeden optimize etmeyin",
+            "en": "Do not optimize without measuring"
+          },
           "text": {
             "tr": "Kütüphane `MATRIX_PRO_BUILD_BENCHMARKS=ON` ile benchmark hedefleri üretir. Değişikliği `release` preset'inde ölçün: `debug` derlemesi CUDA'da yanıltıcı derecede yavaştır ve yanlış sonuca götürür.",
             "en": "The library produces benchmark targets with `MATRIX_PRO_BUILD_BENCHMARKS=ON`. Measure your change under the `release` preset: a `debug` build is misleadingly slow on CUDA and leads to the wrong conclusion."

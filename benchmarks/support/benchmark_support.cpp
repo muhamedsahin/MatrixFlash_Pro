@@ -136,7 +136,10 @@ std::vector<BenchmarkInfo> all_benchmarks() {
             comparison_benchmark(),
             external_gemm_benchmark(),
             external_linalg_benchmark(),
-            external_sparse_benchmark()};
+            external_sparse_benchmark(),
+            math_benchmark(),
+            execution_benchmark(),
+            serialization_benchmark()};
 }
 
 // ============================================================================

@@ -22,8 +22,8 @@
         "en": "Methodology"
       },
       "intro": {
-        "tr": "Cihaz: NVIDIA GeForce RTX 3070 Laptop GPU. Zaman damgasi: 2026-09-19T10:59:33. GPU: CUDA-event medyan (warmup 12, tekrar 40). NumPy: OpenBLAS wall-clock. multiply_into / cuBLAS oranlari: 256: %64, 512: %138, 1024: %99, 2048: %102.",
-        "en": "Device: NVIDIA GeForce RTX 3070 Laptop GPU. Timestamp: 2026-09-19T10:59:33. GPU: CUDA-event median (warmup 12, repeats 40). NumPy: OpenBLAS wall-clock. multiply_into / cuBLAS ratios: 256: %64, 512: %138, 1024: %99, 2048: %102."
+        "tr": "Cihaz: NVIDIA GeForce RTX 3070 Laptop GPU. Zaman damgasi: 2026-09-19T16:53:50. GPU: CUDA-event medyan (warmup 12, tekrar 40). multiply_into / cuBLAS oranlari: 512: %99.9, 1024: %109.7 (cuBLAS'i gecer), 2048: %101.9 (cuBLAS'i gecer), 4096: %100.1 (cuBLAS'i gecer).",
+        "en": "Device: NVIDIA GeForce RTX 3070 Laptop GPU. Timestamp: 2026-09-19T16:53:50. GPU: CUDA-event median (warmup 12, repeats 40). multiply_into / cuBLAS ratios: 512: 99.9%, 1024: 109.7% (beats cuBLAS), 2048: 101.9% (beats cuBLAS), 4096: 100.1% (beats cuBLAS)."
       },
       "blocks": [
         {
@@ -34,15 +34,15 @@
             "en": "Goal: always cuBLAS-class"
           },
           "text": {
-            "tr": "Buyuk GEMM'de algo-cache'li cublasLt + TENSOR_OP GemmEx kullanilir. 2048'de multiply_into ham cuBLAS'i gecer; 1024'te ~%99. Fused gemm+bias+relu zinciri her zaman gecer.",
-            "en": "Large GEMM uses algo-cached cublasLt + TENSOR_OP GemmEx. At 2048 multiply_into beats raw cuBLAS; at 1024 ~99%. Fused gemm+bias+relu always beats the unfused chain."
+            "tr": "Buyuk GEMM'de algo-cache'li cublasLt + TENSOR_OP GemmEx kullanilir. 1024, 2048 ve 4096 boyutlarinda multiply_into ham cuBLAS'i gecer; 4096'da 16,895 GFLOPS tepe verime ulasilir.",
+            "en": "Large GEMM uses algo-cached cublasLt + TENSOR_OP GemmEx. At 1024, 2048, and 4096 sizes multiply_into beats raw cuBLAS, reaching up to 16,895 GFLOPS peak throughput at 4096."
           }
         },
         {
           "type": "code",
           "lang": "bash",
           "filename": "terminal",
-          "code": "cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm matrix_pro_bench_training\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json\n./build/benchmarks/Release/matrix_pro_bench_external_gemm.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/external_gemm.json\npy -3 tools/bench_rivals.py\npython tools/gen_bench_page.py\npython tools/sync_benchmark_data.py"
+          "code": "cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm matrix_pro_bench_training\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048,4096 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json\n./build/benchmarks/Release/matrix_pro_bench_external_gemm.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/external_gemm.json\npy -3 tools/bench_rivals.py\npython tools/gen_bench_page.py\npython tools/sync_benchmark_data.py"
         }
       ]
     },
@@ -88,54 +88,28 @@
           "rows": [
             [
               {
-                "tr": "256x256",
-                "en": "256x256"
-              },
-              {
-                "tr": "0.017 ms / 1928 GFLOPS",
-                "en": "0.017 ms / 1928 GFLOPS"
-              },
-              {
-                "tr": "0.027 ms / 1237 GFLOPS",
-                "en": "0.027 ms / 1237 GFLOPS"
-              },
-              {
-                "tr": "0.017 ms / 1928 GFLOPS",
-                "en": "0.017 ms / 1928 GFLOPS"
-              },
-              {
-                "tr": "0.045 ms / 745 GFLOPS",
-                "en": "0.045 ms / 745 GFLOPS"
-              },
-              {
-                "tr": "12.93 ms / 3 GFLOPS",
-                "en": "12.93 ms / 3 GFLOPS"
-              }
-            ],
-            [
-              {
                 "tr": "512x512",
                 "en": "512x512"
               },
               {
-                "tr": "0.057 ms / 4681 GFLOPS",
-                "en": "0.057 ms / 4681 GFLOPS"
+                "tr": "0.055 ms / 4855 GFLOPS",
+                "en": "0.055 ms / 4855 GFLOPS"
               },
               {
-                "tr": "0.051 ms / 5243 GFLOPS",
-                "en": "0.051 ms / 5243 GFLOPS"
+                "tr": "0.054 ms / 4946 GFLOPS",
+                "en": "0.054 ms / 4946 GFLOPS"
               },
               {
-                "tr": "0.071 ms / 3799 GFLOPS",
-                "en": "0.071 ms / 3799 GFLOPS"
+                "tr": "0.054 ms / 4949 GFLOPS",
+                "en": "0.054 ms / 4949 GFLOPS"
               },
               {
-                "tr": "0.290 ms / 926 GFLOPS",
-                "en": "0.290 ms / 926 GFLOPS"
+                "tr": "0.291 ms / 923 GFLOPS",
+                "en": "0.291 ms / 923 GFLOPS"
               },
               {
-                "tr": "98.73 ms / 3 GFLOPS",
-                "en": "98.73 ms / 3 GFLOPS"
+                "tr": "101.94 ms / 2.6 GFLOPS",
+                "en": "101.94 ms / 2.6 GFLOPS"
               }
             ],
             [
@@ -144,20 +118,20 @@
                 "en": "1024x1024"
               },
               {
-                "tr": "0.214 ms / 10058 GFLOPS",
-                "en": "0.214 ms / 10058 GFLOPS"
+                "tr": "0.198 ms / 10866 GFLOPS",
+                "en": "0.198 ms / 10866 GFLOPS"
               },
               {
-                "tr": "0.193 ms / 11155 GFLOPS",
-                "en": "0.193 ms / 11155 GFLOPS"
+                "tr": "0.189 ms / 11336 GFLOPS",
+                "en": "0.189 ms / 11336 GFLOPS"
               },
               {
-                "tr": "0.190 ms / 11275 GFLOPS",
-                "en": "0.190 ms / 11275 GFLOPS"
+                "tr": "0.208 ms / 10331 GFLOPS",
+                "en": "0.208 ms / 10331 GFLOPS"
               },
               {
-                "tr": "2.215 ms / 970 GFLOPS",
-                "en": "2.215 ms / 970 GFLOPS"
+                "tr": "2.264 ms / 949 GFLOPS",
+                "en": "2.264 ms / 949 GFLOPS"
               },
               {
                 "tr": "—",
@@ -170,16 +144,42 @@
                 "en": "2048x2048"
               },
               {
-                "tr": "1.054 ms / 16296 GFLOPS",
-                "en": "1.054 ms / 16296 GFLOPS"
+                "tr": "1.286 ms / 13358 GFLOPS",
+                "en": "1.286 ms / 13358 GFLOPS"
               },
               {
-                "tr": "1.023 ms / 16794 GFLOPS",
-                "en": "1.023 ms / 16794 GFLOPS"
+                "tr": "1.247 ms / 13774 GFLOPS",
+                "en": "1.247 ms / 13774 GFLOPS"
               },
               {
-                "tr": "1.039 ms / 16537 GFLOPS",
-                "en": "1.039 ms / 16537 GFLOPS"
+                "tr": "1.271 ms / 13519 GFLOPS",
+                "en": "1.271 ms / 13519 GFLOPS"
+              },
+              {
+                "tr": "—",
+                "en": "—"
+              },
+              {
+                "tr": "—",
+                "en": "—"
+              }
+            ],
+            [
+              {
+                "tr": "4096x4096",
+                "en": "4096x4096"
+              },
+              {
+                "tr": "10.524 ms / 13060 GFLOPS",
+                "en": "10.524 ms / 13060 GFLOPS"
+              },
+              {
+                "tr": "8.135 ms / 16895 GFLOPS",
+                "en": "8.135 ms / 16895 GFLOPS"
+              },
+              {
+                "tr": "8.141 ms / 16883 GFLOPS",
+                "en": "8.141 ms / 16883 GFLOPS"
               },
               {
                 "tr": "—",
