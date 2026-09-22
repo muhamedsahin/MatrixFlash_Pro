@@ -60,6 +60,17 @@ export default function RootLayout({
       lang="tr"
       className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${sora.variable}`}
     >
+      <head>
+      <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-MNGNX6NSL7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-MNGNX6NSL7');
+</script>
+      </head>
       <body className="font-sans antialiased selection:bg-primary/20 selection:text-primary">
         <LanguageProvider>
           <IntroOverlay />
