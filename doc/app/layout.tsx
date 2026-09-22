@@ -61,7 +61,6 @@ export default function RootLayout({
       className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${sora.variable}`}
     >
       <head>
-      <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNGNX6NSL7"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
