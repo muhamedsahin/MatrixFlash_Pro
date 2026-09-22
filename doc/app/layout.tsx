@@ -61,20 +61,27 @@ export default function RootLayout({
       className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${sora.variable}`}
     >
       <head>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-MNGNX6NSL7"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-MNGNX6NSL7');
-</script>
       </head>
       <body className="font-sans antialiased selection:bg-primary/20 selection:text-primary">
         <LanguageProvider>
           <IntroOverlay />
           <ScrollProgressBar />
           <HudFrame />
+          {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-MNGNX6NSL7"
+          strategy="afterInteractive"
+        />
+
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-MNGNX6NSL7');
+          `}
+        </Script>
           {children}
         </LanguageProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
