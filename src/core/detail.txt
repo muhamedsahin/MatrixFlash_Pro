@@ -1,0 +1,39 @@
+MatrixFlash-Pro — src/core
+==========================
+matrix.cu
+    Matrix kurucuları, kopya/taşıma, device bellek edinme (havuzdan),
+    upload ve download. GPU yazan her işlem mark_host_stale() çağırır.
+    at() ve salt-okunur data(), ayna bayatsa InvalidArgumentError verir;
+    sessizce sıfır döndürmez. device_only matriste host tamponu yoktur,
+    download() onu ilk kez ayırır. save/load serileştirme ile konuşur.
+
+matrix_factories.cu
+    zeros, ones, identity, fill, random, uniform, randn, glorot.
+    Rastgele doldurma ya host RNG + upload ya da rng/ cihaz çekirdeğidir;
+    hangi yolun kullanıldığı ilgili fabrikanın gövdesindedir. Fabrikalar
+    şekil ve bellek modunu kurucuya iletir.
+
+tensor.cu
+    Boyut dizisi, stride, cihaz tahsisi, reshape'in veri kopyalayıp
+    kopyalamadığı ve concat/stack'in çıkış aynasını bayat bırakması.
+    Conv tensörleri NCHW kabul eder.
+
+memory_pool.cu
+    Boyutu power-of-two sınıfa yuvarlar, cihaz kimliğiyle etiketler,
+    serbest blokları geri verir. empty_cache kullanılmayan sınıfı sürücüye
+    iade eder. Kapanışta cached ve live haritalar tek ownership ile bir kez
+    free edilir. İstenen bayt sınıf sınırını taşırsa sonsuz döngü yerine hata.
+
+backend.cu
+    cudaGetDeviceCount / cudaSetDevice sarmalayıcıları. DeviceScope kapsam
+    sonunda önceki cihaza döner. Havuz, blokları ayıran cihaza geri verir.
+
+cuda_utils.cu
+    Her (host thread, cihaz) çifti için compute stream ve vendor handle.
+    checkCuda başarısız çağrıyı CudaError'a çevirir. synchronize() o
+    bağlamın stream'ini bekler.
+
+serialization.cu
+    .mfc / matris dosyası. Diske yazılan şey boyut, dtype ve değerlerdir;
+    cihaz adresi ve host_current bayrağı yüklenince yeniden kurulur.
+    Aksi halde başka süreçte anlamsız pointer okunur.

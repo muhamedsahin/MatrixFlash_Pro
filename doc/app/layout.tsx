@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, JetBrains_Mono, Sora } from 'next/font/google'
+import Script from 'next/script'
 import { LanguageProvider } from '@/lib/language-context'
 import { IntroOverlay } from '@/components/intro-overlay'
 import { ScrollProgressBar } from '@/components/scroll-progress-bar'

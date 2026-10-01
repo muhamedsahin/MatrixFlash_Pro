@@ -1,0 +1,27 @@
+MatrixFlash-Pro — benchmarks/
+================================
+bench_gemm_fair.cpp
+    1 Ekim 2026 adil GEMM. MatrixFlash planı, tuned plan, ham cuBLAS ve
+    ham cuBLASLt aynı FP32 veya TF32 politikasında, aynı stream ve 64 MiB
+    workspace ile ölçülür. Ham Lt de descriptor ve heuristic'i tekrar kullanır;
+    rakip soğuk başlatılmaz. Çıktı JSON: medyan, sapma, GFLOPS, örneklenmiş
+    mutlak hata. Doğrulama, zamanlamadan önce ve sonra en fazla 97 konumda
+    bağımsız double iç çarpımdır. Tolerans 1e-5 + |a·b| ölçeği
+    (FP32 için 2e-6, TF32 için 0.002). NaN hata sayılır.
+
+bench_matmul.cpp, bench_linalg.cpp, bench_elementwise.cpp, bench_reductions.cpp,
+bench_sparse.cpp, bench_math.cpp
+    Eski veya alan-özel ölçümler. Ekim adil rakip tablosunun kaynağı değiller.
+
+tools/bench_rivals_fair.py
+    NumPy 2.3.5 / OpenBLAS 0.3.30 duvar saati. İsteğe bağlı PyTorch FP32/TF32
+    CUDA-event ve CuPy. 1 Ekim ortamında PyTorch ve CuPy kurulu değildi;
+    o tur onlar hakkında hız iddiası içermez. CPU thread sayısı sabitlenmedi.
+
+Raporlar: benchmarks/reports/2026-10-01/
+    hardware.txt, final_gemm_run1.json, final_gemm_run2.json, rivals_fair.json,
+    baseline_gemm.json, final_tests.txt, memcheck_*.txt, planned_demo.txt.
+
+Yeniden üretim komutları PERFORMANCE_REPORT.md bölüm 9 ve
+doc/content/docs/benchmarks-comparison.json içindedir.
+GPU saatleri kilitlenmedi. Küçük farklara istatistiksel üstünlük bağlanmaz.

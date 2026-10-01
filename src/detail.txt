@@ -1,0 +1,72 @@
+MatrixFlash-Pro — src/ uygulama haritası
+=======================================
+Başlıklar include/matrix_pro altındadır. Buradaki .cu dosyaları kütüphane
+hedefine derlenir; kullanıcı bunları include etmez.
+
+src/core
+    matrix.cu            Yaşam döngüsü, kopya, upload/download, host bayatlığı, at().
+    matrix_factories.cu  zeros, ones, identity, random, uniform, randn, glorot.
+    tensor.cu            Rank-N Tensor tahsisi, görünüm ve cihaz kopyası.
+    memory_pool.cu       Cihaz etiketli havuz, sınıf boyutu, empty_cache, kapanış.
+    backend.cu           Cihaz sayımı, set_device, DeviceScope.
+    cuda_utils.cu        checkCuda, stream/handle önbelleği, senkronizasyon.
+    serialization.cu     Checkpoint yazma/okuma. Pointer ve bayat bayrağı düzeltilir.
+
+src/ops
+    elementwise.cu       Noktasal aritmetik ve skaler çekirdekler.
+    math.cu              SFU trigonometri, erf, rsqrt, addcmul.
+    matmul.cu            multiply / multiply_into / outer; gemm_rowmajor'a iner.
+    gemm/                Ayrıntı: src/ops/gemm/detail.txt
+    factorization.cu     LUFactorization ve slogdet. cuSOLVER GETRF/GETRS.
+    linalg.cu            QR, SVD, özdeğer, Cholesky, pinv, least squares.
+    linalg_extended.cu   lu, trsm, trmm, matrix_power, matrix_exp, batch_*.
+    reductions -> statistics.cu   sum/mean/min/max/norm ve eksen indirgemeleri.
+    statistics.cu        GPU indirgeme çekirdekleri.
+    broadcast çekirdekleri elementwise/shape tarafında.
+    shape.cu             reshape, concat, stack, slice, one_hot.
+    transforms.cu        transpose, relu, softmax, flatten.
+    masking.cu           maske ve koşullu seçim.
+    precision.cu         paketleme / açma.
+    advanced.cu          determinant, inverse.
+    extended.cu          ileri tek atışlık yardımcılar.
+    dtype.cu             DType tamponu, fp16, geniş birikim.
+    view.cu              MatrixView materialize ve stride hesapları.
+
+src/nn
+    activation.cu        İleri aktivasyonlar ve geri türev çekirdekleri.
+    loss.cu              BCE-with-logits, softmax cross-entropy.
+    ml.cu                batch_norm, layer_norm, dropout.
+    conv.cu              NCHW conv ve pooling ileri; cuDNN varsa onu, yoksa CUDA.
+    conv_backward.cu     conv/pool geri yayılım, im2col + GEMM.
+    batch.cu             strided batched GEMM.
+    fused.cu             elementwise fused zincirler (bias+gelu, relu+add, ...).
+    inplace.cu           *_ yerinde güncellemeler.
+
+src/autograd/autograd.cu
+    Variable / VarTensor tape, topolojik geri yayılım, NoGrad, detach,
+    checkpoint. Ara değerler GPU'da kalır.
+
+src/sparse
+    sparse.cu            CSR kurma, spmv, sparse×dense.
+    sparse_formats.cu    COO sıralama ve koordinat birleştirme, CSC↔CSR,
+                         sparse_add (alpha*A+beta*B), boş CSR sıfırlama.
+                         Dönüşümlerin bir kısmı host sıralaması yapar; bu
+                         dosya "tamamen GPU sparse motoru" değildir.
+
+src/indexing/indexing.cu
+    index_select, gather, scatter_add, embedding ve geri türev.
+
+src/rng/rng.cu
+    Philox sayaç RNG, uniform/normal, dropout maskesi, rng_seed.
+
+src/streams
+    streams.cu           4'lü stream havuzu, pinned host, async argmax/argmin.
+    execution.cu         CUDA Graph capture/replay ve Pipeline stream seçimi.
+                         Exception sonrası stream geri yüklenir; yarım capture
+                         reset ile temizlenir.
+
+Testler tests/, ölçümler benchmarks/, örnekler examples/ altındadır.
+1 Ekim 2026 adil GEMM ölçümünün kaynakları:
+    benchmarks/bench_gemm_fair.cpp
+    tools/bench_rivals_fair.py
+    benchmarks/reports/2026-10-01/

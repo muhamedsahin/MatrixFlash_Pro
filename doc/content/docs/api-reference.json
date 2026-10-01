@@ -1691,6 +1691,83 @@
       ]
     },
     {
+      "id": "gemm-plan",
+      "title": {
+        "tr": "GemmPlan — tekrar kullanılan sıcak GEMM",
+        "en": "GemmPlan — reusable hot GEMM"
+      },
+      "intro": {
+        "tr": "C = epilogue(alpha * op(A) * op(B) + beta * C). Plan kurulduğu thread, cihaz ve stream'e bağlıdır. Sıcak execute tahsis, descriptor ve heuristic yapmaz. Başlık: ops/gemm.hpp.",
+        "en": "C = epilogue(alpha * op(A) * op(B) + beta * C). A plan is bound to the thread, device and stream that created it. Warm execute does no allocation, descriptor creation or heuristic query. Header: ops/gemm.hpp."
+      },
+      "entries": [
+        {
+          "name": "GemmOptions",
+          "signature": "enum class GemmPrecision { fp32, tf32 };\nenum class GemmEpilogue { none, bias, bias_relu, bias_gelu };\nstruct GemmOptions {\n  bool transpose_left = false;\n  bool transpose_right = false;\n  GemmPrecision precision = GemmPrecision::fp32;\n  GemmEpilogue epilogue = GemmEpilogue::none;\n  std::size_t workspace_limit_bytes = 64u << 20;\n};",
+          "badge": "yeni",
+          "text": {
+            "tr": "fp32, azaltılmış mantissa dönüşümünü kapatır (CUBLAS_COMPUTE_32F_PEDANTIC). tf32 Tensor Core'a izin verir; depolama ve birikim FP32 kalır. workspace_limit_bytes algoritmanın kullanabileceği tavanı belirler; thread/cihaz/stream başına paylaşılan 64 MiB rezervasyonu küçültmez.",
+            "en": "fp32 disables reduced-mantissa conversion (CUBLAS_COMPUTE_32F_PEDANTIC). tf32 allows Tensor Cores; storage and accumulation stay FP32. workspace_limit_bytes caps what the algorithm may use; it does not shrink the shared 64 MiB reservation per thread/device/stream."
+          }
+        },
+        {
+          "name": "GemmPlan",
+          "signature": "GemmPlan(std::size_t m, std::size_t n, std::size_t k, GemmOptions options = {});\nvoid execute(const Matrix& left, const Matrix& right, Matrix& output,\n             float alpha = 1, float beta = 0, const Matrix* bias = nullptr);\nGemmTuningResult tune(const Matrix& left, const Matrix& right, const Matrix& output,\n                      float alpha = 1, float beta = 0, const Matrix* bias = nullptr,\n                      int repeats = 5);",
+          "badge": "yeni",
+          "returns": "void / GemmTuningResult",
+          "text": {
+            "tr": "Kopyalanamaz, taşınabilir. tune() en fazla 16 Lt adayını scratch çıktıya ölçer; C ve beta girdisi değişmez. Senkronize eder, CUDA graph capture içinde çağrılamaz. Graph, plan nesnesi ve bütün tamponlar yaşadığı sürece replay edilebilir. Convenience cache'e graph ömrü emanet edilmez.",
+            "en": "Not copyable, movable. tune() times at most 16 Lt candidates into a scratch output; C and the beta input stay unchanged. It synchronizes and cannot run during CUDA graph capture. A graph can replay only while the plan object and every buffer are alive. Do not tie a graph's lifetime to the convenience cache."
+          },
+          "example": "GemmOptions opt;\nopt.precision = GemmPrecision::fp32;\nGemmPlan plan(m, n, k, opt);\nplan.execute(a, b, c);"
+        },
+        {
+          "name": "gemm / gemm_into",
+          "signature": "void gemm_into(const Matrix& left, const Matrix& right, Matrix& output,\n               GemmOptions options = {}, float alpha = 1, float beta = 0,\n               const Matrix* bias = nullptr);\nMatrix gemm(const Matrix& left, const Matrix& right, GemmOptions options = {},\n            float alpha = 1, const Matrix* bias = nullptr);",
+          "badge": "yeni",
+          "returns": "void / Matrix",
+          "text": {
+            "tr": "Thread, cihaz ve stream başına en fazla 128 planlık önbellek. gemm() device_only çıktı üretir. beta != 0 yalnızca çıktının cihaz içeriği önceden geçerliyken kullanılır. Eski multiply_into imzası durur ve şekle bağlı varsayılan politikayı kullanır.",
+            "en": "Cache of at most 128 plans per thread, device and stream. gemm() returns a device_only matrix. Use beta != 0 only when the output already has valid device contents. The old multiply_into signature remains and uses the shape-dependent default policy."
+          }
+        }
+      ]
+    },
+    {
+      "id": "lu-plan",
+      "title": {
+        "tr": "LUFactorization ve slogdet",
+        "en": "LUFactorization and slogdet"
+      },
+      "intro": {
+        "tr": "A bir kez faktörlenir. Sonraki sağ taraflar aynı pivot ve scratch ile çözülür. Başlık: ops/factorization.hpp. Tek atışlık L/U/P matrisi için lu() hâlâ linalg_extended.hpp içindedir.",
+        "en": "A is factored once. Later right-hand sides reuse the same pivots and scratch. Header: ops/factorization.hpp. The one-shot L/U/P matrices remain lu() in linalg_extended.hpp."
+      },
+      "entries": [
+        {
+          "name": "LUFactorization",
+          "signature": "explicit LUFactorization(const Matrix& coefficients, std::size_t max_rhs = 1);\nMatrix solve(const Matrix& rhs, bool transpose = false);\nvoid solve_into(const Matrix& rhs, Matrix& output, bool transpose = false);\nSLogDetResult slogdet() const;\nbool singular() const noexcept;",
+          "badge": "yeni",
+          "returns": "Matrix / void / SLogDetResult",
+          "text": {
+            "tr": "Kurucu cuSOLVER GETRF çalıştırır ve tekillik ile işaretli log-determinant için senkronize eder; capture içinde kurulamaz. solve_into, RHS sütun sayısı max_rhs'i aşmazsa tahsis yapmaz. RHS ile çıktı aynı tampon olabilir. Tekil matriste solve SolverError fırlatır.",
+            "en": "The constructor runs cuSOLVER GETRF and synchronizes for singularity and the signed log-determinant; it cannot be constructed during capture. solve_into does not allocate when the RHS column count is within max_rhs. RHS and output may alias. solve throws SolverError on a singular matrix."
+          },
+          "example": "LUFactorization factor(a, /*max_rhs=*/8);\nfactor.solve_into(b, x);\nauto ld = factor.slogdet(); // sign + double log|det|"
+        },
+        {
+          "name": "slogdet",
+          "signature": "struct SLogDetResult { int sign; double log_abs_det; };\nSLogDetResult slogdet(const Matrix& coefficients);",
+          "badge": "yeni",
+          "returns": "SLogDetResult",
+          "text": {
+            "tr": "FP32 köşegen çarpımı taşmadan log mutlak değer double'da birikir. İşaret, negatif köşegen ve pivot satır takaslarından gelir. Tekil matriste {0, -infinity}. 0×0 matriste determinant 1, yani {1, 0}. log_determinant() yalnız float log-abs döner.",
+            "en": "The log-absolute value accumulates in double so the FP32 diagonal product does not overflow. The sign comes from negative diagonals and pivot row swaps. A singular matrix is {0, -infinity}. A 0×0 matrix has determinant 1, so {1, 0}. log_determinant() returns only the float log-abs."
+          }
+        }
+      ]
+    },
+    {
       "id": "math-engine",
       "title": {
         "tr": "Math & Operator Motoru (Trigonometri, Erf, Rsqrt...)",

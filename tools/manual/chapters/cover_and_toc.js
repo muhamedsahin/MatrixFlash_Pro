@@ -22,8 +22,8 @@ module.exports = `
       </div>
       <div class="cover-spec-card">
         <div class="label">Peak Measured GEMM</div>
-        <div class="val">16,895 GFLOPS</div>
-        <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">RTX 3070 sm_86 (cuBLAS: 16,882)</div>
+        <div class="val">13.1 TFLOPS</div>
+        <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">TF32 2048² tuned plan, 1 Oct 2026</div>
       </div>
       <div class="cover-spec-card">
         <div class="label">Memory Alloc Overhead</div>
@@ -36,9 +36,9 @@ module.exports = `
         <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">Strict RAII, zero-cost abstractions</div>
       </div>
       <div class="cover-spec-card">
-        <div class="label">Graph Dispatch Latency</div>
-        <div class="val">&lt; 2.0 &mu;s</div>
-        <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">CUDA Graph instantiated replay</div>
+        <div class="label">CUDA Graph (16³ FP32 Lt)</div>
+        <div class="val">2.1 &mu;s</div>
+        <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">per GEMM inside a 32-op replay</div>
       </div>
       <div class="cover-spec-card">
         <div class="label">Core Engine Modules</div>
@@ -49,9 +49,9 @@ module.exports = `
 
     <div class="cover-footer">
       <div>Author: MatrixFlash-Pro Engineering Team</div>
-      <div>Document Version: 2.4.0-PRO</div>
+      <div>Document Version: 2.5.0-PRO</div>
       <div>Classification: Open Technical Standard</div>
-      <div>Publication Date: September 2026</div>
+      <div>Publication Date: 1 October 2026</div>
     </div>
   </div>
 
@@ -88,7 +88,7 @@ module.exports = `
       </div>
       <div class="callout tip">
         <div class="callout-title">✓ Zero-Allocation Hot Path</div>
-        The <code>multiply_into()</code> primitive and custom block arena pool bypass device allocation locks, matching or outperforming raw vendor cuBLAS benchmarks across standard sizes.
+        The <code>multiply_into()</code> primitive and the block pool keep allocation off the hot path. On the 1 October 2026 RTX 3070 Laptop run, large TF32 squares sit in the same band as raw cuBLAS; the FP32 tuned plan is faster at 1024² and 2048². Chapter 15 records the cases that did not improve.
       </div>
       <div class="callout tip">
         <div class="callout-title">✓ Sub-Microsecond Graph Dispatch</div>

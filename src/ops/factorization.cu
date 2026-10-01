@@ -1,3 +1,26 @@
+// Reusable LU with partial pivoting (cuSOLVER DnSgetrf / DnSgetrs).
+//
+// Construction factors A once. Row-major device data is transposed into a
+// column-major factor buffer because cuSOLVER's dense GETRF expects Fortran
+// layout. Pivots, info and a RHS scratch of (n * max_rhs) floats stay alive
+// for later solves. solve_into() copies the right-hand side into that scratch,
+// calls getrs, and writes the solution back. It does not allocate when the
+// RHS column count is within the capacity passed to the constructor.
+//
+// The factor is bound to the host thread, CUDA device and compute stream that
+// created it. A dedicated cusolverDn handle is stored so a later Pipeline
+// stream change cannot silently rebind the solve.
+//
+// slogdet is computed on the host after one sync: sign is the product of the
+// diagonal signs and the pivot-row swaps (cuSOLVER pivots are 1-based), and
+// log_abs_det accumulates log(|d_ii|) in double so a huge or tiny FP32 product
+// does not overflow. A zero pivot (info > 0) is singular: sign 0 and
+// log_abs_det = -infinity. A 0×0 matrix is defined as determinant 1.
+// Construction must happen before CUDA graph capture because of that sync.
+//
+// The destructor frees the solver and the owned buffers on the allocating
+// device, then the Buffer members see null pointers and do not free twice.
+
 #include "matrix_pro/ops/factorization.hpp"
 #include "matrix_pro/core/cuda_utils.hpp"
 #include <cusolverDn.h>

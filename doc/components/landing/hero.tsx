@@ -42,8 +42,8 @@ export function Hero() {
 
             <p className="mt-5 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
               {t(
-                'Shape-aware GEMM, TF32, fused bias+act, Autograd ve cuSOLVER — doğrulanmış: 1024², 2048² ve 4096²’de cuBLAS’ı geçiyor (16,895 GFLOPS tepe verim).',
-                'Shape-aware GEMM, TF32, fused bias+act, Autograd and cuSOLVER — verified: beats cuBLAS at 1024², 2048², and 4096² (16,895 GFLOPS peak).',
+                'Shape-aware GEMM, GemmPlan, TF32 ve cuSOLVER. 1 Ekim 2026, RTX 3070 Laptop: FP32 tuned plan 1024²’de ham cuBLAS’tan 1.24× hızlı; TF32 2048²’de aynı bant, tepe 13.1 TFLOPS.',
+                'Shape-aware GEMM, GemmPlan, TF32 and cuSOLVER. 1 October 2026, RTX 3070 Laptop: the FP32 tuned plan is 1.24× faster than raw cuBLAS at 1024²; TF32 at 2048² is the same band, peak 13.1 TFLOPS.',
               )}
             </p>
 

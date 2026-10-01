@@ -45,7 +45,7 @@ export function Architecture() {
     },
     {
       path: 'include/matrix_pro/rng/',
-      desc: { tr: 'Sayaç tabanlı deterministik cihaz RNG (MurmurHash3)', en: 'Counter-based deterministic device RNG (MurmurHash3)' },
+      desc: { tr: 'Philox sayaç tabanlı cihaz RNG', en: 'Philox counter-based device RNG' },
       depth: 1,
     },
     {
@@ -59,8 +59,8 @@ export function Architecture() {
       depth: 0,
     },
     {
-      path: 'src/operations_sparse.cu',
-      desc: { tr: 'cuSPARSE ve GPU CSR birleşik operasyonları', en: 'cuSPARSE and GPU CSR coalesced operations' },
+      path: 'src/sparse/',
+      desc: { tr: 'CSR, COO ve CSC. Bazı dönüşümler host’ta sıralanır', en: 'CSR, COO and CSC. Some conversions sort on the host' },
       depth: 0,
     },
   ]

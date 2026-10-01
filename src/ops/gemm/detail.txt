@@ -1,0 +1,98 @@
+MatrixFlash-Pro — src/ops/gemm
+================================
+Bu klasör yoğun matris çarpımının (GEMM) tamamını uygular. Genel başlık
+include/matrix_pro/ops/gemm.hpp ve dahili giriş include/matrix_pro/detail/gemm/.
+
+Sözleşme
+--------
+C = epilogue(alpha * op(A) * op(B) + beta * C)
+A satır-majör MxK, B satır-majör KxN, C satır-majör MxN, hepsi bitişik.
+cuBLAS sütun-majör beklediği için çağrılar operandları yer değiştirerek
+(n×k) * (k×m) biçiminde gönderilir. Çıktı host aynasını bayat işaretler;
+okumak için download() gerekir.
+
+İki kapı vardır:
+
+1) Eski kapı: gemm_rowmajor() — operator*, multiply, multiply_into.
+   Hassasiyet şekle bağlıdır. Küçük ve GEMV çekirdekleri FP32'dir.
+   Büyük Lt yolu varsayılan olarak TF32 Tensor Core kullanır.
+   Uzun vektör (M=1 veya N=1, epilogue yok) Lt'ye düşse bile FP32 kalır.
+
+2) Yeni kapı: GemmPlan / gemm / gemm_into.
+   Hassasiyet açıktır: GemmPrecision::fp32 (pedantic, mantissa düşürme yok)
+   veya GemmPrecision::tf32 (FAST_TF32). Transpose, alpha, beta, bias,
+   ReLU ve GELU epilogue burada seçilir.
+
+Dosyalar
+--------
+gemm_dispatch.cu
+    gemm_rowmajor(). select_backend() sonucuna göre micro, gemv, tiled,
+    cublasLt veya GemmEx çağırır. K=0 ise C'yi asenkron sıfırlar.
+    Eşikler gemm_config.cuh içindedir. Şu an orta ve büyük problemler
+    tiled çekirdeğe değil, algo-önbellekli Lt'ye gider. tiled hâlâ
+    derlenir ve switch kolu durur.
+
+gemm_config.cuh (include/matrix_pro/detail/gemm/)
+    kSmallMaxDim = 64, kGemvMaxInner = 1, kSkinnyMaxN = 4,
+    kLtMinFlops ve 64 MiB workspace sabiti, 128×128×8 tile geometrisi.
+    select_backend(): M=1 ve K>=1024 ise Lt; çok ince problem GEMV;
+    her boyut <=64 ise micro; aksi halde Lt.
+
+gemm_micro.cu
+    Küçük şekiller için register micro-kernel. Her thread bir C elemanı
+    tutar. K 4'ün katı ve hizalıysa float4 ile okur. Amaç, cuBLAS
+    başlatma maliyetinin aritmetiği yuttuğu bölgede vendor'ı çağırmamaktır.
+
+gemm_gemv.cu
+    Warp GEMV. Bir warp bir satırı paylaşır, __shfl_down_sync ile indirger.
+    Ayrıca uzun K'yi 8 warp'a bölüp paylaşılan bellekte birleştiren
+    vektör×matris yolu vardır. Ölçümde çok uzun K'de vendor daha hızlı
+    çıktığı için M=1 && K>=1024 bu çekirdeğe verilmez.
+
+gemm_tiled.cu
+    128×128 çıktı karosu, K boyunca 8'lik aşama, thread başına 8×8 register
+    karosu, float4 global yükleme, paylaşılan bellek. Tam FP32 birikim.
+    Dispatcher şu an büyük işi Lt'ye verdiği için sıcak yolda ikincildir.
+
+gemm_cublas_ex.cu
+    cublasGemmEx yedeği. Satır-majör çarpım, operand swap ile sütun-majör
+    çağrıya çevrilir. Handle thread+cihaz çiftine aittir; stream ancak
+    çağıranın stream'i hesap stream'inden farklıysa yeniden bağlanır.
+
+gemm_cublas_lt.cu
+    Dispatcher'ın Lt kolu. Bias'sız, epilogue'suz gemm_cached_raw() çağrısı.
+    Asıl descriptor ve heuristic ömrü gemm_plan.cu içindedir.
+
+gemm_fused.cu
+    Sütun bias'ı (+ isteğe bağlı ReLU / tanh-yaklaşık GELU) için yedek
+    elementwise çekirdek ve gemm_bias_epilogue() girişi. Tercih, bias ve
+    aktivasyonu cuBLASLt epilogue'unda tek matmul içinde uygulamaktır.
+    Lt yolu yoksa düz GEMM + bu çekirdek çalışır. 1 Ekim 2026 ölçümü
+    fused-karşı-zincir hız tablosu yayımlamadı; katsayı iddiası yok.
+
+gemm_plan.cu
+    GemmPlan::Impl, Environment, tune(), thread_local plan önbelleği,
+    gemm() ve gemm_into().
+    Environment: thread + cihaz + stream başına bir cuBLAS handle, bir
+    cuBLASLt handle, tembel 64 MiB workspace. Stream'ler scratch paylaşmaz.
+    Plan oluşturma ve tune() graph capture sırasında reddedilir.
+    tune() en fazla 16 heuristic adayını scratch çıktıya yazar; kullanıcının
+    C tamponu ve beta girdisi değişmez. Üç kısa denemenin ortanca süresi
+    seçilir. Önbellek üst sınırı 128 plandır; taşınca en eski anahtar silinir.
+    Graph, convenience cache'in ömrüne bağlanmamalıdır: açık GemmPlan tutun.
+    Plan oluşturulduğu thread, cihaz ve stream dışında execute edilemez.
+    Çıktı A, B ve bias'tan ayrı, bitişik ve doğru cihazda olmalıdır.
+    beta != 0 ise C'nin cihaz içeriği önceden geçerli olmalıdır.
+
+Ölçülen davranış (1 Ekim 2026, RTX 3070 Laptop, SM 86)
+------------------------------------------------------
+Ayrıntılı tablolar PERFORMANCE_REPORT.md, doc/public/data/benchmarks/fair_gemm.json
+ve Next.js /docs/performans sayfasındadır. Kısa özet:
+
+- 1×1024×4096 varsayılan yol: 185.8 µs -> 46.7 µs (3.98×), FP32 korunarak.
+- FP32 tuned plan, 1024³: 276.7 µs / 7761 GFLOPS; ham cuBLAS 343.4 µs (1.24×).
+- TF32 1024³: ham cuBLAS 169.2 µs en hızlı; tuned plan 176.2 µs (aynı bant).
+- TF32 2048³ tepe: tuned plan 13.14 TFLOPS; ham Lt 13.17 TFLOPS.
+- 1024³ ve 2048³ yeni varsayılan, eski varsayılandan yavaş (0.85× ve 0.90×).
+- Küçük şekillerde saat kilitli olmadığı için yüzde birkaçlık farklara
+  hız iddiası bağlanmaz. PyTorch ve CuPy bu ortamda ölçülmedi.

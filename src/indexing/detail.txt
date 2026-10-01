@@ -1,0 +1,9 @@
+MatrixFlash-Pro — src/indexing/indexing.cu
+==========================================
+index_select: bir eksen boyunca satır veya sütun seçer.
+gather / scatter_add: indis tamponuna göre okur ve atomik ekler.
+embedding: satır tablosundan gather; geri türev donmuş desende scatter_add
+ile tablo gradyanına iner.
+
+İndis aralık dışındaysa OutOfRangeError. Çıktı şekli seçilen eksene göre
+kurulur ve host aynası bayat bırakılır.

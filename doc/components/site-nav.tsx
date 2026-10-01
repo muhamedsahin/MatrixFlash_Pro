@@ -112,10 +112,10 @@ export function SiteNav() {
             href="/MatrixFlash_Pro_Technical_Manual.pdf"
             download="MatrixFlash_Pro_Technical_Manual.pdf"
             className="hidden items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono font-medium text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-all sm:flex"
-            title="Download MatrixFlash-Pro Technical Manual (57 Pages PDF)"
+            title="Download MatrixFlash-Pro Technical Manual (58 Pages PDF)"
           >
             <FileText className="size-3.5 text-emerald-400" />
-            <span>PDF (57s)</span>
+            <span>PDF (58s)</span>
           </a>
 
           {/* GitHub link */}
@@ -205,7 +205,7 @@ export function SiteNav() {
               className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             >
               <FileText className="size-4 text-emerald-400" />
-              <span>{lang === 'tr' ? 'Teknik Manuel PDF (57 Sayfa)' : 'Technical Manual PDF (57 Pages)'}</span>
+              <span>{lang === 'tr' ? 'Teknik Manuel PDF (58 Sayfa)' : 'Technical Manual PDF (58 Pages)'}</span>
             </a>
 
             <a

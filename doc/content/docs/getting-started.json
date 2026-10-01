@@ -34,12 +34,20 @@
               "en": "**11 Core Engine Systems (v1.1)** — Tensor Engine (N-D strided), Math Engine, Extended LinAlg (LU/TRSM), Memory Engine, Backend Engine, Extended RNG, Autograd Engine (NoGrad/Checkpoint), Sparse Formats (COO/CSC/SpGEMM), Execution Engine (CUDA Graph/Pipeline), Serialization (Checkpoint/Tensor I/O), and Testing/Benchmarking."
             },
             {
-              "tr": "**Shape-aware GEMM** — mikro / GEMV / algo-cache’li cublasLt / TENSOR_OP; `multiply_into` ile cuBLAS-sınıfı hot path.",
-              "en": "**Shape-aware GEMM** — micro / GEMV / algo-cached cublasLt / TENSOR_OP; `multiply_into` for a cuBLAS-class hot path."
+              "tr": "**Shape-aware GEMM** — mikro / GEMV / algo-cache’li cublasLt. Uzun vektör yolunda eski sürüme göre 3.98× (1 Ekim 2026, FP32 korunarak).",
+              "en": "**Shape-aware GEMM** — micro / GEMV / algo-cached cublasLt. 3.98× on the long-vector path versus the previous build (1 October 2026, FP32 preserved)."
             },
             {
-              "tr": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` tek çağrıda; zincire göre 1–6×.",
-              "en": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` in one call; 1–6× over the chain."
+              "tr": "**GemmPlan** — tekrar kullanılan, tahsissiz sıcak GEMM. Açık FP32 veya TF32, transpose, alpha/beta, bias+ReLU/GELU, isteğe bağlı tune.",
+              "en": "**GemmPlan** — reusable, allocation-free hot GEMM. Explicit FP32 or TF32, transpose, alpha/beta, bias+ReLU/GELU, optional tune."
+            },
+            {
+              "tr": "**LUFactorization ve slogdet** — matrisi bir kez faktörle, çoklu RHS’i `solve_into` ile çöz, işareti double log-determinant ile koru.",
+              "en": "**LUFactorization and slogdet** — factor once, solve many right-hand sides with `solve_into`, keep the sign in a double log-determinant."
+            },
+            {
+              "tr": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` tek cuBLASLt çağrısı. Bu turda ayrı hız katsayısı ölçülmedi.",
+              "en": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` as one cuBLASLt call. This round did not publish a separate speedup."
             },
             {
               "tr": "**cuBLAS GEMM** — TF32 Tensor Core hızlı yolu, boyut eşiği aşıldığında otomatik.",
@@ -703,6 +711,91 @@
       ]
     },
     {
+      "id": "planli-api",
+      "title": {
+        "tr": "GemmPlan, tekrar kullanılan LU ve slogdet",
+        "en": "GemmPlan, reusable LU and slogdet"
+      },
+      "intro": {
+        "tr": "Ekim 2026 API’si sıcak döngüden descriptor, heuristic ve tekrarlı faktörlemeyi çıkarır. Varsayılan `gemm` strict FP32’dir. Eski `multiply` / `multiply_into` şekle bağlı politikayı korur.",
+        "en": "The October 2026 API takes descriptor creation, heuristics and repeated factorization off the hot loop. Default `gemm` is strict FP32. The older `multiply` / `multiply_into` keep the shape-dependent policy."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "planli_gemm.cpp",
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\nusing namespace matrix_pro;\n\nMatrix a = Matrix::random(512, 512, 17);\nMatrix b = Matrix::random(512, 512, 23);\nMatrix bias = Matrix::ones(1, 512);\nMatrix c(512, 512, MemoryMode::device_only);\n\nGemmOptions options;\noptions.precision = GemmPrecision::tf32; // acik hiz/dogruluk tercihi\noptions.epilogue = GemmEpilogue::bias_relu;\nGemmPlan plan(512, 512, 512, options);\nplan.tune(a, b, c, 1, 0, &bias); // istege bagli; senkronize eder, capture icinde yok\nplan.execute(a, b, c, 1, 0, &bias);\nc.download();\n\nMatrix coefficients(2, 2, {4.f, 1.f, 1.f, 3.f});\nMatrix rhs(2, 1, {1.f, 2.f});\nLUFactorization factor(coefficients);\nMatrix solution = factor.solve(rhs);\nSLogDetResult signed_log = factor.slogdet();"
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "tr": "Planı oluşturun, gerekiyorsa tune edin, tamponları hazırlayın, sonra sıcak execute çağırın. Capture bundan sonradır. Plan ve bütün tamponlar graph yaşadığı sürece yaşamalıdır.",
+              "en": "Construct the plan, tune if you need to, prepare the buffers, then call warm execute. Capture comes after that. The plan and every buffer must outlive the graph."
+            },
+            {
+              "tr": "Plan, kurulduğu host thread, cihaz ve compute stream’e bağlıdır. Başka bağlamda execute hata verir. Aynı planı eşzamanlı stream’lerde paylaşmayın.",
+              "en": "A plan is bound to the host thread, device and compute stream that created it. execute fails in another context. Do not share one plan across concurrent streams."
+            },
+            {
+              "tr": "beta != 0 ise C’nin cihaz içeriği önceden geçerli olmalıdır. Çıktı A, B ve bias’tan ayrı ve bitişik olmalıdır.",
+              "en": "If beta != 0, C’s device contents must already be valid. The output must be distinct from A, B and the bias, and contiguous."
+            },
+            {
+              "tr": "LUFactorization kurucusu tekillik ve slogdet için senkronize eder; capture içinde kurulamaz. solve_into, max_rhs kapasitesine kadar tahsis yapmaz.",
+              "en": "The LUFactorization constructor synchronizes for singularity and slogdet, so it cannot be constructed during capture. solve_into does not allocate up to the max_rhs capacity."
+            },
+            {
+              "tr": "matrix_exp varsayılanı Padé [13/13] scaling-and-squaring’dir; iç çarpımlar strict FP32’dir. order 1..64 ölçeklenmiş Taylor kullanır.",
+              "en": "The matrix_exp default is Padé [13/13] scaling-and-squaring; internal products are strict FP32. Orders 1..64 use a scaled Taylor polynomial."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": { "tr": "Tune her şekli hızlandırmaz", "en": "Tune does not speed up every shape" },
+          "text": {
+            "tr": "tune() en fazla 16 cuBLASLt adayını ölçer. 1 Ekim 2026’da FP32 1024³ tuned plan ham cuBLAS’tan 1.24× hızlıydı; bazı küçük TF32 şekillerinde ise ilk heuristic daha hızlı kaldı. Ölçmeden tune’u zorunlu saymayın.",
+            "en": "tune() times at most 16 cuBLASLt candidates. On 1 October 2026 the FP32 1024³ tuned plan was 1.24× faster than raw cuBLAS; on some small TF32 shapes the first heuristic stayed faster. Do not treat tune as mandatory without measuring."
+          }
+        }
+      ]
+    },
+    {
+      "id": "dosya-haritasi",
+      "title": { "tr": "Hangi dosya ne işe yarar", "en": "Which file does what" },
+      "intro": {
+        "tr": "Kamusal ilanlar include/matrix_pro altındadır. Gövdeler src/ altındadır. Uzun açıklama her klasördeki detail.txt dosyasındadır; burası kısa haritadır.",
+        "en": "Public declarations live under include/matrix_pro. Bodies live under src/. The long write-up is the detail.txt in each folder; this is the short map."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "Dosya", "en": "File" },
+            { "tr": "Görevi", "en": "Job" }
+          ],
+          "rows": [
+            [{ "tr": "`include/matrix_pro/matrix_pro.hpp`", "en": "`include/matrix_pro/matrix_pro.hpp`" }, { "tr": "Tek include. Bütün kamusal modülleri açar. detail/*.cuh dahil değildir.", "en": "Single include. Opens every public module. detail/*.cuh is not part of it." }],
+            [{ "tr": "`core/matrix.hpp` + `src/core/matrix.cu`", "en": "`core/matrix.hpp` + `src/core/matrix.cu`" }, { "tr": "Matrix yaşam döngüsü, upload/download, bayat host aynası.", "en": "Matrix lifetime, upload/download, stale host mirror." }],
+            [{ "tr": "`core/tensor.hpp` + `src/core/tensor.cu`", "en": "`core/tensor.hpp` + `src/core/tensor.cu`" }, { "tr": "Rank-N Tensor, NCHW conv düzeni.", "en": "Rank-N Tensor, NCHW conv layout." }],
+            [{ "tr": "`core/memory_pool.hpp` + `src/core/memory_pool.cu`", "en": "`core/memory_pool.hpp` + `src/core/memory_pool.cu`" }, { "tr": "Cihaz etiketli blok havuzu, empty_cache, çift free koruması.", "en": "Device-tagged block pool, empty_cache, double-free guard." }],
+            [{ "tr": "`ops/gemm.hpp` + `src/ops/gemm/`", "en": "`ops/gemm.hpp` + `src/ops/gemm/`" }, { "tr": "GemmPlan, dispatcher, micro, GEMV, tiled, cuBLAS, cuBLASLt, fused epilogue.", "en": "GemmPlan, dispatcher, micro, GEMV, tiled, cuBLAS, cuBLASLt, fused epilogue." }],
+            [{ "tr": "`ops/factorization.hpp` + `src/ops/factorization.cu`", "en": "`ops/factorization.hpp` + `src/ops/factorization.cu`" }, { "tr": "Tekrar kullanılan LU, solve_into, slogdet.", "en": "Reusable LU, solve_into, slogdet." }],
+            [{ "tr": "`ops/linalg.hpp` + `src/ops/linalg.cu`", "en": "`ops/linalg.hpp` + `src/ops/linalg.cu`" }, { "tr": "QR, SVD, özdeğer, Cholesky, pinv, least squares.", "en": "QR, SVD, eigen, Cholesky, pinv, least squares." }],
+            [{ "tr": "`ops/linalg_extended.hpp`", "en": "`ops/linalg_extended.hpp`" }, { "tr": "Tek atışlık lu, trsm, trmm, matrix_power, matrix_exp, batch_*.", "en": "One-shot lu, trsm, trmm, matrix_power, matrix_exp, batch_*." }],
+            [{ "tr": "`nn/conv.hpp` + `src/nn/conv.cu`", "en": "`nn/conv.hpp` + `src/nn/conv.cu`" }, { "tr": "NCHW conv ve pooling. cuDNN varsa vendor, yoksa CUDA yedek.", "en": "NCHW conv and pooling. Vendor cuDNN when present, CUDA fallback otherwise." }],
+            [{ "tr": "`autograd/autograd.hpp`", "en": "`autograd/autograd.hpp`" }, { "tr": "Variable / VarTensor tape, NoGrad, checkpoint.", "en": "Variable / VarTensor tape, NoGrad, checkpoint." }],
+            [{ "tr": "`sparse/sparse_formats.hpp`", "en": "`sparse/sparse_formats.hpp`" }, { "tr": "COO birleştirme, CSC↔CSR, sparse_add. Bir kısmı host sıralaması yapar.", "en": "COO coalescing, CSC↔CSR, sparse_add. Some paths sort on the host." }],
+            [{ "tr": "`streams/execution.hpp`", "en": "`streams/execution.hpp`" }, { "tr": "CUDA Graph ve Pipeline. Plan capture’dan önce kurulur.", "en": "CUDA Graph and Pipeline. Build the plan before capture." }],
+            [{ "tr": "`src/ops/gemm/detail.txt`", "en": "`src/ops/gemm/detail.txt`" }, { "tr": "GEMM dosyalarının uzun açıklaması ve 1 Ekim ölçüm özeti.", "en": "Long explanation of the GEMM files and the 1 October measurement summary." }]
+          ]
+        }
+      ]
+    },
+    {
       "id": "yasam-dongusu",
       "title": {
         "tr": "Yaşam Döngüsü & Çağrı Sırası",
@@ -1188,8 +1281,8 @@
                 "en": "`gemm_bias_relu`, `gemm_bias_gelu`"
               },
               {
-                "tr": "3 kernel → 1 cublasLt epilogue (1–6×)",
-                "en": "3 kernels → 1 cublasLt epilogue (1–6×)"
+                "tr": "Tek cuBLASLt epilogue; ayrı hız tablosu bu turda yok",
+                "en": "One cuBLASLt epilogue; no separate timing table this round"
               }
             ],
             [

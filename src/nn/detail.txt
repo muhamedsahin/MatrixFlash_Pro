@@ -1,0 +1,38 @@
+MatrixFlash-Pro — src/nn
+========================
+activation.cu
+    relu, leaky_relu, elu, gelu (tanh yaklaşımı), swish, sigmoid, tanh,
+    softplus, mish, hardtanh, hardsigmoid, hardswish, selu, prelu.
+    Her birinin geri türev çekirdeği autograd tape'inin çağırdığı
+    _backward varyantıdır. prelu alpha'sı 1×1 veya girdi şeklindedir.
+
+loss.cu
+    fused BCE-with-logits ve softmax cross-entropy. Softmax'ı ayrı
+    çalıştırıp sonra log almak sayısal kararlılığı bozar; bu dosya
+    log-sum-exp'i kaybın içinde tutar.
+
+ml.cu
+    batch_norm ve layer_norm ileri/geri, inverted dropout.
+    Dropout maskesi rng/ çekirdeğiyle üretilir.
+
+conv.cu
+    NCHW conv2d, max_pool2d, avg_pool2d ileri geçiş.
+    cuDNN tanımlıysa vendor algoritması, değilse im2col + GEMM veya
+    düz CUDA çekirdeği. Bu çalışma turunda cuDNN kapalı derlendi;
+    fallback yolu test edildi, cuDNN yolu bu raporda ölçülmedi.
+
+conv_backward.cu
+    Girdi, ağırlık ve bias gradyanı. Max-pool geri geçişi ileri geçişte
+    saklanan argmax maskesini kullanır. Avg-pool gradyanı pencereye yayılır.
+
+batch.cu
+    Aynı şekilli bir grup matrisin strided batched GEMM'i.
+    Autograd'da batch_matmul bu gövdeye iner.
+
+fused.cu
+    Elementwise zincirler: bias+gelu, relu+add, (x+y)*z, scale+bias.
+    GEMM epilogue'u (gemm_bias_relu) burada değildir; o src/ops/gemm/gemm_fused.cu.
+
+inplace.cu
+    relu_, add_, add_scalar_, broadcast_add_, gelu_ ve benzerleri.
+    Yeni matris tahsis etmez; mevcut cihaz tamponunu yazar ve aynayı bayatlar.

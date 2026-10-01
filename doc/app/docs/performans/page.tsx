@@ -6,102 +6,55 @@ import { useDocContent } from '@/lib/hooks/use-doc-content'
 import { useLanguage } from '@/lib/hooks/use-language'
 import type { DocPageData } from '@/lib/types/doc'
 
-type BenchRow = {
-  bench: string
-  case: string
-  size: number
-  ms_median: number
-  throughput: number
-  unit: string
-  note: string
+type Cell = { us: number; gflops: number }
+type EngineId = 'tuned' | 'plan' | 'cublas' | 'cublaslt'
+type Precision = 'fp32' | 'tf32'
+
+type FairFile = {
+  timestamp: string
+  device: { name: string }
+  shapes: { id: string; label: string }[]
+  gpu: Record<Precision, Record<EngineId, Record<string, Cell>>>
+  numpy_wall_ms: Record<string, number>
+  gpu_fp32_plan_wall_ms: Record<string, number>
 }
 
-type BenchFile = {
-  library: string
-  timestamp?: string
-  device: { name: string } | null
-  results: BenchRow[]
-}
-
-type RivalEngine = {
-  id: string
-  name: string
-  kind: string
-  measured: boolean
-  by_size?: Record<string, { ms_median: number; gflops: number; note?: string }>
-  band?: string
-  source?: string
-}
-
-type RivalsFile = {
-  engines: RivalEngine[]
-  sizes: number[]
-}
-
-const GEMM_SIZES = [256, 512, 1024, 2048]
-
-const BAR_STYLES: Record<string, string> = {
-  into: 'from-emerald-500 to-primary',
-  mflash: 'from-teal-500 to-emerald-400',
-  raw: 'from-cyan-500 to-cyan-300',
-  naive: 'from-amber-500 to-amber-300',
-  cpu: 'from-zinc-500 to-zinc-400',
-}
-
-const RIVAL_COLORS = [
-  'from-emerald-500 to-primary',
-  'from-cyan-500 to-cyan-300',
-  'from-violet-500 to-violet-300',
-  'from-amber-500 to-amber-300',
-  'from-rose-500 to-rose-300',
-  'from-sky-500 to-sky-300',
+const ENGINES: { id: EngineId; tr: string; en: string; bar: string }[] = [
+  { id: 'tuned', tr: 'MatrixFlash-Pro tuned plan', en: 'MatrixFlash-Pro tuned plan', bar: 'from-emerald-500 to-primary' },
+  { id: 'plan', tr: 'MatrixFlash-Pro plan', en: 'MatrixFlash-Pro plan', bar: 'from-teal-500 to-emerald-400' },
+  { id: 'cublas', tr: 'Ham cuBLAS', en: 'Raw cuBLAS', bar: 'from-cyan-500 to-cyan-300' },
+  { id: 'cublaslt', tr: 'Ham cuBLASLt', en: 'Raw cuBLASLt', bar: 'from-violet-500 to-violet-300' },
 ]
 
-function shortName(note: string, tr: boolean): string {
-  if (note.includes('multiply_into')) return 'MatrixFlash-Pro multiply_into'
-  if (note.startsWith('mflash')) return 'MatrixFlash-Pro operator*'
-  if (note.startsWith('raw cublas')) return tr ? 'ham cuBLAS' : 'raw cuBLAS'
-  if (note.startsWith('naive global')) return tr ? 'naive GPU' : 'naive GPU'
-  if (note.startsWith('cpu single')) return tr ? 'CPU tek-thread' : 'CPU single-thread'
-  return note
+const QUICK = ['512', '1024', '2048', '1x1024x4096', '64x1024x512']
+
+export default function PerformansPage() {
+  const { data, loading, error } = useDocContent<DocPageData>('/api/docs/benchmarks-comparison')
+  return (
+    <>
+      <FairChart />
+      <DocPageRenderer data={data} loading={loading} error={error} />
+    </>
+  )
 }
 
-function barKey(note: string): string {
-  if (note.includes('multiply_into')) return 'into'
-  if (note.startsWith('mflash')) return 'mflash'
-  if (note.startsWith('raw cublas')) return 'raw'
-  if (note.startsWith('naive global')) return 'naive'
-  return 'cpu'
-}
-
-function sortRank(note: string): number {
-  const order = ['cpu', 'naive', 'mflash', 'into', 'raw']
-  return order.indexOf(barKey(note))
-}
-
-function BenchmarkComparison() {
+function FairChart() {
   const { t, lang } = useLanguage()
   const tr = lang === 'tr'
-  const [size, setSize] = useState<number>(1024)
-  const [data, setData] = useState<BenchFile | null>(null)
-  const [rivals, setRivals] = useState<RivalsFile | null>(null)
+  const [precision, setPrecision] = useState<Precision>('fp32')
+  const [shape, setShape] = useState('1024')
+  const [file, setFile] = useState<FairFile | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
-    Promise.all([
-      fetch('/data/benchmarks/comparison.json').then((r) => {
-        if (!r.ok) throw new Error('comparison HTTP ' + r.status)
-        return r.json() as Promise<BenchFile>
-      }),
-      fetch('/data/benchmarks/rivals.json')
-        .then((r) => (r.ok ? (r.json() as Promise<RivalsFile>) : null))
-        .catch(() => null),
-    ])
-      .then(([cmp, riv]) => {
-        if (!alive) return
-        setData(cmp)
-        setRivals(riv)
+    fetch('/data/benchmarks/fair_gemm.json')
+      .then((r) => {
+        if (!r.ok) throw new Error('fair_gemm HTTP ' + r.status)
+        return r.json() as Promise<FairFile>
+      })
+      .then((json) => {
+        if (alive) setFile(json)
       })
       .catch((e: unknown) => {
         if (alive) setLoadError(e instanceof Error ? e.message : String(e))
@@ -112,93 +65,94 @@ function BenchmarkComparison() {
   }, [])
 
   const rows = useMemo(() => {
-    const filtered = (data?.results ?? []).filter(
-      (r) => r.size === size && r.unit === 'GFLOPS' && !r.case.startsWith('mlp'),
-    )
-    return [...filtered].sort((a, b) => sortRank(a.note) - sortRank(b.note))
-  }, [data, size])
+    if (!file) return []
+    const bucket = file.gpu[precision]
+    return ENGINES.map((engine) => {
+      const cell = bucket[engine.id][shape]
+      return { ...engine, us: cell?.us ?? 0, gflops: cell?.gflops ?? 0 }
+    }).sort((a, b) => b.gflops - a.gflops)
+  }, [file, precision, shape])
 
-  const maxGflops = rows.reduce((m, r) => Math.max(m, r.throughput), 1)
-  const into = rows.find((r) => r.note.includes('multiply_into'))
-  const raw = rows.find((r) => r.note.startsWith('raw cublas'))
-  const ratio =
-    into && raw && raw.throughput > 0
-      ? ((into.throughput / raw.throughput) * 100).toFixed(0)
-      : null
-
-  const measuredRivals = useMemo(() => {
-    if (!rivals) return []
-    return rivals.engines
-      .filter((e) => e.measured && e.by_size?.[String(size)])
-      .map((e) => {
-        const cell = e.by_size![String(size)]
-        return { name: e.name, kind: e.kind, gflops: cell.gflops, ms: cell.ms_median }
-      })
-      .sort((a, b) => b.gflops - a.gflops)
-  }, [rivals, size])
-
-  const maxRival = measuredRivals.reduce((m, r) => Math.max(m, r.gflops), 1)
+  const maxGflops = rows.reduce((m, r) => Math.max(m, r.gflops), 0.001)
+  const gpuWall = file?.gpu_fp32_plan_wall_ms[shape]
+  const cpuWall = file?.numpy_wall_ms[shape]
+  const shapes = file?.shapes ?? []
+  const quick = shapes.filter((s) => QUICK.includes(s.id))
+  const rest = shapes.filter((s) => !QUICK.includes(s.id))
 
   return (
-    <div className="space-y-6">
+    <div className="mb-8 space-y-6">
       <section className="rounded-2xl border border-border/80 bg-card/50 p-6 shadow-2xl backdrop-blur-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3">
           <div>
             <span className="font-mono text-xs font-bold text-foreground">
-              {t('GEMM vs cuBLAS — ölçüldü', 'GEMM vs cuBLAS — measured')}
+              {t('Aynı hassasiyette GEMM — 1 Ekim 2026', 'Same-precision GEMM — 1 October 2026')}
             </span>
-            {ratio && (
-              <p className="mt-1 font-mono text-[10px] text-primary">
-                {t(
-                  `multiply_into ≈ cuBLAS’ın %${ratio}’i${Number(ratio) >= 100 ? ' (geçiyor)' : ''}`,
-                  `multiply_into ≈ ${ratio}% of cuBLAS${Number(ratio) >= 100 ? ' (ahead)' : ''}`,
-                )}
-              </p>
-            )}
+            <p className="mt-1 max-w-xl font-mono text-[10px] leading-relaxed text-muted-foreground">
+              {t(
+                'Önceden ayrılmış tampon, CUDA event medyanı, 10 ısınma / 30 tekrar × 2 tur. PyTorch ve CuPy kurulu değildi.',
+                'Preallocated buffers, CUDA-event median, 10 warmups / 30 repeats × 2 runs. PyTorch and CuPy were not installed.',
+              )}
+            </p>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
-              {data?.device?.name ?? 'RTX 3070 Laptop GPU'}
-            </span>
-            {data?.timestamp && (
-              <span className="font-mono text-[10px] text-muted-foreground">{data.timestamp}</span>
-            )}
-          </div>
+          <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
+            {file?.device.name ?? 'RTX 3070 Laptop GPU'}
+            {file?.timestamp ? ` · ${file.timestamp}` : ''}
+          </span>
         </div>
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {GEMM_SIZES.map((s) => (
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(['fp32', 'tf32'] as Precision[]).map((p) => (
             <button
-              key={s}
+              key={p}
               type="button"
-              onClick={() => setSize(s)}
+              onClick={() => setPrecision(p)}
               className={
-                s === size
+                p === precision
                   ? 'rounded-lg border border-primary/50 bg-primary/15 px-3 py-1 font-mono text-xs font-bold text-primary'
                   : 'rounded-lg border border-transparent px-3 py-1 font-mono text-xs text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
               }
             >
-              {s}×{s}
+              {p === 'fp32' ? 'FP32 pedantic' : 'TF32 Tensor Core'}
             </button>
           ))}
         </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {[...quick, ...rest].map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setShape(s.id)}
+              className={
+                s.id === shape
+                  ? 'rounded-lg border border-primary/50 bg-primary/15 px-3 py-1 font-mono text-xs font-bold text-primary'
+                  : 'rounded-lg border border-transparent px-3 py-1 font-mono text-xs text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
+              }
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         <div className="mt-5 space-y-4">
           {loadError && (
             <p className="font-mono text-xs text-destructive">
               {t('Ölçü JSON yüklenemedi', 'Failed to load JSON')}: {loadError}
             </p>
           )}
-          {rows.map((r, i) => (
-            <div key={i} className="space-y-1.5">
-              <div className="flex items-center justify-between font-mono text-xs">
-                <span className="truncate text-foreground">{shortName(r.note, tr)}</span>
+          {rows.map((r) => (
+            <div key={r.id} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3 font-mono text-xs">
+                <span className="truncate text-foreground">{tr ? r.tr : r.en}</span>
                 <span className="shrink-0 font-bold text-primary">
-                  {r.ms_median.toFixed(3)} ms · {r.throughput.toFixed(0)} GFLOPS
+                  {(r.us / 1000).toFixed(3)} ms · {r.gflops.toFixed(0)} GFLOPS
                 </span>
               </div>
               <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
                 <div
-                  className={'h-full rounded-full bg-gradient-to-r ' + BAR_STYLES[barKey(r.note)]}
-                  style={{ width: Math.max(4, (r.throughput / maxGflops) * 100) + '%' }}
+                  className={'h-full rounded-full bg-gradient-to-r ' + r.bar}
+                  style={{ width: Math.max(4, (r.gflops / maxGflops) * 100) + '%' }}
                 />
               </div>
             </div>
@@ -206,44 +160,22 @@ function BenchmarkComparison() {
         </div>
       </section>
 
-      {measuredRivals.length > 0 && (
+      {gpuWall != null && cpuWall != null && (
         <section className="rounded-2xl border border-border/80 bg-card/50 p-6 shadow-2xl backdrop-blur-xl">
           <div className="border-b border-border/60 pb-3">
             <span className="font-mono text-xs font-bold text-foreground">
-              {t(
-                `Piyasa motorları — ${size}×${size} (ölçülenler)`,
-                `Market engines — ${size}×${size} (measured)`,
-              )}
+              {t('CPU duvar saati bağlamı', 'CPU wall-clock context')}
             </span>
             <p className="mt-1 font-mono text-[10px] text-muted-foreground">
               {t(
-                'MatrixFlash-Pro, cuBLAS, cublasLt, NumPy@OpenBLAS — aynı makine',
-                'MatrixFlash-Pro, cuBLAS, cublasLt, NumPy@OpenBLAS — same machine',
+                'Strict FP32 plan duvar saati ile NumPy 2.3.5 @ OpenBLAS. Transfer yok. 64³ altında CPU daha hızlıdır.',
+                'Strict FP32 plan wall time versus NumPy 2.3.5 @ OpenBLAS. No transfer. Below 64³ the CPU is faster.',
               )}
             </p>
           </div>
-          <div className="mt-5 space-y-4">
-            {measuredRivals.map((r, i) => (
-              <div key={r.name} className="space-y-1.5">
-                <div className="flex items-center justify-between font-mono text-xs">
-                  <span className="truncate text-foreground">
-                    {r.name}
-                    <span className="ml-2 text-muted-foreground">({r.kind})</span>
-                  </span>
-                  <span className="shrink-0 font-bold text-primary">
-                    {r.ms.toFixed(3)} ms · {r.gflops.toFixed(0)} GFLOPS
-                  </span>
-                </div>
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
-                  <div
-                    className={
-                      'h-full rounded-full bg-gradient-to-r ' + RIVAL_COLORS[i % RIVAL_COLORS.length]
-                    }
-                    style={{ width: Math.max(4, (r.gflops / maxRival) * 100) + '%' }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <WallCard label="MatrixFlash-Pro FP32 plan" ms={gpuWall} emphasize={gpuWall <= cpuWall} />
+            <WallCard label="NumPy @ OpenBLAS" ms={cpuWall} emphasize={cpuWall < gpuWall} />
           </div>
         </section>
       )}
@@ -251,14 +183,13 @@ function BenchmarkComparison() {
   )
 }
 
-export default function PerformansPage() {
-  const { data, loading, error } = useDocContent<DocPageData>('/api/docs/benchmarks-comparison')
+function WallCard({ label, ms, emphasize }: { label: string; ms: number; emphasize?: boolean }) {
   return (
-    <>
-      <div className="mb-6">
-        <BenchmarkComparison />
+    <div className="rounded-xl border border-border/70 bg-background/40 p-4">
+      <div className="font-mono text-[11px] text-muted-foreground">{label}</div>
+      <div className={emphasize ? 'mt-1 font-mono text-lg font-bold text-primary' : 'mt-1 font-mono text-lg font-bold text-foreground'}>
+        {ms.toFixed(3)} ms
       </div>
-      <DocPageRenderer data={data} loading={loading} error={error} />
-    </>
+    </div>
   )
 }

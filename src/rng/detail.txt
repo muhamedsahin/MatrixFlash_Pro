@@ -1,0 +1,10 @@
+MatrixFlash-Pro — src/rng/rng.cu
+=================================
+Sayaç tabanlı Philox RNG. Çekirdek cihaz üzerinde doldurur; her thread
+ayrık bir sayaç aralığı alır, böylece aynı seed aynı diziyi üretir.
+
+uniform ve normal (randn) doldurma, dropout maskesi ve rng_seed burada.
+Genişletilmiş dağılımlar ve RNGState başlığı include/matrix_pro/rng/rng.hpp
+içindedir. Host tarafı std::mt19937 kullanan fabrikalarla cihaz RNG
+dizileri birebir aynı değildir; benchmark karşılaştırırken seed eşitliği
+değer eşitliği anlamına gelmez.

@@ -156,6 +156,34 @@
       ]
     },
     {
+      "id": "planned-gemm",
+      "title": {
+        "tr": "Planlı GEMM ve tekrar kullanılan LU",
+        "en": "Planned GEMM and reusable LU"
+      },
+      "intro": {
+        "tr": "examples/planned_gemm.cpp sıcak GemmPlan yürütmesini, isteğe bağlı tune'u ve aynı faktörle birden fazla RHS çözmeyi gösterir. Plan capture'dan önce kurulur.",
+        "en": "examples/planned_gemm.cpp shows warm GemmPlan execution, optional tuning, and solving more than one RHS with the same factor. Build the plan before capture."
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "examples/planned_gemm.cpp",
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\nusing namespace matrix_pro;\n\nint main() {\n    Matrix a = Matrix::random(512, 512, 17);\n    Matrix b = Matrix::random(512, 512, 23);\n    Matrix c(512, 512, MemoryMode::device_only);\n\n    GemmOptions options;\n    options.precision = GemmPrecision::tf32;\n    GemmPlan plan(512, 512, 512, options);\n    plan.tune(a, b, c);          // senkron; graph capture oncesi\n    plan.execute(a, b, c);       // tahsis yok, heuristic yok\n    c.download();\n\n    Matrix coefficients(2, 2, {4.f, 1.f, 1.f, 3.f});\n    LUFactorization factor(coefficients, /*max_rhs=*/4);\n    Matrix rhs(2, 1, {1.f, 2.f});\n    Matrix x(2, 1, MemoryMode::device_only);\n    factor.solve_into(rhs, x);\n    SLogDetResult det = factor.slogdet();\n    x.download();\n    return det.sign == 0 ? 1 : 0;\n}"
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": { "tr": "Graph ömrü", "en": "Graph lifetime" },
+          "text": {
+            "tr": "CUDA graph kaydederken GemmPlan'ı capture'ın içinde kurmayın. Uzun ömürlü graph için convenience gemm() önbelleği yetmez; plan nesnesini kendiniz tutun.",
+            "en": "Do not construct a GemmPlan inside a CUDA graph capture. For a long-lived graph the convenience gemm() cache is not enough; hold the plan object yourself."
+          }
+        }
+      ]
+    },
+    {
       "id": "autograd-mlp",
       "title": {
         "tr": "Autograd ile MLP Eğitimi",

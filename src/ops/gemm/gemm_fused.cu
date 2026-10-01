@@ -1,3 +1,16 @@
+// Column-bias epilogue used when a fused cuBLASLt epilogue is unavailable,
+// and the public fused GEMM entry.
+//
+// epilogue_col_bias_kernel walks C in row-major order and adds bias[col].
+// mode 0 is bias only, mode 1 is ReLU(bias), mode 2 is GELU(bias).
+// GELU here is the tanh approximation, matching the nn::gelu used elsewhere.
+//
+// gemm_bias_epilogue() prefers one Lt matmul whose epilogue applies the bias
+// and the activation inside the vendor kernel (no second global-memory pass).
+// If that plan cannot run, gemm_cached_raw falls back to a plain GEMM plus
+// apply_epilogue(). This file does not claim a measured speedup factor: the
+// 1 Oct 2026 suite did not publish a separate fused-vs-chain table.
+
 #include "matrix_pro/detail/gemm/gemm_api.hpp"
 #include "matrix_pro/core/cuda_utils.hpp"
 

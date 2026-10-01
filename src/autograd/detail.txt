@@ -1,0 +1,19 @@
+MatrixFlash-Pro — src/autograd/autograd.cu
+============================================
+Ters-mod otomatik türev. Variable (Matrix) ve VarTensor (rank-N) bir tape
+üstüne düğüm yazar. backward() bandı topolojik sırada yürütür; ara değerler
+GPU'da kalır.
+
+Desteklenen geri türev grupları:
+    Aritmetik: add, subtract, Hadamard, divide, matmul, skaler mul/add, negate, pow.
+    Broadcast: satır/sütun vektörü ekleme ve çarpma; geri geçişte eksen boyunca toplama.
+    Şekil: transpose, flatten, reshape, slice (scatter-grad).
+    Aktivasyon: nn/activation.hpp listesinin tamamı, prelu dahil.
+    Tensor/CNN: batch_matmul, conv2d (girdi+ağırlık+bias), max_pool (argmax), avg_pool.
+
+NoGrad kapsamında düğüm yazılmaz. detach() değeri kopyalayıp grafikten koparır.
+Checkpoint, ara aktivasyonu saklamak yerine yeniden hesaplar; upstream gradyan
+doğru düğüme eklenir (bu turda toplam türev ve checkpoint upstream onarıldı).
+
+Özel op: kullanıcı CUDA yazmadan mevcut primitifleri bir fonksiyon gibi
+kompoze edebilir; tape her primitifin kendi geri türevini kaydeder.

@@ -123,7 +123,15 @@ __global__ void one_sided_jacobi_kernel(
     </div>
 
     <p>
-      The polynomials $P_{13}(X)$ and $Q_{13}(X)$ are evaluated efficiently using Horner's method and evaluated via Triangular Solve (<code>cublasStrsm</code>), guaranteeing 24-bit floating point precision throughout physical simulations.
+      The polynomials $P_{13}(X)$ and $Q_{13}(X)$ are evaluated with Horner's method and a triangular solve. Internal GEMMs of <code>matrix_exp</code> use strict FP32. Passing an <code>order</code> other than 13 selects a scaled Taylor polynomial of degree 1 through 64. This is still an FP32 matrix library: the double logarithm does not make every operation FP64.
+    </p>
+
+    <h2>5.5 Reusable LUFactorization and slogdet</h2>
+    <p>
+      <code>LUFactorization</code> factors <code>A</code> once with <code>cusolverDnSgetrf</code> and reuses the pivots and a column-major right-hand-side scratch. <code>solve_into</code> does not allocate while the number of columns stays within the capacity given to the constructor. The factor is bound to the host thread, device and compute stream that created it. Construction synchronizes, so it is rejected during CUDA graph capture.
+    </p>
+    <p>
+      <code>slogdet</code> returns a sign and a double log-absolute determinant. The sign tracks negative diagonal entries and pivot swaps. A singular factor is <code>{0, −∞}</code>. A 0×0 matrix is defined to have determinant 1, so the result is <code>{1, 0}</code>. <code>log_determinant()</code> returns only the float log-absolute value. The one-shot <code>lu()</code> that returns explicit <code>L</code>, <code>U</code> and <code>P</code> matrices remains a separate API.
     </p>
   </div>
 `;

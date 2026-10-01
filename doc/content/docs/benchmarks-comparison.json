@@ -1,712 +1,333 @@
 {
   "slug": "benchmarks-comparison",
   "meta": {
-    "eyebrow": {
-      "tr": "PERFORMANS KARSILASTIRMA",
-      "en": "PERFORMANCE COMPARISON"
-    },
+    "eyebrow": { "tr": "PERFORMANS KARŞILAŞTIRMA", "en": "PERFORMANCE COMPARISON" },
     "title": {
-      "tr": "MatrixFlash-Pro vs cuBLAS ve Piyasa Motorlari",
-      "en": "MatrixFlash-Pro vs cuBLAS and Market Engines"
+      "tr": "1 Ekim 2026 — MatrixFlash-Pro, cuBLAS, cuBLASLt ve NumPy",
+      "en": "1 October 2026 — MatrixFlash-Pro, cuBLAS, cuBLASLt and NumPy"
     },
     "description": {
-      "tr": "Ayni makinede olculmus GEMM: MatrixFlash-Pro, NVIDIA cuBLAS/cublasLt, NumPy@OpenBLAS; PyTorch/CuPy/ArrayFire/Eigen/JAX baglami; fused epilogue.",
-      "en": "Same-machine GEMM: MatrixFlash-Pro, NVIDIA cuBLAS/cublasLt, NumPy@OpenBLAS; PyTorch/CuPy/ArrayFire/Eigen/JAX context; fused epilogue."
+      "tr": "RTX 3070 Laptop üzerinde aynı hassasiyette ölçülmüş GEMM. FP32 ve TF32 ayrıdır. PyTorch ve CuPy bu turda kurulu olmadığı için süreleri yoktur.",
+      "en": "Same-precision GEMM on an RTX 3070 Laptop. FP32 and TF32 are separate. PyTorch and CuPy were not installed, so they have no times."
     }
   },
   "sections": [
     {
       "id": "metodoloji",
-      "title": {
-        "tr": "Metodoloji",
-        "en": "Methodology"
-      },
+      "title": { "tr": "Metodoloji", "en": "Methodology" },
       "intro": {
-        "tr": "Cihaz: NVIDIA GeForce RTX 3070 Laptop GPU. Zaman damgasi: 2026-09-19T16:53:50. GPU: CUDA-event medyan (warmup 12, tekrar 40). multiply_into / cuBLAS oranlari: 512: %99.9, 1024: %109.7 (cuBLAS'i gecer), 2048: %101.9 (cuBLAS'i gecer), 4096: %100.1 (cuBLAS'i gecer).",
-        "en": "Device: NVIDIA GeForce RTX 3070 Laptop GPU. Timestamp: 2026-09-19T16:53:50. GPU: CUDA-event median (warmup 12, repeats 40). multiply_into / cuBLAS ratios: 512: 99.9%, 1024: 109.7% (beats cuBLAS), 2048: 101.9% (beats cuBLAS), 4096: 100.1% (beats cuBLAS)."
+        "tr": "Cihaz: NVIDIA GeForce RTX 3070 Laptop, 8 GiB, SM 86. CPU: AMD Ryzen 7 5800H. Windows 11 WDDM, sürücü 610.88, CUDA 13.4, MSVC 14.44, Release, native SM 86, cuDNN kapalı. Tarih: 1 Ekim 2026.",
+        "en": "Device: NVIDIA GeForce RTX 3070 Laptop, 8 GiB, SM 86. CPU: AMD Ryzen 7 5800H. Windows 11 WDDM, driver 610.88, CUDA 13.4, MSVC 14.44, Release, native SM 86, cuDNN off. Date: 1 October 2026."
       },
       "blocks": [
         {
-          "type": "callout",
-          "variant": "tip",
-          "title": {
-            "tr": "Hedef: her zaman cuBLAS sinifi",
-            "en": "Goal: always cuBLAS-class"
-          },
-          "text": {
-            "tr": "Buyuk GEMM'de algo-cache'li cublasLt + TENSOR_OP GemmEx kullanilir. 1024, 2048 ve 4096 boyutlarinda multiply_into ham cuBLAS'i gecer; 4096'da 16,895 GFLOPS tepe verime ulasilir.",
-            "en": "Large GEMM uses algo-cached cublasLt + TENSOR_OP GemmEx. At 1024, 2048, and 4096 sizes multiply_into beats raw cuBLAS, reaching up to 16,895 GFLOPS peak throughput at 4096."
-          }
+          "type": "list",
+          "items": [
+            {
+              "tr": "GPU süreleri CUDA event medyanıdır. İki ayrı tur, her turda 10 ısınma ve 30 ölçüm, batch 32. Tablolar 60 örneğin ortak medyanıdır; tek turun en iyi değeri seçilmez.",
+              "en": "GPU times are CUDA-event medians. Two runs, 10 warmups and 30 measurements each, batch 32. Tables use the joint median of 60 samples, not the best single run."
+            },
+            {
+              "tr": "Tamponlar önceden ayrılmıştır. Upload, download, tahsis, descriptor, heuristic ve tune süresi zamanlamanın dışındadır.",
+              "en": "Buffers are preallocated. Upload, download, allocation, descriptors, heuristics and tuning are outside the timed region."
+            },
+            {
+              "tr": "Ham cuBLAS ve ham cuBLASLt aynı veri, aynı hassasiyet, aynı compute stream ve 64 MiB workspace ile ölçülür. Ham Lt de descriptor ve heuristic'i tekrar kullanır. Rakip soğuk başlatılmaz.",
+              "en": "Raw cuBLAS and raw cuBLASLt use the same data, precision, compute stream and 64 MiB workspace. Raw Lt also reuses descriptors and heuristics. Rivals are not started cold."
+            },
+            {
+              "tr": "FP32: CUBLAS_COMPUTE_32F_PEDANTIC, azaltılmış mantissa kapalı. TF32: CUBLAS_COMPUTE_32F_FAST_TF32. TF32 sonucunu strict FP32 rakiple aynı doğrulukmuş gibi sıralamak yanlıştır.",
+              "en": "FP32 is CUBLAS_COMPUTE_32F_PEDANTIC, with reduced mantissa conversion off. TF32 is CUBLAS_COMPUTE_32F_FAST_TF32. Ranking a TF32 result against a strict FP32 rival as if they had the same accuracy is wrong."
+            },
+            {
+              "tr": "Saat ve güç limiti kilitlenmedi. Küçük şekillerdeki birkaç mikro saniyelik farka hız üstünlüğü bağlanmaz. GFLOPS = 2·M·N·K / süre.",
+              "en": "Clocks and power were not locked. A few microseconds on small shapes is not a speed claim. GFLOPS = 2·M·N·K / time."
+            },
+            {
+              "tr": "PyTorch ve CuPy, ölçümün yapıldığı Python 3.12 ortamında kurulu değildi. Bu sayfa onlar için süre yazmaz. NumPy 2.3.5 ve OpenBLAS 0.3.30 duvar saatidir; CPU thread sayısı sabitlenmedi.",
+              "en": "PyTorch and CuPy were not installed in the Python 3.12 environment used for the run. This page does not invent times for them. NumPy 2.3.5 and OpenBLAS 0.3.30 are wall-clock; the CPU thread count was not pinned."
+            }
+          ]
         },
         {
-          "type": "code",
-          "lang": "bash",
-          "filename": "terminal",
-          "code": "cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm matrix_pro_bench_training\n./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048,4096 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json\n./build/benchmarks/Release/matrix_pro_bench_external_gemm.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/external_gemm.json\npy -3 tools/bench_rivals.py\npython tools/gen_bench_page.py\npython tools/sync_benchmark_data.py"
+          "type": "callout",
+          "variant": "warn",
+          "title": { "tr": "Eylül 2026 tablosu bu protokol değildir", "en": "The September 2026 table is a different protocol" },
+          "text": {
+            "tr": "Eski sayfa, 19 Eylül ölçümünde 4096² multiply_into için 16 895 GFLOPS ve bazı boyutlarda cuBLAS'ı geçtiğini yazıyordu. O koşu warmup 12 / tekrar 40 idi ve 1 Ekim adil turuyla karıştırılmamalıdır. Ekim turu 4096 ölçmedi. Bu sayfanın rakamları benchmarks/reports/2026-10-01 ve fair_gemm.json kaynaklıdır.",
+            "en": "The previous page quoted 16,895 GFLOPS for 4096² multiply_into on 19 September and said some sizes beat cuBLAS. That run used 12 warmups and 40 repeats and must not be mixed with the 1 October fair protocol. October did not measure 4096. Figures here come from benchmarks/reports/2026-10-01 and fair_gemm.json."
+          }
+        }
+      ]
+    },
+    {
+      "id": "eski-yeni",
+      "title": { "tr": "Eski varsayılan çarpıma karşı yeni varsayılan", "en": "Old default multiply versus the new default" },
+      "intro": {
+        "tr": "Aynı kütüphanenin optimizasyondan önceki ve sonraki varsayılan çarpımı. Süre mikro saniyedir. Katsayı = eski / yeni. 1'in altı gerilemedir. Varsayılan politika şekle bağlıdır: küçük ve GEMV yolları FP32, büyük Lt yolu TF32. Bu sütun, aşağıdaki aynı-hassasiyet tablosuyla karıştırılmamalıdır.",
+        "en": "The library's own default multiply before and after the optimization. Times are microseconds. Ratio = old / new. Below 1 is a regression. The default policy is shape-dependent: small and GEMV paths are FP32, the large Lt path is TF32. Do not mix this column with the same-precision tables below."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "M×N×K", "en": "M×N×K" },
+            { "tr": "Eski µs", "en": "Old µs" },
+            { "tr": "Yeni µs", "en": "New µs" },
+            { "tr": "Eski/yeni", "en": "Old/new" },
+            { "tr": "Ne anlama gelir", "en": "What it means" }
+          ],
+          "rows": [
+            [{ "tr": "16³", "en": "16³" }, { "tr": "10.19", "en": "10.19" }, { "tr": "9.49", "en": "9.49" }, { "tr": "1.07×", "en": "1.07×" }, { "tr": "Gürültü bandında", "en": "Inside the noise band" }],
+            [{ "tr": "32³", "en": "32³" }, { "tr": "14.56", "en": "14.56" }, { "tr": "12.00", "en": "12.00" }, { "tr": "1.21×", "en": "1.21×" }, { "tr": "Küçük kazanım", "en": "Small gain" }],
+            [{ "tr": "64³", "en": "64³" }, { "tr": "15.58", "en": "15.58" }, { "tr": "15.39", "en": "15.39" }, { "tr": "1.01×", "en": "1.01×" }, { "tr": "Eşit", "en": "Tie" }],
+            [{ "tr": "128³", "en": "128³" }, { "tr": "16.11", "en": "16.11" }, { "tr": "18.21", "en": "18.21" }, { "tr": "0.88×", "en": "0.88×" }, { "tr": "Gerileme", "en": "Regression" }],
+            [{ "tr": "256³", "en": "256³" }, { "tr": "14.11", "en": "14.11" }, { "tr": "14.34", "en": "14.34" }, { "tr": "0.98×", "en": "0.98×" }, { "tr": "Eşit", "en": "Tie" }],
+            [{ "tr": "512³", "en": "512³" }, { "tr": "34.83", "en": "34.83" }, { "tr": "31.34", "en": "31.34" }, { "tr": "1.11×", "en": "1.11×" }, { "tr": "Küçük kazanım", "en": "Small gain" }],
+            [{ "tr": "1024³", "en": "1024³" }, { "tr": "159.4", "en": "159.4" }, { "tr": "187.6", "en": "187.6" }, { "tr": "0.85×", "en": "0.85×" }, { "tr": "Gerileme", "en": "Regression" }],
+            [{ "tr": "2048³", "en": "2048³" }, { "tr": "1165", "en": "1165" }, { "tr": "1289", "en": "1289" }, { "tr": "0.90×", "en": "0.90×" }, { "tr": "Gerileme", "en": "Regression" }],
+            [{ "tr": "31×47×19", "en": "31×47×19" }, { "tr": "18.62", "en": "18.62" }, { "tr": "14.24", "en": "14.24" }, { "tr": "1.31×", "en": "1.31×" }, { "tr": "Kazanım", "en": "Gain" }],
+            [{ "tr": "127×257×63", "en": "127×257×63" }, { "tr": "26.24", "en": "26.24" }, { "tr": "13.86", "en": "13.86" }, { "tr": "1.89×", "en": "1.89×" }, { "tr": "Kazanım", "en": "Gain" }],
+            [{ "tr": "64×1024×512", "en": "64×1024×512" }, { "tr": "36.75", "en": "36.75" }, { "tr": "23.86", "en": "23.86" }, { "tr": "1.54×", "en": "1.54×" }, { "tr": "Kazanım", "en": "Gain" }],
+            [{ "tr": "1024×64×512", "en": "1024×64×512" }, { "tr": "39.26", "en": "39.26" }, { "tr": "24.72", "en": "24.72" }, { "tr": "1.59×", "en": "1.59×" }, { "tr": "Kazanım", "en": "Gain" }],
+            [{ "tr": "1×1024×4096", "en": "1×1024×4096" }, { "tr": "185.8", "en": "185.8" }, { "tr": "46.66", "en": "46.66" }, { "tr": "3.98×", "en": "3.98×" }, { "tr": "En büyük kazanım; FP32 korundu", "en": "Largest gain; FP32 kept" }],
+            [{ "tr": "1024×1×4096", "en": "1024×1×4096" }, { "tr": "42.37", "en": "42.37" }, { "tr": "42.98", "en": "42.98" }, { "tr": "0.99×", "en": "0.99×" }, { "tr": "Eşit", "en": "Tie" }]
+          ]
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "Uzun vektör×matris (1×1024×4096) özel GEMV çekirdeğinden cuBLASLt'ye alındı. Girdi hassasiyeti strict FP32 bırakıldı; 3.98× kazanç TF32'ye düşürülerek elde edilmedi. Büyük karelerde yeni varsayılan eski varsayılandan yavaştır. Açık TF32 tuned plan, 1024×512×64 ailesinde eski varsayılana göre yaklaşık 2.4× hızlıdır; bu, varsayılan API'nin kendiliğinden yaptığı bir şey değildir.",
+            "en": "The long vector×matrix case (1×1024×4096) moved from the custom GEMV kernel to cuBLASLt. Input precision stayed strict FP32; the 3.98× gain was not bought by dropping to TF32. On large squares the new default is slower than the old default. An explicit TF32 tuned plan is about 2.4× faster than the old default on the 1024×512×64 family; the default API does not do that by itself."
+          }
         }
       ]
     },
     {
       "id": "gemm",
-      "title": {
-        "tr": "GEMM — MatrixFlash-Pro vs ham cuBLAS (olculdu)",
-        "en": "GEMM — vs raw cuBLAS (measured)"
-      },
+      "title": { "tr": "FP32 — plan, tuned plan, ham cuBLAS, ham cuBLASLt", "en": "FP32 — plan, tuned plan, raw cuBLAS, raw cuBLASLt" },
       "intro": {
-        "tr": "multiply_into = tahsissiz hot path (cuBLAS ile ayni kosul). operator* = device_only cikti tahsisi dahil.",
-        "en": "multiply_into = allocation-free hot path (same condition as cuBLAS). operator* = includes device_only output allocation."
+        "tr": "Aynı hassasiyet: strict FP32. Süre mikro saniye, GFLOPS = 2·M·N·K / süre. Tuned plan en fazla 16 heuristic adayını önceden ölçer; ham Lt ilk heuristic'i kullanır. Tuning maliyeti amortize edilmiştir.",
+        "en": "Same precision: strict FP32. Time is microseconds, GFLOPS = 2·M·N·K / time. The tuned plan has already timed at most 16 heuristic candidates; raw Lt uses the first heuristic. Tuning cost is amortized."
       },
       "blocks": [
         {
           "type": "table",
           "headers": [
-            {
-              "tr": "Vaka",
-              "en": "Case"
-            },
-            {
-              "tr": "mflash operator*",
-              "en": "mflash operator*"
-            },
-            {
-              "tr": "mflash multiply_into",
-              "en": "mflash multiply_into"
-            },
-            {
-              "tr": "ham cuBLAS",
-              "en": "raw cuBLAS"
-            },
-            {
-              "tr": "naive GPU",
-              "en": "naive GPU"
-            },
-            {
-              "tr": "CPU naive",
-              "en": "CPU naive"
-            }
+            { "tr": "Şekil", "en": "Shape" },
+            { "tr": "Plan", "en": "Plan" },
+            { "tr": "Tuned plan", "en": "Tuned plan" },
+            { "tr": "Ham cuBLAS", "en": "Raw cuBLAS" },
+            { "tr": "Ham cuBLASLt", "en": "Raw cuBLASLt" }
           ],
           "rows": [
-            [
-              {
-                "tr": "512x512",
-                "en": "512x512"
-              },
-              {
-                "tr": "0.055 ms / 4855 GFLOPS",
-                "en": "0.055 ms / 4855 GFLOPS"
-              },
-              {
-                "tr": "0.054 ms / 4946 GFLOPS",
-                "en": "0.054 ms / 4946 GFLOPS"
-              },
-              {
-                "tr": "0.054 ms / 4949 GFLOPS",
-                "en": "0.054 ms / 4949 GFLOPS"
-              },
-              {
-                "tr": "0.291 ms / 923 GFLOPS",
-                "en": "0.291 ms / 923 GFLOPS"
-              },
-              {
-                "tr": "101.94 ms / 2.6 GFLOPS",
-                "en": "101.94 ms / 2.6 GFLOPS"
-              }
-            ],
-            [
-              {
-                "tr": "1024x1024",
-                "en": "1024x1024"
-              },
-              {
-                "tr": "0.198 ms / 10866 GFLOPS",
-                "en": "0.198 ms / 10866 GFLOPS"
-              },
-              {
-                "tr": "0.189 ms / 11336 GFLOPS",
-                "en": "0.189 ms / 11336 GFLOPS"
-              },
-              {
-                "tr": "0.208 ms / 10331 GFLOPS",
-                "en": "0.208 ms / 10331 GFLOPS"
-              },
-              {
-                "tr": "2.264 ms / 949 GFLOPS",
-                "en": "2.264 ms / 949 GFLOPS"
-              },
-              {
-                "tr": "—",
-                "en": "—"
-              }
-            ],
-            [
-              {
-                "tr": "2048x2048",
-                "en": "2048x2048"
-              },
-              {
-                "tr": "1.286 ms / 13358 GFLOPS",
-                "en": "1.286 ms / 13358 GFLOPS"
-              },
-              {
-                "tr": "1.247 ms / 13774 GFLOPS",
-                "en": "1.247 ms / 13774 GFLOPS"
-              },
-              {
-                "tr": "1.271 ms / 13519 GFLOPS",
-                "en": "1.271 ms / 13519 GFLOPS"
-              },
-              {
-                "tr": "—",
-                "en": "—"
-              },
-              {
-                "tr": "—",
-                "en": "—"
-              }
-            ],
-            [
-              {
-                "tr": "4096x4096",
-                "en": "4096x4096"
-              },
-              {
-                "tr": "10.524 ms / 13060 GFLOPS",
-                "en": "10.524 ms / 13060 GFLOPS"
-              },
-              {
-                "tr": "8.135 ms / 16895 GFLOPS",
-                "en": "8.135 ms / 16895 GFLOPS"
-              },
-              {
-                "tr": "8.141 ms / 16883 GFLOPS",
-                "en": "8.141 ms / 16883 GFLOPS"
-              },
-              {
-                "tr": "—",
-                "en": "—"
-              },
-              {
-                "tr": "—",
-                "en": "—"
-              }
-            ]
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rakipler",
-      "title": {
-        "tr": "Piyasadaki Iddiali Motorlar (6+)",
-        "en": "Market Contenders (6+)"
-      },
-      "intro": {
-        "tr": "Ayni is: yogun FP32 kare GEMM. Olculenler bu makinede; referans satirlari acikca isaretli. PyTorch/CuPy/ArrayFire/JAX icerde cuBLAS kullanir — tepe bant ayni sinif; MatrixFlash-Pro farki C++17 API + fused epilogue + algo-cache ile tutarli cuBLAS-sinifi hiz.",
-        "en": "Same job: dense FP32 square GEMM. Measured rows are on this machine; reference rows are labeled. PyTorch/CuPy/ArrayFire/JAX call cuBLAS internally — same ceiling class; MatrixFlash-Pro differentiates with a C++17 API, fused epilogues, and algo-cache for consistent cuBLAS-class speed."
-      },
-      "blocks": [
-        {
-          "type": "table",
-          "headers": [
-            {
-              "tr": "Motor",
-              "en": "Engine"
-            },
-            {
-              "tr": "Tur",
-              "en": "Kind"
-            },
-            {
-              "tr": "Hiz (odak 1024²)",
-              "en": "Speed (focus 1024²)"
-            },
-            {
-              "tr": "Durum",
-              "en": "Status"
-            },
-            {
-              "tr": "Not",
-              "en": "Note"
-            }
-          ],
-          "rows": [
-            [
-              {
-                "tr": "MatrixFlash-Pro",
-                "en": "MatrixFlash-Pro"
-              },
-              {
-                "tr": "C++17 / CUDA library",
-                "en": "C++17 / CUDA library"
-              },
-              {
-                "tr": "0.193 ms / 11155 GFLOPS",
-                "en": "0.193 ms / 11155 GFLOPS"
-              },
-              {
-                "tr": "1024x1024 olculdu",
-                "en": "1024x1024 measured"
-              },
-              {
-                "tr": "mflash multiply_into, no alloc (measured)",
-                "en": "mflash multiply_into, no alloc (measured)"
-              }
-            ],
-            [
-              {
-                "tr": "NVIDIA cuBLAS",
-                "en": "NVIDIA cuBLAS"
-              },
-              {
-                "tr": "Vendor BLAS",
-                "en": "Vendor BLAS"
-              },
-              {
-                "tr": "0.190 ms / 11275 GFLOPS",
-                "en": "0.190 ms / 11275 GFLOPS"
-              },
-              {
-                "tr": "1024x1024 olculdu",
-                "en": "1024x1024 measured"
-              },
-              {
-                "tr": "raw cublasGemmEx, no alloc (measured)",
-                "en": "raw cublasGemmEx, no alloc (measured)"
-              }
-            ],
-            [
-              {
-                "tr": "NVIDIA cublasLt",
-                "en": "NVIDIA cublasLt"
-              },
-              {
-                "tr": "Vendor matmul (Lt)",
-                "en": "Vendor matmul (Lt)"
-              },
-              {
-                "tr": "0.283 ms / 7600 GFLOPS",
-                "en": "0.283 ms / 7600 GFLOPS"
-              },
-              {
-                "tr": "1024x1024 olculdu",
-                "en": "1024x1024 measured"
-              },
-              {
-                "tr": "cublasLt pre-alloc, no wrapper (measured)",
-                "en": "cublasLt pre-alloc, no wrapper (measured)"
-              }
-            ],
-            [
-              {
-                "tr": "NumPy @ OpenBLAS",
-                "en": "NumPy @ OpenBLAS"
-              },
-              {
-                "tr": "Python / CPU BLAS",
-                "en": "Python / CPU BLAS"
-              },
-              {
-                "tr": "6.259 ms / 343 GFLOPS",
-                "en": "6.259 ms / 343 GFLOPS"
-              },
-              {
-                "tr": "1024x1024 olculdu",
-                "en": "1024x1024 measured"
-              },
-              {
-                "tr": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)",
-                "en": "numpy 2.5.3 @ OpenBLAS (CPU, wall-clock)"
-              }
-            ],
-            [
-              {
-                "tr": "PyTorch (CUDA)",
-                "en": "PyTorch (CUDA)"
-              },
-              {
-                "tr": "Python / DL framework",
-                "en": "Python / DL framework"
-              },
-              {
-                "tr": "cuBLAS-backed GPU ceiling; Python launch overhead on top of vendor GEMM",
-                "en": "cuBLAS-backed GPU ceiling; Python launch overhead on top of vendor GEMM"
-              },
-              {
-                "tr": "referans (olculmedi)",
-                "en": "reference (not timed)"
-              },
-              {
-                "tr": "reference (torch not installable on this Python 3.14)",
-                "en": "reference (torch not installable on this Python 3.14)"
-              }
-            ],
-            [
-              {
-                "tr": "CuPy",
-                "en": "CuPy"
-              },
-              {
-                "tr": "Python / CUDA arrays",
-                "en": "Python / CUDA arrays"
-              },
-              {
-                "tr": "cuBLAS-backed GPU ceiling; Python overhead on top",
-                "en": "cuBLAS-backed GPU ceiling; Python overhead on top"
-              },
-              {
-                "tr": "referans (olculmedi)",
-                "en": "reference (not timed)"
-              },
-              {
-                "tr": "reference (package not installed)",
-                "en": "reference (package not installed)"
-              }
-            ],
-            [
-              {
-                "tr": "ArrayFire (CUDA)",
-                "en": "ArrayFire (CUDA)"
-              },
-              {
-                "tr": "Array runtime",
-                "en": "Array runtime"
-              },
-              {
-                "tr": "cuBLAS-backed — same GPU ceiling class as mflash/cuBLAS",
-                "en": "cuBLAS-backed — same GPU ceiling class as mflash/cuBLAS"
-              },
-              {
-                "tr": "referans (olculmedi)",
-                "en": "reference (not timed)"
-              },
-              {
-                "tr": "reference (not timed on this machine)",
-                "en": "reference (not timed on this machine)"
-              }
-            ],
-            [
-              {
-                "tr": "Eigen (CPU multi-thread)",
-                "en": "Eigen (CPU multi-thread)"
-              },
-              {
-                "tr": "C++ CPU templates",
-                "en": "C++ CPU templates"
-              },
-              {
-                "tr": "~10–40 GFLOPS fp32 on laptop-class CPUs (well below GPU path)",
-                "en": "~10–40 GFLOPS fp32 on laptop-class CPUs (well below GPU path)"
-              },
-              {
-                "tr": "referans (olculmedi)",
-                "en": "reference (not timed)"
-              },
-              {
-                "tr": "reference (literature / typical laptop)",
-                "en": "reference (literature / typical laptop)"
-              }
-            ],
-            [
-              {
-                "tr": "JAX (CUDA)",
-                "en": "JAX (CUDA)"
-              },
-              {
-                "tr": "Python / XLA",
-                "en": "Python / XLA"
-              },
-              {
-                "tr": "XLA → cuBLAS/cuDNN — same GPU ceiling class",
-                "en": "XLA → cuBLAS/cuDNN — same GPU ceiling class"
-              },
-              {
-                "tr": "referans (olculmedi)",
-                "en": "reference (not timed)"
-              },
-              {
-                "tr": "reference (not timed on this machine)",
-                "en": "reference (not timed on this machine)"
-              }
-            ]
+            [{ "tr": "128³", "en": "128³" }, { "tr": "12.9 µs · 324 GFLOPS", "en": "12.9 µs · 324 GFLOPS" }, { "tr": "14.8 µs · 284 GFLOPS", "en": "14.8 µs · 284 GFLOPS" }, { "tr": "27.8 µs · 151 GFLOPS", "en": "27.8 µs · 151 GFLOPS" }, { "tr": "12.7 µs · 330 GFLOPS", "en": "12.7 µs · 330 GFLOPS" }],
+            [{ "tr": "256³", "en": "256³" }, { "tr": "14.2 µs · 2356", "en": "14.2 µs · 2356" }, { "tr": "14.0 µs · 2389", "en": "14.0 µs · 2389" }, { "tr": "15.9 µs · 2114", "en": "15.9 µs · 2114" }, { "tr": "15.1 µs · 2229", "en": "15.1 µs · 2229" }],
+            [{ "tr": "512³", "en": "512³" }, { "tr": "43.6 µs · 6159", "en": "43.6 µs · 6159" }, { "tr": "45.9 µs · 5846", "en": "45.9 µs · 5846" }, { "tr": "48.0 µs · 5589", "en": "48.0 µs · 5589" }, { "tr": "48.4 µs · 5548", "en": "48.4 µs · 5548" }],
+            [{ "tr": "1024³", "en": "1024³" }, { "tr": "365 µs · 5886", "en": "365 µs · 5886" }, { "tr": "277 µs · 7761", "en": "277 µs · 7761" }, { "tr": "343 µs · 6253", "en": "343 µs · 6253" }, { "tr": "347 µs · 6182", "en": "347 µs · 6182" }],
+            [{ "tr": "2048³", "en": "2048³" }, { "tr": "2339 µs · 7343", "en": "2339 µs · 7343" }, { "tr": "2041 µs · 8419", "en": "2041 µs · 8419" }, { "tr": "2389 µs · 7192", "en": "2389 µs · 7192" }, { "tr": "2365 µs · 7266", "en": "2365 µs · 7266" }],
+            [{ "tr": "64×1024×512", "en": "64×1024×512" }, { "tr": "25.0 µs · 2685", "en": "25.0 µs · 2685" }, { "tr": "16.0 µs · 4203", "en": "16.0 µs · 4203" }, { "tr": "34.5 µs · 1945", "en": "34.5 µs · 1945" }, { "tr": "28.3 µs · 2371", "en": "28.3 µs · 2371" }],
+            [{ "tr": "1024×64×512", "en": "1024×64×512" }, { "tr": "28.1 µs · 2391", "en": "28.1 µs · 2391" }, { "tr": "17.5 µs · 3837", "en": "17.5 µs · 3837" }, { "tr": "28.5 µs · 2354", "en": "28.5 µs · 2354" }, { "tr": "26.4 µs · 2542", "en": "26.4 µs · 2542" }],
+            [{ "tr": "1×1024×4096", "en": "1×1024×4096" }, { "tr": "45.4 µs · 185", "en": "45.4 µs · 185" }, { "tr": "48.3 µs · 174", "en": "48.3 µs · 174" }, { "tr": "45.5 µs · 184", "en": "45.5 µs · 184" }, { "tr": "45.3 µs · 185", "en": "45.3 µs · 185" }]
           ]
         },
         {
           "type": "callout",
           "variant": "info",
-          "title": {
-            "tr": "Neden PyTorch burada yok?",
-            "en": "Why is PyTorch missing a measured row?"
-          },
+          "title": { "tr": "FP32'de okunacak satır", "en": "The FP32 row that matters" },
           "text": {
-            "tr": "Bu makinedeki Python 3.14 icin resmi torch tekerlegi yok. Kurulunca `py -3 tools/bench_rivals.py` otomatik olcer. Beklenen bant: cuBLAS tavani − Python launch overhead.",
-            "en": "No official torch wheel for Python 3.14 on this machine. Once installed, `py -3 tools/bench_rivals.py` measures it. Expected band: cuBLAS ceiling minus Python launch overhead."
+            "tr": "1024³ strict FP32'de tuned plan 277 µs, ham cuBLAS 343 µs: yaklaşık 1.24×. 2048³'te 2041 µs'e karşı 2389 µs, yaklaşık 1.17×. Bu, algoritma seçiminin (en fazla 16 aday) vendor'ın ilk heuristic'inden hızlı olabildiğini gösterir. 16³–64³ başlatma maliyetinin altında kalır; orada GFLOPS sıralaması anlamsızdır. Üstteki grafik 14 şeklin tamamını çizer.",
+            "en": "At 1024³ strict FP32 the tuned plan is 277 µs and raw cuBLAS is 343 µs: about 1.24×. At 2048³, 2041 µs versus 2389 µs, about 1.17×. Algorithm selection (at most 16 candidates) can beat the vendor's first heuristic. 16³–64³ sit under launch overhead, so a GFLOPS ranking there is meaningless. The chart above draws all 14 shapes."
           }
         }
       ]
     },
     {
-      "id": "olculen-motorlar",
-      "title": {
-        "tr": "Olculen Motorlar — GFLOPS Tablosu",
-        "en": "Measured Engines — GFLOPS Table"
-      },
+      "id": "tf32",
+      "title": { "tr": "TF32 — aynı dörtlü, Tensor Core", "en": "TF32 — the same four, Tensor Cores" },
       "intro": {
-        "tr": "Sadece bu makinede zamanlanmis motorlar. Yuksek = daha iyi.",
-        "en": "Only engines timed on this machine. Higher is better."
+        "tr": "FP32 depolama ve birikim durur; girdi mantissa'sı Tensor Core için kısaltılır. Bu tablo FP32 tablosundan daha hızlıdır ve daha büyük mutlak hata üretir. 1 Ekim turunda örneklenen en büyük mutlak hata: FP32 1.12e-5, TF32 3.31e-3. Bu değerler o girdilere aittir, genel hata sınırı değildir.",
+        "en": "FP32 storage and accumulation remain; the input mantissa is shortened for Tensor Cores. This table is faster than the FP32 table and has a larger absolute error. Largest sampled absolute error on 1 October: FP32 1.12e-5, TF32 3.31e-3. Those values belong to those inputs; they are not a general error bound."
       },
       "blocks": [
         {
           "type": "table",
           "headers": [
-            {
-              "tr": "Boyut",
-              "en": "Size"
-            },
-            {
-              "tr": "MatrixFlash-Pro",
-              "en": "MatrixFlash-Pro"
-            },
-            {
-              "tr": "NVIDIA cuBLAS",
-              "en": "NVIDIA cuBLAS"
-            },
-            {
-              "tr": "NVIDIA cublasLt",
-              "en": "NVIDIA cublasLt"
-            },
-            {
-              "tr": "NumPy @ OpenBLAS",
-              "en": "NumPy @ OpenBLAS"
-            }
+            { "tr": "Şekil", "en": "Shape" },
+            { "tr": "Plan", "en": "Plan" },
+            { "tr": "Tuned plan", "en": "Tuned plan" },
+            { "tr": "Ham cuBLAS", "en": "Raw cuBLAS" },
+            { "tr": "Ham cuBLASLt", "en": "Raw cuBLASLt" }
           ],
           "rows": [
-            [
-              {
-                "tr": "256x256",
-                "en": "256x256"
-              },
-              {
-                "tr": "1237 GFLOPS",
-                "en": "1237 GFLOPS"
-              },
-              {
-                "tr": "1928 GFLOPS",
-                "en": "1928 GFLOPS"
-              },
-              {
-                "tr": "504 GFLOPS",
-                "en": "504 GFLOPS"
-              },
-              {
-                "tr": "97 GFLOPS",
-                "en": "97 GFLOPS"
-              }
-            ],
-            [
-              {
-                "tr": "512x512",
-                "en": "512x512"
-              },
-              {
-                "tr": "5243 GFLOPS",
-                "en": "5243 GFLOPS"
-              },
-              {
-                "tr": "3799 GFLOPS",
-                "en": "3799 GFLOPS"
-              },
-              {
-                "tr": "3641 GFLOPS",
-                "en": "3641 GFLOPS"
-              },
-              {
-                "tr": "253 GFLOPS",
-                "en": "253 GFLOPS"
-              }
-            ],
-            [
-              {
-                "tr": "1024x1024",
-                "en": "1024x1024"
-              },
-              {
-                "tr": "11155 GFLOPS",
-                "en": "11155 GFLOPS"
-              },
-              {
-                "tr": "11275 GFLOPS",
-                "en": "11275 GFLOPS"
-              },
-              {
-                "tr": "7600 GFLOPS",
-                "en": "7600 GFLOPS"
-              },
-              {
-                "tr": "343 GFLOPS",
-                "en": "343 GFLOPS"
-              }
-            ],
-            [
-              {
-                "tr": "2048x2048",
-                "en": "2048x2048"
-              },
-              {
-                "tr": "16794 GFLOPS",
-                "en": "16794 GFLOPS"
-              },
-              {
-                "tr": "16537 GFLOPS",
-                "en": "16537 GFLOPS"
-              },
-              {
-                "tr": "8849 GFLOPS",
-                "en": "8849 GFLOPS"
-              },
-              {
-                "tr": "395 GFLOPS",
-                "en": "395 GFLOPS"
-              }
-            ]
+            [{ "tr": "512³", "en": "512³" }, { "tr": "36.1 µs · 7430", "en": "36.1 µs · 7430" }, { "tr": "27.8 µs · 9659", "en": "27.8 µs · 9659" }, { "tr": "35.2 µs · 7626", "en": "35.2 µs · 7626" }, { "tr": "34.8 µs · 7703", "en": "34.8 µs · 7703" }],
+            [{ "tr": "1024³", "en": "1024³" }, { "tr": "186 µs · 11530", "en": "186 µs · 11530" }, { "tr": "176 µs · 12185", "en": "176 µs · 12185" }, { "tr": "169 µs · 12694", "en": "169 µs · 12694" }, { "tr": "171 µs · 12524", "en": "171 µs · 12524" }],
+            [{ "tr": "2048³", "en": "2048³" }, { "tr": "1321 µs · 13010", "en": "1321 µs · 13010" }, { "tr": "1307 µs · 13142", "en": "1307 µs · 13142" }, { "tr": "1325 µs · 12967", "en": "1325 µs · 12967" }, { "tr": "1304 µs · 13174", "en": "1304 µs · 13174" }],
+            [{ "tr": "64×1024×512", "en": "64×1024×512" }, { "tr": "26.0 µs · 2580", "en": "26.0 µs · 2580" }, { "tr": "18.7 µs · 3594", "en": "18.7 µs · 3594" }, { "tr": "27.6 µs · 2432", "en": "27.6 µs · 2432" }, { "tr": "23.9 µs · 2811", "en": "23.9 µs · 2811" }],
+            [{ "tr": "1024×64×512", "en": "1024×64×512" }, { "tr": "23.8 µs · 2823", "en": "23.8 µs · 2823" }, { "tr": "16.3 µs · 4116", "en": "16.3 µs · 4116" }, { "tr": "26.2 µs · 2565", "en": "26.2 µs · 2565" }, { "tr": "32.8 µs · 2048", "en": "32.8 µs · 2048" }],
+            [{ "tr": "127×257×63", "en": "127×257×63" }, { "tr": "14.1 µs · 292", "en": "14.1 µs · 292" }, { "tr": "15.1 µs · 273", "en": "15.1 µs · 273" }, { "tr": "17.7 µs · 233", "en": "17.7 µs · 233" }, { "tr": "13.9 µs · 296", "en": "13.9 µs · 296" }],
+            [{ "tr": "1×1024×4096", "en": "1×1024×4096" }, { "tr": "46.6 µs · 180", "en": "46.6 µs · 180" }, { "tr": "46.7 µs · 180", "en": "46.7 µs · 180" }, { "tr": "45.2 µs · 186", "en": "45.2 µs · 186" }, { "tr": "45.5 µs · 184", "en": "45.5 µs · 184" }]
+          ]
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "TF32 1024³'te en hızlı ham cuBLAS'tır (169 µs). Tuned plan 176 µs, yani yaklaşık %96'sı. 2048³'te tuned plan 1307 µs, ham Lt 1304 µs: pratikte aynı bant, bu turun en yüksek verimi yaklaşık 13.1 TFLOPS. Dikdörtgen 1024×64×512'de tuned plan 16.3 µs ile ham Lt'nin 32.8 µs'ini açık ara geçer; her şekilde aynı sıralama yoktur.",
+            "en": "At TF32 1024³ raw cuBLAS is the fastest (169 µs). The tuned plan is 176 µs, about 96% of that. At 2048³ the tuned plan is 1307 µs and raw Lt is 1304 µs: the same band in practice, and the highest throughput of this run, about 13.1 TFLOPS. On the rectangular 1024×64×512 the tuned plan at 16.3 µs clearly beats raw Lt at 32.8 µs; the ranking is not the same on every shape."
+          }
+        }
+      ]
+    },
+    {
+      "id": "rakipler",
+      "title": { "tr": "Piyasa motorları — ne ölçüldü, ne ölçülmedi", "en": "Market engines — what was measured, what was not" },
+      "intro": {
+        "tr": "Odak 1024³. GPU satırları TF32 CUDA-event medyanıdır. NumPy CPU duvar saatidir ve aynı zamanlayıcı değildir. PyTorch, CuPy, JAX, ArrayFire ve Eigen bu makinede bu turda çalıştırılmadı.",
+        "en": "Focus shape 1024³. GPU rows are TF32 CUDA-event medians. NumPy is CPU wall-clock and is not the same timer. PyTorch, CuPy, JAX, ArrayFire and Eigen were not run on this machine in this round."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "Motor", "en": "Engine" },
+            { "tr": "1024³", "en": "1024³" },
+            { "tr": "2048³", "en": "2048³" },
+            { "tr": "Durum", "en": "Status" }
+          ],
+          "rows": [
+            [{ "tr": "MatrixFlash-Pro tuned plan (TF32)", "en": "MatrixFlash-Pro tuned plan (TF32)" }, { "tr": "0.176 ms · 12 185 GFLOPS", "en": "0.176 ms · 12,185 GFLOPS" }, { "tr": "1.307 ms · 13 142 GFLOPS", "en": "1.307 ms · 13,142 GFLOPS" }, { "tr": "Ölçüldü", "en": "Measured" }],
+            [{ "tr": "MatrixFlash-Pro plan (TF32)", "en": "MatrixFlash-Pro plan (TF32)" }, { "tr": "0.186 ms · 11 530 GFLOPS", "en": "0.186 ms · 11,530 GFLOPS" }, { "tr": "1.321 ms · 13 010 GFLOPS", "en": "1.321 ms · 13,010 GFLOPS" }, { "tr": "Ölçüldü", "en": "Measured" }],
+            [{ "tr": "NVIDIA cuBLAS GemmEx (TF32)", "en": "NVIDIA cuBLAS GemmEx (TF32)" }, { "tr": "0.169 ms · 12 694 GFLOPS", "en": "0.169 ms · 12,694 GFLOPS" }, { "tr": "1.325 ms · 12 967 GFLOPS", "en": "1.325 ms · 12,967 GFLOPS" }, { "tr": "Ölçüldü", "en": "Measured" }],
+            [{ "tr": "NVIDIA cuBLASLt (TF32)", "en": "NVIDIA cuBLASLt (TF32)" }, { "tr": "0.171 ms · 12 524 GFLOPS", "en": "0.171 ms · 12,524 GFLOPS" }, { "tr": "1.304 ms · 13 174 GFLOPS", "en": "1.304 ms · 13,174 GFLOPS" }, { "tr": "Ölçüldü", "en": "Measured" }],
+            [{ "tr": "NumPy 2.3.5 @ OpenBLAS 0.3.30", "en": "NumPy 2.3.5 @ OpenBLAS 0.3.30" }, { "tr": "4.91 ms duvar saati", "en": "4.91 ms wall-clock" }, { "tr": "41.16 ms duvar saati", "en": "41.16 ms wall-clock" }, { "tr": "Ölçüldü, CPU", "en": "Measured, CPU" }],
+            [{ "tr": "PyTorch CUDA", "en": "PyTorch CUDA" }, { "tr": "—", "en": "—" }, { "tr": "—", "en": "—" }, { "tr": "Kurulu değildi, ölçülmedi", "en": "Not installed, not measured" }],
+            [{ "tr": "CuPy", "en": "CuPy" }, { "tr": "—", "en": "—" }, { "tr": "—", "en": "—" }, { "tr": "Kurulu değildi, ölçülmedi", "en": "Not installed, not measured" }],
+            [{ "tr": "JAX / ArrayFire / Eigen", "en": "JAX / ArrayFire / Eigen" }, { "tr": "—", "en": "—" }, { "tr": "—", "en": "—" }, { "tr": "Bu turda çalıştırılmadı", "en": "Not run this round" }]
+          ]
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "PyTorch ve CuPy GPU'da cuBLAS çağırır. Kurulu olsalar da tepe bant bu sayfadaki ham cuBLAS satırının civarında olur; Python gönderim maliyeti küçük çekirdeklerde eklenir. O cümle bir ölçüm değildir. tools/bench_rivals_fair.py onlar kurulunca FP32/TF32 CUDA-event ölçebilir.",
+            "en": "PyTorch and CuPy call cuBLAS on the GPU. If they were installed, their peak band would sit near the raw cuBLAS row on this page; Python launch overhead adds on small kernels. That sentence is not a measurement. tools/bench_rivals_fair.py can time FP32/TF32 CUDA events once they are installed."
+          }
+        }
+      ]
+    },
+    {
+      "id": "numpy",
+      "title": { "tr": "NumPy / OpenBLAS — duvar saati bağlamı", "en": "NumPy / OpenBLAS — wall-clock context" },
+      "intro": {
+        "tr": "GPU sütunu strict FP32 planın duvar saatidir (batch sonu bekleme dahil). CPU sütunu NumPy duvar saatidir. Veri transferi yoktur. İki zamanlayıcı farklıdır; oran, 'kütüphane overhead'ini yendik' diye okunmaz. Küçük şekillerde CPU daha hızlıdır çünkü GPU başlatma maliyeti aritmetikten büyüktür.",
+        "en": "The GPU column is the strict FP32 plan wall time, including the wait at the end of the batch. The CPU column is NumPy wall time. There is no data transfer. The timers differ; the ratio is not 'we beat their library overhead'. On small shapes the CPU is faster because GPU launch overhead exceeds the arithmetic."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "Şekil", "en": "Shape" },
+            { "tr": "GPU FP32 plan duvar, ms", "en": "GPU FP32 plan wall, ms" },
+            { "tr": "NumPy duvar, ms", "en": "NumPy wall, ms" },
+            { "tr": "CPU / GPU", "en": "CPU / GPU" }
+          ],
+          "rows": [
+            [{ "tr": "16³", "en": "16³" }, { "tr": "0.014", "en": "0.014" }, { "tr": "0.0022", "en": "0.0022" }, { "tr": "CPU daha hızlı", "en": "CPU faster" }],
+            [{ "tr": "64³", "en": "64³" }, { "tr": "0.016", "en": "0.016" }, { "tr": "0.0099", "en": "0.0099" }, { "tr": "CPU daha hızlı", "en": "CPU faster" }],
+            [{ "tr": "128³", "en": "128³" }, { "tr": "0.013", "en": "0.013" }, { "tr": "0.087", "en": "0.087" }, { "tr": "6.5×", "en": "6.5×" }],
+            [{ "tr": "256³", "en": "256³" }, { "tr": "0.015", "en": "0.015" }, { "tr": "0.261", "en": "0.261" }, { "tr": "17×", "en": "17×" }],
+            [{ "tr": "512³", "en": "512³" }, { "tr": "0.045", "en": "0.045" }, { "tr": "1.094", "en": "1.094" }, { "tr": "25×", "en": "25×" }],
+            [{ "tr": "1024³", "en": "1024³" }, { "tr": "0.367", "en": "0.367" }, { "tr": "4.910", "en": "4.910" }, { "tr": "13.4×", "en": "13.4×" }],
+            [{ "tr": "2048³", "en": "2048³" }, { "tr": "2.341", "en": "2.341" }, { "tr": "41.16", "en": "41.16" }, { "tr": "17.6×", "en": "17.6×" }],
+            [{ "tr": "1×1024×4096", "en": "1×1024×4096" }, { "tr": "0.047", "en": "0.047" }, { "tr": "0.407", "en": "0.407" }, { "tr": "8.6×", "en": "8.6×" }]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cuda-graph",
+      "title": { "tr": "CUDA Graph — 32 GEMM'lik aynı kapsam", "en": "CUDA Graph — the same 32-GEMM scope" },
+      "intro": {
+        "tr": "32 GEMM tek grafa kaydedilir, replay süresi 32'ye bölünür. Bağımsız 32 launch olarak ölçülmez. Graph, küçük ve orta işte host gönderim maliyetini amortize eder. Her çıktıyı host'ta okuyan kod aynı kazancı almaz.",
+        "en": "32 GEMMs are captured in one graph and the replay time is divided by 32. This is not 32 independent launches. The graph amortizes host submission on small and medium work. Code that reads every output on the host does not get the same gain."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "Şekil", "en": "Shape" },
+            { "tr": "FP32 plan graph µs", "en": "FP32 plan graph µs" },
+            { "tr": "FP32 ham Lt graph µs", "en": "FP32 raw Lt graph µs" },
+            { "tr": "TF32 plan graph µs", "en": "TF32 plan graph µs" },
+            { "tr": "TF32 ham Lt graph µs", "en": "TF32 raw Lt graph µs" }
+          ],
+          "rows": [
+            [{ "tr": "16³", "en": "16³" }, { "tr": "3.04", "en": "3.04" }, { "tr": "2.14", "en": "2.14" }, { "tr": "6.86", "en": "6.86" }, { "tr": "3.42", "en": "3.42" }],
+            [{ "tr": "128³", "en": "128³" }, { "tr": "4.93", "en": "4.93" }, { "tr": "4.83", "en": "4.83" }, { "tr": "4.90", "en": "4.90" }, { "tr": "4.93", "en": "4.93" }],
+            [{ "tr": "512³", "en": "512³" }, { "tr": "45.2", "en": "45.2" }, { "tr": "47.1", "en": "47.1" }, { "tr": "24.7", "en": "24.7" }, { "tr": "31.8", "en": "31.8" }],
+            [{ "tr": "1024³", "en": "1024³" }, { "tr": "269", "en": "269" }, { "tr": "344", "en": "344" }, { "tr": "166", "en": "166" }, { "tr": "167", "en": "167" }],
+            [{ "tr": "2048³", "en": "2048³" }, { "tr": "2040", "en": "2040" }, { "tr": "2386", "en": "2386" }, { "tr": "1318", "en": "1318" }, { "tr": "1313", "en": "1313" }],
+            [{ "tr": "1×1024×4096", "en": "1×1024×4096" }, { "tr": "42.1", "en": "42.1" }, { "tr": "42.5", "en": "42.5" }, { "tr": "44.1", "en": "44.1" }, { "tr": "42.4", "en": "42.4" }]
           ]
         }
       ]
     },
     {
       "id": "fused-gemm",
-      "title": {
-        "tr": "Fused GEMM+Bias+ReLU — zinciri gecme (olculdu)",
-        "en": "Fused GEMM+Bias+ReLU — beating the chain (measured)"
-      },
-      "intro": {
-        "tr": "Bu, ham cuBLAS SGEMM'in otesine gectigimiz yer: tek cublasLt epilogue vs 3 ayri kernel. PyTorch'ta da fused varken, burada saf C++ tek cagri.",
-        "en": "This is where we go beyond plain cuBLAS SGEMM: one cublasLt epilogue vs 3 kernels. PyTorch has fused ops too; here it is a single C++ call."
-      },
+      "title": { "tr": "Fused epilogue ve bu turda ölçülmeyenler", "en": "Fused epilogue and what this round did not time" },
       "blocks": [
         {
-          "type": "table",
-          "headers": [
+          "type": "p",
+          "text": {
+            "tr": "gemm_bias_relu ve gemm_bias_gelu, bias ile aktivasyonu cuBLASLt epilogue'unda tek matmul'a koyar. Lt yolu yoksa düz GEMM artı sütun-bias çekirdeği çalışır. 1 Ekim 2026 çalışması fused epilogue, LU tekrar kullanımı, seyrek dönüşüm ve matrix_exp için ayrı hız tablosu üretmedi. Bu sayfa onlara katsayı yazmaz. Eski belgelerdeki 1–6× ifadesi bu protokolün sonucu değildir.",
+            "en": "gemm_bias_relu and gemm_bias_gelu fold the bias and the activation into one cuBLASLt matmul epilogue. If the Lt path is unavailable, a plain GEMM plus a column-bias kernel runs. The 1 October 2026 study did not publish a separate timing table for the fused epilogue, LU reuse, sparse conversion or matrix_exp. This page does not assign them a speedup. The 1–6× wording in older docs is not a result of this protocol."
+          }
+        }
+      ]
+    },
+    {
+      "id": "olculen-motorlar",
+      "title": { "tr": "Nasıl okunur", "en": "How to read it" },
+      "blocks": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
             {
-              "tr": "Gizli",
-              "en": "Hidden"
+              "tr": "Önce hassasiyeti seçin. TF32 satırını FP32 satırının üstüne koymayın.",
+              "en": "Pick the precision first. Do not place a TF32 row on top of an FP32 row."
             },
             {
-              "tr": "fused",
-              "en": "fused"
+              "tr": "Büyük kare TF32'de kütüphane ham cuBLAS ile aynı banttır. Üstünlük iddiası, FP32 tuned planın 1024³ ve 2048³ satırları ile dikdörtgen tuned satırlarındadır.",
+              "en": "On large TF32 squares the library is in the same band as raw cuBLAS. The advantage claim is the FP32 tuned plan at 1024³ and 2048³, plus the rectangular tuned rows."
             },
             {
-              "tr": "zincir (3 kernel)",
-              "en": "chain (3 kernels)"
+              "tr": "Kütüphanenin kendi eski haline karşı en net kazanım 1×1024×4096 varsayılan yoldur: 3.98×, FP32 korunarak.",
+              "en": "Against the library's own previous default, the clearest win is the 1×1024×4096 path: 3.98×, with FP32 preserved."
             },
             {
-              "tr": "Hizlanma",
-              "en": "Speedup"
+              "tr": "1024³ ve 2048³ yeni varsayılan, eski varsayılandan yavaştır. Bunu tablodan silmedik.",
+              "en": "The new default at 1024³ and 2048³ is slower than the old default. That row stays in the table."
             }
-          ],
-          "rows": [
-            [
-              {
-                "tr": "h=256",
-                "en": "h=256"
-              },
-              {
-                "tr": "0.127 ms / 66 GFLOPS",
-                "en": "0.127 ms / 66 GFLOPS"
-              },
-              {
-                "tr": "0.146 ms / 57 GFLOPS",
-                "en": "0.146 ms / 57 GFLOPS"
-              },
-              {
-                "tr": "1.1x",
-                "en": "1.1x"
-              }
-            ],
-            [
-              {
-                "tr": "h=512",
-                "en": "h=512"
-              },
-              {
-                "tr": "0.125 ms / 134 GFLOPS",
-                "en": "0.125 ms / 134 GFLOPS"
-              },
-              {
-                "tr": "0.218 ms / 77 GFLOPS",
-                "en": "0.218 ms / 77 GFLOPS"
-              },
-              {
-                "tr": "1.7x",
-                "en": "1.7x"
-              }
-            ],
-            [
-              {
-                "tr": "h=1024",
-                "en": "h=1024"
-              },
-              {
-                "tr": "0.039 ms / 862 GFLOPS",
-                "en": "0.039 ms / 862 GFLOPS"
-              },
-              {
-                "tr": "0.237 ms / 142 GFLOPS",
-                "en": "0.237 ms / 142 GFLOPS"
-              },
-              {
-                "tr": "6.1x",
-                "en": "6.1x"
-              }
-            ]
           ]
         }
       ]
     },
     {
       "id": "nasil-tekrarlanir",
-      "title": {
-        "tr": "Nasil Tekrarlanir",
-        "en": "How to Reproduce"
-      },
-      "intro": {
-        "tr": "comparison + external_gemm + bench_rivals + gen/sync.",
-        "en": "comparison + external_gemm + bench_rivals + gen/sync."
-      },
+      "title": { "tr": "Nasıl tekrarlanır", "en": "How to reproduce" },
       "blocks": [
         {
-          "type": "steps",
-          "items": [
-            {
-              "title": {
-                "tr": "GPU bench",
-                "en": "GPU benches"
-              },
-              "text": {
-                "tr": "matrix_pro_bench_comparison ve external_gemm --json yazdirin.",
-                "en": "Run matrix_pro_bench_comparison and external_gemm with --json."
-              }
-            },
-            {
-              "title": {
-                "tr": "Rakip motorlar",
-                "en": "Rival engines"
-              },
-              "text": {
-                "tr": "py -3 tools/bench_rivals.py (NumPy zorunlu; torch/cupy varsa olculur).",
-                "en": "py -3 tools/bench_rivals.py (NumPy required; torch/cupy measured if present)."
-              }
-            },
-            {
-              "title": {
-                "tr": "Doc sync",
-                "en": "Doc sync"
-              },
-              "text": {
-                "tr": "python tools/gen_bench_page.py && python tools/sync_benchmark_data.py",
-                "en": "python tools/gen_bench_page.py && python tools/sync_benchmark_data.py"
-              }
-            }
-          ]
+          "type": "code",
+          "lang": "bash",
+          "filename": "powershell",
+          "code": "python tools/build_local.py --reconfigure --jobs 4\nctest --test-dir build/perf-release -C Release --output-on-failure -j 1\n.\\build\\perf-release\\benchmarks\\matrix_pro_bench_gemm_fair.exe --output benchmarks/results/run1.json --tag reproduced_run1 --warmup 10 --repeats 30 --batch 32\n.\\build\\perf-release\\benchmarks\\matrix_pro_bench_gemm_fair.exe --output benchmarks/results/run2.json --tag reproduced_run2 --warmup 10 --repeats 30 --batch 32\npython tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json --warmup 10 --repeats 30 --batch 32"
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "Derleme, CPU rakibi ve GPU benchmarkını aynı anda başlatmayın. Ham JSON'lar benchmarks/reports/2026-10-01 altındadır. Sayfanın grafiği doc/public/data/benchmarks/fair_gemm.json dosyasını okur.",
+            "en": "Do not start the build, the CPU rival and the GPU benchmark at the same time. Raw JSON lives under benchmarks/reports/2026-10-01. The chart on this page reads doc/public/data/benchmarks/fair_gemm.json."
+          }
         }
       ]
     }

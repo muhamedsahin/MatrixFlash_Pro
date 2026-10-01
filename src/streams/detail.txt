@@ -1,0 +1,22 @@
+MatrixFlash-Pro — src/streams
+============================
+streams.cu
+    Sabit boyutlu stream havuzu (kStreamPoolSize = 4) ve pinned host slotları.
+    argmax_async / argmin_async sonucu pinned belleğe yazar; CPU, sonuç
+    hazır olana kadar başka iş yapabilir. synchronize_pool() hepsini bekler.
+    Havuz stream'i onu oluşturan host thread'den kullanılmalıdır.
+    launch_on_pool aynı thread'den iş dağıtır.
+
+execution.cu
+    CudaGraph: begin_capture / end_capture / replay. Capture sırasında
+    tahsis, senkronizasyon, plan kurma ve tune yasaktır. Buffer'lar ve
+    GemmPlan, graph yaşadığı sürece yaşamalıdır. Replay host kodunu tekrar
+    çalıştırmadığı için, daha önce host aynasına dokunulduysa replay sonrası
+    mark_host_stale() + download() gerekir.
+    Pipeline birden fazla stream seçer. Exception sonrası önceki stream
+    geri yüklenir. Yarım kalmış capture reset ile temizlenir.
+
+1 Ekim 2026 CUDA Graph ölçümü (32 GEMM'lik bir capture, süre 32'ye bölünür)
+doc performans sayfasında ve PERFORMANCE_REPORT.md bölüm 6'dadır. Küçük
+şekillerde host gönderim maliyeti düşer; her çıktıyı host'ta okuyan kod
+aynı kazancı alamaz.

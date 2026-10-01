@@ -127,10 +127,24 @@ void gemm_bias_relu_fused(
       In iterative algorithms (such as gradient descent or conjugate gradient), dynamically creating new <code>Matrix</code> instances triggers <code>cudaMalloc</code> calls that flush execution queues. MatrixFlash-Pro provides the <code>multiply_into(C, A, B)</code> primitive, enforcing zero-allocation hot paths.
     </p>
 
-    <div class="callout tip">
-      <div class="callout-title">Verified Hardware Measurement (RTX 3070 sm_86)</div>
-      At dimension $4096 \times 4096$, MatrixFlash-Pro <code>multiply_into</code> achieves <strong>16,895.48 GFLOPS</strong> (8.135 ms), outperforming raw cuBLAS <code>cublasGemmEx</code> at 16,882.73 GFLOPS (8.141 ms).
-    </div>
+    <h2>4.5 Reusable GemmPlan (1 October 2026)</h2>
+    <p>
+      <code>GemmPlan</code> keeps the cuBLASLt descriptor, layouts and selected algorithm for one
+      <code>(M, N, K, transpose, precision, epilogue)</code> problem. Warm <code>execute</code> does not allocate,
+      does not create descriptors and does not query heuristics. <code>GemmPrecision::fp32</code> is
+      <code>CUBLAS_COMPUTE_32F_PEDANTIC</code>. <code>GemmPrecision::tf32</code> is
+      <code>CUBLAS_COMPUTE_32F_FAST_TF32</code>. The convenience cache holds at most 128 plans per host thread,
+      device and stream. A CUDA graph must keep an explicit <code>GemmPlan</code> alive; do not bind the graph
+      lifetime to that cache. <code>tune()</code> times at most 16 heuristics into a scratch matrix and must run
+      before capture. It does not speed up every shape.
+    </p>
+    <p>
+      The legacy <code>multiply</code> / <code>multiply_into</code> path still uses <code>select_backend()</code>:
+      micro-kernel when every dimension is at most 64, warp GEMV for skinny problems, and algo-cached cuBLASLt
+      otherwise. A 1×K problem with <code>K ≥ 1024</code> goes to cuBLASLt but stays strict FP32, so the measured
+      3.98× gain on <code>1×1024×4096</code> is not a TF32 conversion. Chapter 15 records the fair comparison.
+      The September 16,895 GFLOPS figure used a different protocol and is not the result of this run.
+    </p>
   </div>
 `;
 

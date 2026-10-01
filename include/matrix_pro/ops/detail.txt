@@ -1,0 +1,85 @@
+MatrixFlash-Pro — include/matrix_pro/ops
+==========================================
+Bu klasör yalnızca ilanları (header) tutar. Çekirdek gövdeleri src/ops
+ve src/ops/gemm altındadır. Hepsi matrix_pro ad uzayındadır.
+
+product.hpp
+    Matris çarpımı ve dış çarpım imzaları. multiply yeni matris döndürür.
+    multiply_into önceden ayrılmış C'ye yazar; sıcak döngüde tercih edilir.
+    İkisi de gemm_rowmajor() üzerinden şekle göre çekirdek seçer.
+
+gemm.hpp
+    Ekim 2026 sıcak API'si.
+    GemmPrecision: fp32 (pedantic) ve tf32 (Tensor Core, daha az mantissa).
+    GemmEpilogue: none, bias, bias_relu, bias_gelu.
+    GemmOptions: sol/sağ transpose, hassasiyet, epilogue, workspace limiti.
+    GemmPlan: kur, isteğe bağlı tune, execute. Taşınabilir, kopyalanamaz.
+    Kurulduğu thread, cihaz ve compute stream'e bağlıdır. Sıcak execute
+    tahsis, descriptor veya heuristic yapmaz. tune() senkronizedir ve
+    graph capture içinde çağrılamaz; scratch kullandığı için C'yi bozmaz.
+    gemm() device_only çıktı üretir. gemm_into() mevcut çıktıya yazar.
+    beta != 0 yalnızca C'nin cihaz içeriği geçerliyken anlamlıdır.
+    Convenience önbelleği en fazla 128 plan tutar; CUDA graph için açık
+    GemmPlan nesnesini graph'ın ömrü boyunca yaşatın.
+
+elementwise.hpp
+    Aynı şekilli matrisler ve skalerler üzerinde noktasal işlemler.
+    Bölme hem matris/matris hem matris/skaler kabul eder.
+
+math.hpp
+    Trigonometri, hiperbolik fonksiyonlar, erf/erfc/erfinv, lgamma,
+    rsqrt, reciprocal, lerp, addcmul. Çıktı device_only olabilir.
+    atan2 şekil uyuşmazlığında ShapeMismatchError fırlatır.
+
+reductions.hpp
+    sum, mean, min, max, argmin, argmax, variance, stddev, l1/l2 norm,
+    abs_max, row_sum, col_sum. Sonuç çoğu zaman host'a senkron iner;
+    async varyantlar streams/ tarafındadır.
+
+broadcast.hpp
+    add/multiply_row_vector, add/multiply_col_vector ve genel
+    broadcast_add / broadcast_multiply. (N,1) ile (1,M) dahil.
+
+shape.hpp
+    reshape, flatten yardımcıları, concat, stack, slice, one_hot.
+    Şekil değişince de host aynası bayat kalır.
+
+transforms.hpp
+    transpose, softmax (sayısal olarak kararlı, çok bloklu) ve benzeri
+    yoğun dönüşümler.
+
+masking.hpp
+    Koşullu seçim ve maske uygulama. Yayın kuralları broadcast ile aynıdır.
+
+precision.hpp
+    Daha düşük hassasiyete paketleme / açma. GEMM'in TF32 politikasından
+    ayrıdır: TF32 bir depolama tipi değil, cuBLAS compute modudur.
+
+advanced.hpp
+    determinant ve inverse gibi tek çağrılık yoğun cebir. Tekrarlanan
+    sağ taraf için factorization.hpp içindeki LUFactorization daha uygundur.
+
+linalg.hpp
+    cuSOLVER: QR, SVD, simetrik özdeğer, Cholesky, rank, pseudo-inverse,
+    en küçük kareler. Başarısızlık SolverError olur.
+
+linalg_extended.hpp
+    lu() L, U ve permütasyon matrisi P döndürür (PA = LU). Bu, faktörü
+    saklayan LUFactorization sınıfından farklı, tek atışlık bir sonuçtur.
+    trsm / trmm üçgensel çözme ve çarpma.
+    matrix_power ikili üs alma. Negatif INT_MIN taşması engellenir.
+    matrix_exp: order=13 (varsayılan) scaling-and-squaring + Padé [13/13].
+    Diğer order değerleri 1..64 ölçeklenmiş Taylor'dır. İç GEMM'ler strict FP32.
+    log_determinant işaret döndürmez; işaret için slogdet().
+    batch_solve, batch_inverse, batch_det rank-3 tensörler içindir.
+    batch_det negatif determinantın işaretini korur.
+
+factorization.hpp
+    LUFactorization(A, max_rhs). A bir kez faktörlenir.
+    solve(rhs, transpose) yeni device_only çözüm döndürür.
+    solve_into önceden ayrılmış çıktıya yazar ve max_rhs sütununa kadar
+    tahsis yapmaz. RHS ile çıktı aynı tampon olabilir; önce iç scratch'e
+    kopyalanır. singular() ve slogdet() kurulum sırasında hesaplanır.
+    slogdet() serbest fonksiyonu tek kullanımlık faktör kurar.
+    SLogDetResult: sign (int) ve log_abs_det (double). Tekil matriste
+    {0, -infinity}. 0×0 matriste {1, 0}.

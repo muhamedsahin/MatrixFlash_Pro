@@ -260,56 +260,27 @@ zeros · ones · identity · random · uniform · randn · glorot (Xavier init)
 
 ## 🏗️ Mimari ve Kaynak Kod Yapısı
 
-Proje, sorumlulukların net şekilde ayrıldığı modüler bir dosya yapısına sahiptir:
+Kamusal başlıklar `include/matrix_pro/` altındadır. Tek giriş `matrix_pro/matrix_pro.hpp`.
+Gövdeler `src/` altındadır. Her kod klasöründe `detail.txt` o klasördeki dosyaları tek tek anlatır.
+GEMM alt sistemi için uzun metin: [`src/ops/gemm/detail.txt`](src/ops/gemm/detail.txt).
+Kısa harita: [`include/matrix_pro/detail.txt`](include/matrix_pro/detail.txt) ve [`src/detail.txt`](src/detail.txt).
 
 ```text
-MatrixFlash_Pro/
-│
-├── include/matrix_pro/
-│   ├── matrix.hpp              # Genel (public) Matrix API tanımı
-│   ├── tensor.hpp              # GPU-resident ND Tensor tanımı
-│   ├── operations.hpp          # GPU operasyon fonksiyon imzaları
-│   ├── autograd.hpp            # Variable ve VarTensor (otomatik türev) API'si
-│   └── cuda_utils.hpp          # CUDA hata kontrolü ve senkronizasyon yardımcıları
-│
-├── src/
-│   ├── matrix.cu                    # Yaşam döngüsü, kopyalama, save/load işlemleri
-│   ├── matrix_factories.cu          # zeros, ones, identity, random/randn/glorot
-│   ├── operations_elementwise.cu    # add, subtract, Hadamard çarpımı, skaler işlemler, broadcast
-│   ├── operations_matmul.cu         # cuBLAS matris çarpımı + outer_product
-│   ├── operations_transforms.cu     # transpose, relu, softmax, flatten, slice
-│   ├── operations_statistics.cu     # GPU indirgemeleri (sum/mean/min/max/...)
-│   ├── operations_shape.cu          # divide, genel broadcast (add/sub/mul/div), reshape, concat/stack, one_hot
-│   ├── operations_view.cu           # zero-copy MatrixView: transpose/slice/reshape/as_strided + materialize
-│   ├── operations_inplace.cu        # in-place varyantlar: add_/relu_/broadcast_add_ ...
-│   ├── operations_indexing.cu       # index_select/gather/scatter_add/embedding (+backward)
-│   ├── operations_sparse.cu         # CSR sparse: from_dense/from_coo, spmv, sparse_matmul
-│   ├── operations_streams.cu        # stream havuzu (4 stream) + warp-shuffle async argmax/argmin
-│   ├── operations_fused.cu          # fused kernel'ler: sigmoid*mul, relu+add, (x+y)*z, scale+bias, bias+gelu
-│   ├── operations_rng.cu            # Philox device RNG: randn_gpu/uniform_gpu/dropout_gpu + rng_seed
-│   ├── operations_dtype.cu          # dtype soyutlaması: DType, TypedBuffer, sum_f64, fp16 pack/unpack
-│   ├── operations_activation.cu     # softplus, mish, hard* ve selu/prelu aktivasyonları
-│   ├── operations_loss.cu           # fused BCE-with-logits ve softmax cross-entropy
-│   ├── operations_conv_backward.cu  # conv2d / pooling geri yayılım ve tensor yardımcıları
-│   ├── operations_advanced.cu       # determinant ve inverse hesaplamaları
-│   ├── operations_ml.cu              # aktivasyon, normalizasyon ve dropout
-│   ├── operations_conv.cu            # NCHW conv2d ve pooling, cuDNN/fallback
-│   ├── autograd.cu                   # Variable/VarTensor otomatik türev grafiği + loss'lar
-│   ├── tensor.cu                     # GPU-resident ND Tensor yaşam döngüsü
-│   └── cuda_utils.cu                # CUDA hata kontrol mekanizması ve bellek havuzu
-│
-├── tests/                       # Davranış (behavior) testleri
-├── benchmarks/
-│   └── perf_matrix.cpp          # GPU matris çarpımı benchmark aracı
-├── examples/
-│   └── basic_gpu_usage.cpp      # Temel kullanım örneği
-│
-├── CMakeLists.txt
-├── LICENSE
-└── README.md
+include/matrix_pro/
+  matrix_pro.hpp          şemsiye başlık
+  core/                   Matrix, Tensor, hata, havuz, cihaz, serileştirme
+  ops/gemm.hpp            GemmPlan, gemm, gemm_into
+  ops/factorization.hpp   LUFactorization, slogdet
+  ops/linalg*.hpp         cuSOLVER ve matrix_exp / trsm
+  nn/  autograd/  sparse/ indexing/ view/ rng/ streams/
+  detail/gemm/            dispatcher eşikleri; istemci include etmez
+
+src/
+  core/  ops/  ops/gemm/  nn/  autograd/  sparse/  indexing/  rng/  streams/
 ```
 
-Bu ayrıştırma sayesinde her `.cu` dosyası tek bir sorumluluğa odaklanır: örneğin matris çarpımı mantığı yalnızca `operations_matmul.cu` içinde, istatistiksel indirgemeler ise yalnızca `operations_statistics.cu` içinde bulunur. Bu yapı, kütüphaneye yeni bir operasyon eklemeyi veya mevcut bir operasyonu hata ayıklamayı önemli ölçüde kolaylaştırır.
+`src/ops/gemm/` şekle göre micro, GEMV, tiled, cuBLAS GemmEx ve algo-önbellekli cuBLASLt yollarını tutar.
+Eski `multiply` bu dispatcher'a gider. Yeni `GemmPlan` hassasiyeti (FP32 veya TF32), transpose'u ve fused epilogue'u açık seçer.
 
 ---
 

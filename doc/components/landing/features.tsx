@@ -25,8 +25,8 @@ export function Features() {
         en: 'Shape-aware GEMM · cuBLAS-class',
       },
       body: {
-        tr: 'Mikro / GEMV / algo-cache’li cublasLt / TENSOR_OP. 1024²’de cuBLAS’ın %99’u; 2048²’de geçer. `multiply_into` tahsissiz hot path.',
-        en: 'Micro / GEMV / algo-cached cublasLt / TENSOR_OP. 99% of cuBLAS at 1024²; ahead at 2048². `multiply_into` is the allocation-free hot path.',
+        tr: 'Mikro / GEMV / algo-cache’li cublasLt. Uzun vektör yolunda eski sürüme göre 3.98×. FP32 tuned plan 1024²’de ham cuBLAS’tan 1.24× hızlı.',
+        en: 'Micro / GEMV / algo-cached cublasLt. 3.98× on the long-vector path versus the previous build. The FP32 tuned plan is 1.24× faster than raw cuBLAS at 1024².',
       },
       tag: 'Compute',
     },
@@ -61,8 +61,8 @@ export function Features() {
         en: 'Fused GEMM + Bias + Act',
       },
       body: {
-        tr: '`gemm_bias_relu` / `gemm_bias_gelu` tek cublasLt epilogue. Ayrı 3 kernel zincirine göre 1–6×. Ayrıca `fused_bias_gelu` elementwise zincirleri.',
-        en: '`gemm_bias_relu` / `gemm_bias_gelu` as one cublasLt epilogue. 1–6× over a 3-kernel chain. Plus elementwise chains like `fused_bias_gelu`.',
+        tr: '`gemm_bias_relu` / `gemm_bias_gelu` tek cublasLt epilogue. Ayrıca `fused_bias_gelu` gibi elementwise zincirler. Bu turda ayrı hız katsayısı ölçülmedi.',
+        en: '`gemm_bias_relu` / `gemm_bias_gelu` as one cublasLt epilogue, plus elementwise chains such as `fused_bias_gelu`. This round did not publish a separate speedup.',
       },
       tag: 'Optimization',
     },

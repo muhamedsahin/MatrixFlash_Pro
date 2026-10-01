@@ -1,0 +1,19 @@
+MatrixFlash-Pro — src/sparse
+============================
+sparse.cu
+    CSR kurulumu (yoğun matristen veya üçlülerden), spmv (y = A*x) ve
+    seyrek×yoğun matmul. Boş CSR'nin yoğun, SpMV ve seyrek×yoğun çıktısı
+    cihaz üzerinde sıfırlanır; çöp bırakılmaz.
+
+sparse_formats.cu
+    COO: sırasız üçlüler sıralanır, aynı (satır, sütun) değerleri toplanır.
+    Dikdörtgen CSC↔CSR dönüşümü ve CSC transpose. CSC→CSR artık arada yoğun
+    matris kurmaz; host tarafında O(nnz) çıkarım ve sıralama yapar.
+    sparse_add gerçekten alpha*A + beta*B hesaplar (eski yer tutucu kalktı).
+    Host dönüşümü, hesap stream'ini bekler; aksi halde GPU yazmasıyla yarışır.
+    COO çekirdeği grid-stride ile 200.000. kayıt dahil kuyruğun sonuna kadar gider.
+    Bu yolların bir kısmı host senkronizasyonu içerir. Hız tablosu üretilmedi;
+    "GPU'da yeni seyrek motor" diye sunulmaz. CSC yoğun çarpım yedeği ayrıca
+    optimize edilmemiştir.
+
+İlgili başlıklar: include/matrix_pro/sparse/sparse.hpp ve sparse_formats.hpp.

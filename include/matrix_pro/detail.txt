@@ -1,0 +1,98 @@
+MatrixFlash-Pro — include/matrix_pro dosya haritası
+====================================================
+Tek genel giriş: matrix_pro.hpp. Bunu dahil etmek bütün kamusal API'yi açar.
+detail/*.cuh ve detail/gemm/*.cuh şemsiyeye dahil değildir; __global__
+çekirdek tanımları taşırlar ve yalnızca .cu derleme biriminden include edilir.
+
+Çekirdek (core/)
+----------------
+core/matrix.hpp
+    Kamusal Matrix. Satır-majör FP32, host aynası + cihaz tamponu.
+    Operatörler (+, -, *, /), fabrika metotları ve konfor sarmalayıcıları
+    burada ilan edilir; gövdeler src/core ve src/ops altındadır.
+    host_current() false iken at() ve const data() InvalidArgumentError
+    fırlatır. device_only modda host tamponu download() ile oluşur.
+
+core/tensor.hpp
+    Rank-N Tensor. Conv için NCHW düzeni. Cihazda durur; download() açık
+    çağrılmadan host'a inmez. reshape / concat / stack aynı bayat-ayna
+    sözleşmesini kullanır.
+
+core/memory_mode.hpp
+    host_and_device (host aynası + cihaz) ve device_only (yalnız cihaz).
+
+core/memory_pool.hpp
+    Cihaz etiketli blok havuzu, power-of-two sınıfı, empty_cache,
+    memory_stats, unified memory yardımcıları. Kapanışta cached ve live
+    bloklar bir kez serbest bırakılır (çift free yok). Taşan boyut reddedilir.
+
+core/errors.hpp
+    MatrixProError kökü. Türevler: ShapeMismatchError, InvalidArgumentError,
+    OutOfRangeError, CudaError, SolverError, IoError.
+
+core/backend.hpp
+    device_count, current_device, set_device, DeviceScope (RAII).
+    Çoklu GPU'da havuz blokları yanlış cihaza dönmez.
+
+core/cuda_utils.hpp
+    checkCuda, senkronizasyon, thread+cihaz başına stream ve cuBLAS /
+    cuSOLVER / cuDNN handle'ları.
+
+core/dtype.hpp
+    DType, TypedBuffer, fp16 paketleme, daha geniş indirgeme birikimi.
+
+core/serialization.hpp
+    Checkpoint ve matris/tensör I/O. Cihaz adresi ve host-ayna bayrağı
+    dosyaya ham pointer olarak yazılmaz.
+
+Operasyonlar (ops/)
+-------------------
+ops/operations.hpp     Toplu operasyon ilanları (eski şemsiye).
+ops/product.hpp        multiply, multiply_into, outer_product.
+ops/gemm.hpp           GemmPlan, GemmOptions, gemm, gemm_into. Yeni sıcak yol.
+ops/elementwise.hpp    add/sub/mul/div, exp, log, sqrt, abs, clamp, pow.
+ops/math.hpp           sin/cos/tan, hiperbolik, erf, rsqrt, reciprocal, addcmul.
+ops/reductions.hpp     sum, mean, min/max, argmin/argmax, norm, varyans, satır/sütun.
+ops/broadcast.hpp      satır/sütun vektörü ve genel 2B broadcast.
+ops/shape.hpp          reshape, concat, stack, slice, one_hot, divide.
+ops/transforms.hpp     transpose, flatten, softmax ve ilgili dönüşümler.
+ops/masking.hpp        maskeleme ve where benzeri seçimler.
+ops/precision.hpp      hassasiyet dönüşümleri.
+ops/advanced.hpp       determinant, inverse ve ileri tek-atış çözücüler.
+ops/linalg.hpp         QR, SVD, özdeğer, Cholesky, pinv, least squares (cuSOLVER).
+ops/linalg_extended.hpp  lu (L/U/P), trsm, trmm, matrix_power, matrix_exp,
+                       log_determinant, batch_solve / batch_inverse / batch_det.
+ops/factorization.hpp  LUFactorization, solve_into, slogdet. Tekrar kullanılan faktör.
+
+Sinir ağı (nn/)
+---------------
+nn/activation.hpp   relu, leaky_relu, elu, gelu, swish, sigmoid, tanh,
+                    softplus, mish, hard*, selu, prelu ve geri türevleri.
+nn/loss.hpp         BCE-with-logits, softmax cross-entropy.
+nn/ml.hpp           batch_norm, layer_norm, dropout.
+nn/conv.hpp         NCHW conv2d, max/avg pool, forward ve backward.
+nn/batch.hpp        batch_matmul (strided batched GEMM).
+nn/fused.hpp        fused_bias_gelu, fused_relu_add, fused_scale_bias vb.
+nn/inplace.hpp      relu_, add_, gelu_ gibi tamponu yerinde güncelleyenler.
+
+Diğer kamusal modüller
+----------------------
+autograd/autograd.hpp   Variable, VarTensor, tape, NoGrad, checkpoint.
+sparse/sparse.hpp       CSR, spmv, sparse×dense.
+sparse/sparse_formats.hpp  COO, CSC, dönüşüm, sparse_add, SpGEMM benzeri yollar.
+indexing/indexing.hpp   gather, scatter, embedding.
+view/view.hpp           Sıfır kopya MatrixView (stride).
+rng/rng.hpp             Philox tabanlı cihaz RNG ve genişletilmiş dağılımlar.
+streams/stream_pool.hpp Havuz stream'leri, async argmax/argmin, pinned host.
+streams/execution.hpp   CUDA Graph, Pipeline.
+
+Dahili (detail/) — istemci include etmesin
+------------------------------------------
+detail/kernel_helpers.cuh   Ortak grid/stride ve hata kalıpları.
+detail/fused_ops.cuh        Fused çekirdek gövdeleri.
+detail/gemm/gemm_api.hpp    gemm_rowmajor, epilogue, backend ilanları.
+detail/gemm/gemm_config.cuh Eşikler ve select_backend().
+
+Her alt klasörün kendi detail.txt dosyası, o klasördeki dosyaları tek tek açar.
+Uygulama gövdeleri src/ altındadır; src/detail.txt ve src/ops/gemm/detail.txt
+aynı isimlerin .cu karşılığını anlatır.

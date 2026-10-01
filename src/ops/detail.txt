@@ -1,0 +1,70 @@
+MatrixFlash-Pro — src/ops (gemm/ hariç)
+=========================================
+elementwise.cu
+    Aynı şekilli toplama, çıkarma, Hadamard çarpım, bölme, negatifleme,
+    skaler ekleme, exp, log, sqrt, abs, clamp, pow. Çoğu çekirdek float4
+    ile vektörlenir. Çıktı cihazdadır.
+
+math.cu
+    sin/cos/tan ve tersleri, sinh/cosh, erf ailesi, lgamma, rsqrt,
+    reciprocal, lerp, addcmul. rsqrt ve reciprocal SFU içsel fonksiyonlarına
+    gider. erfinv rasyonel yaklaşım kullanır.
+
+matmul.cu
+    Kamusal multiply ve multiply_into. Şekil kontrolünden sonra
+    detail::gemm::gemm_rowmajor çağırır. outer_product iki vektörden
+    matris üretir. Yeni GemmPlan API'si buradan geçmez; o gemm/ altındadır.
+
+statistics.cu
+    sum, mean, min, max, argmin, argmax, varyans, standart sapma, L1/L2,
+    abs_max, row_sum, col_sum. Çok bloklu indirgeme ve son katman birleştirme.
+
+shape.cu
+    reshape (eleman sayısı korunur), concat, stack, slice, one_hot,
+    genel broadcast toplama/çarpma ve bölme. Yayın uyumsuzluğu
+    ShapeMismatchError.
+
+transforms.cu
+    transpose, flatten, sayısal kararlı softmax (max çıkarma), relu gibi
+    tarihi dönüşüm gövdeleri. Yeni aktivasyonların çoğu nn/activation.cu'dadır.
+
+masking.cu
+    Maske uygulama ve koşullu yazma.
+
+precision.cu
+    FP32 dışına paketleme ve geri açma. TF32 GEMM politikası burada değil,
+    cuBLAS compute tipinde seçilir (gemm_plan.cu).
+
+advanced.cu
+    Tek çağrılık determinant ve inverse. Tekrarlanan RHS için
+    factorization.cu içindeki saklanan LU daha ucuzdur: faktör bir kez,
+    her sağ taraf için yalnız getrs.
+
+extended.cu
+    advanced/linalg_extended arasına dağılmış yardımcı çekirdekler.
+
+linalg.cu
+    cuSOLVER yoğun: QR, SVD, simetrik özdeğer, Cholesky, rank, pinv,
+    least squares. Workspace sorgusu, faktör ve info kontrolü burada.
+    Başarısız durum SolverError.
+
+linalg_extended.cu
+    lu() P, L, U üretir. trsm/trmm cuBLAS üçgensel rutinleri.
+    matrix_power tekrarlı kare. matrix_exp Padé [13/13] veya Taylor.
+    log_determinant factorization.hpp slogdet üzerine kurulur, yalnız
+    log mutlak değeri float döndürür. batch_* rank-3 döngü veya batched
+    vendor çağrısıdır. batch_det işareti düşürmez.
+
+dtype.cu
+    TypedBuffer, sum_f64 birikimi, fp16 pack/unpack.
+
+view.cu
+    MatrixView: stride ile transpose/slice/reshape kopyasızdır.
+    materialize() bitişik cihaz matrisi üretir. Görünüm, sahibin
+    tamponu yaşadığı sürece geçerlidir.
+
+factorization.cu
+    Ayrıntılı blok yorum dosyanın başındadır. Özet: satır-majör A,
+    sütun-majör faktöre kopyalanır, cusolverDnSgetrf, köşegen ve pivot
+    host'a inip double log-abs ve işaret hesaplanır, solve_into getrs
+    kullanır ve tahsis yapmaz.

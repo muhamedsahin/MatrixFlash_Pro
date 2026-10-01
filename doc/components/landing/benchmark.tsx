@@ -9,47 +9,44 @@ export function Benchmark() {
   const { lang, t } = useLanguage()
 
   const stats = [
-    { value: '~16.8', label: { tr: 'TFLOPS @ 2048² (into)', en: 'TFLOPS @ 2048² (into)' } },
-    { value: '99–138%', label: { tr: 'cuBLAS Oranı', en: 'cuBLAS Ratio' } },
-    { value: '6×+', label: { tr: 'Fused vs Zincir', en: 'Fused vs Chain' } },
-    { value: '~37×', label: { tr: 'vs NumPy OpenBLAS', en: 'vs NumPy OpenBLAS' } },
+    { value: '13.1', label: { tr: 'TFLOPS TF32 @ 2048²', en: 'TFLOPS TF32 @ 2048²' } },
+    { value: '1.24×', label: { tr: 'FP32 tuned vs cuBLAS @ 1024²', en: 'FP32 tuned vs cuBLAS @ 1024²' } },
+    { value: '3.98×', label: { tr: 'Uzun vektör, eski sürüme göre', en: 'Long vector vs previous build' } },
+    { value: '13×', label: { tr: '1024² FP32 plan vs NumPy duvar', en: '1024² FP32 plan vs NumPy wall' } },
   ]
 
-  const benchCode = `# GPU + rakip motorlar + doc sync
-cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm
-./build/benchmarks/Release/matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json
-py -3 tools/bench_rivals.py
-python tools/gen_bench_page.py
-python tools/sync_benchmark_data.py`
+  const benchCode = `python tools/build_local.py --reconfigure --jobs 4
+.\\build\\perf-release\\benchmarks\\matrix_pro_bench_gemm_fair.exe --output benchmarks/results/run.json --warmup 10 --repeats 30 --batch 32
+python tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json --warmup 10 --repeats 30 --batch 32`
 
   const comparisonData = [
     {
-      name: t('NumPy @ OpenBLAS CPU (1024², ölçüldü)', 'NumPy @ OpenBLAS CPU (1024², measured)'),
-      time: '6.3 ms / 343 GFLOPS',
-      speedup: '1× CPU',
-      width: 3,
+      name: t('NumPy @ OpenBLAS (1024², CPU duvar)', 'NumPy @ OpenBLAS (1024², CPU wall)'),
+      time: '4.91 ms',
+      speedup: 'CPU',
+      width: 4,
       color: 'from-zinc-500 to-zinc-400',
     },
     {
-      name: t('NVIDIA cublasLt (1024², ölçüldü)', 'NVIDIA cublasLt (1024², measured)'),
-      time: '0.28 ms / 7600 GFLOPS',
-      speedup: '~22×',
-      width: 68,
+      name: t('MatrixFlash-Pro tuned plan (1024² TF32)', 'MatrixFlash-Pro tuned plan (1024² TF32)'),
+      time: '0.176 ms / 12185 GFLOPS',
+      speedup: '%96 cuBLAS',
+      width: 96,
+      color: 'from-emerald-500 to-primary',
+    },
+    {
+      name: t('Ham cuBLASLt (1024² TF32)', 'Raw cuBLASLt (1024² TF32)'),
+      time: '0.171 ms / 12524 GFLOPS',
+      speedup: '%99',
+      width: 99,
       color: 'from-violet-500 to-violet-300',
     },
     {
-      name: t('Ham cuBLAS (1024², ölçüldü)', 'Raw cuBLAS (1024², measured)'),
-      time: '0.19 ms / 11275 GFLOPS',
-      speedup: '~33×',
-      width: 99,
-      color: 'from-cyan-500 to-cyan-300',
-    },
-    {
-      name: t('MatrixFlash-Pro multiply_into (1024²)', 'MatrixFlash-Pro multiply_into (1024²)'),
-      time: '0.19 ms / 11155 GFLOPS',
-      speedup: '~33× · %99 cuBLAS',
+      name: t('Ham cuBLAS (1024² TF32)', 'Raw cuBLAS (1024² TF32)'),
+      time: '0.169 ms / 12694 GFLOPS',
+      speedup: t('en hızlı TF32', 'fastest TF32'),
       width: 100,
-      color: 'from-emerald-500 to-primary',
+      color: 'from-cyan-500 to-cyan-300',
     },
   ]
 
@@ -60,18 +57,18 @@ python tools/sync_benchmark_data.py`
           <Reveal>
             <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-primary">
               <Gauge className="size-3.5" />
-              <span>{t('CUBlAS SINIFINDA — ÖLÇÜLDÜ', 'CUBLAS-CLASS — MEASURED')}</span>
+              <span>{t('1 EKİM 2026 — AYNI HASSASİYET', '1 OCTOBER 2026 — SAME PRECISION')}</span>
             </div>
             <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
               {t(
-                'cuBLAS ile aynı bant — çoğu boyutta eşit veya daha hızlı',
-                'Same band as cuBLAS — equal or faster on most sizes',
+                'TF32 büyük karelerde cuBLAS ile aynı bant',
+                'Same band as cuBLAS on large TF32 squares',
               )}
             </h2>
             <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
               {t(
-                'Algo-cache’li cublasLt + TENSOR_OP ile 1024²’de cuBLAS’ın %99’u, 2048² ve 512²’de geçiyoruz. NumPy@OpenBLAS’a karşı ~37×. PyTorch/CuPy/ArrayFire/JAX de cuBLAS tavanına oturur; fark C++17 API ve fused epilogue.',
-                'With algo-cached cublasLt + TENSOR_OP we hit 99% of cuBLAS at 1024² and beat it at 2048² and 512². ~37× over NumPy@OpenBLAS. PyTorch/CuPy/ArrayFire/JAX also sit on the cuBLAS ceiling; the delta is a C++17 API and fused epilogues.',
+                'RTX 3070 Laptop, önceden ayrılmış tampon. TF32 1024²’de ham cuBLAS 0.169 ms; tuned plan 0.176 ms. FP32 1024²’de tuned plan ham cuBLAS’tan 1.24× hızlı. PyTorch ve CuPy bu turda kurulu değildi.',
+                'RTX 3070 Laptop, preallocated buffers. At TF32 1024² raw cuBLAS is 0.169 ms and the tuned plan is 0.176 ms. At FP32 1024² the tuned plan is 1.24× faster than raw cuBLAS. PyTorch and CuPy were not installed this round.',
               )}
             </p>
 
@@ -97,7 +94,7 @@ python tools/sync_benchmark_data.py`
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <span className="flex items-center gap-2 font-mono text-xs font-bold text-foreground">
                   <Cpu className="size-4 text-primary" />
-                  {t('1024×1024 GEMM (ölçüldü)', '1024×1024 GEMM (measured)')}
+                  {t('1024² TF32 GEMM (ölçüldü)', '1024² TF32 GEMM (measured)')}
                 </span>
                 <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
                   RTX 3070 Laptop · sm_86
