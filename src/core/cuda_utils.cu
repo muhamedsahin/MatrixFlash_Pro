@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <limits>
 
 namespace matrix_pro {
 namespace {
@@ -62,12 +63,15 @@ struct CudaExecutionContext {
     }
 
     ~CudaExecutionContext() {
+        int old = 0; cudaGetDevice(&old);
+        if (old != device) cudaSetDevice(device);
         if (blas != nullptr) {
             cublasSetWorkspace(blas, nullptr, 0);
             cublasDestroy(blas);
         }
         if (blas_workspace != nullptr) cudaFree(blas_workspace);
         if (stream != nullptr) cudaStreamDestroy(stream);
+        if (old != device) cudaSetDevice(old);
     }
 };
 
@@ -173,20 +177,16 @@ struct DeviceMemoryPool {
     std::unordered_map<void*, BlockInfo> block_info;
 
     ~DeviceMemoryPool() {
-        for (auto& device_entry : free_blocks) {
-            for (auto& bucket : device_entry.second) {
-                for (void* ptr : bucket.second) {
-                    if (ptr != nullptr) cudaFree(ptr);
-                    auto info_it = block_info.find(ptr);
-                    if (info_it != block_info.end() && info_it->second.ready_event != nullptr) {
-                        cudaEventDestroy(info_it->second.ready_event);
-                    }
-                }
-            }
-        }
+        // free_blocks is only an index into block_info: freeing both collections
+        // double-frees every cached allocation at shutdown. The ownership map
+        // contains cached and outstanding blocks, so release each exactly once.
+        int old = 0; cudaGetDevice(&old);
         for (auto& entry : block_info) {
+            cudaSetDevice(entry.second.device);
             if (entry.first != nullptr) cudaFree(entry.first);
+            if (entry.second.ready_event != nullptr) cudaEventDestroy(entry.second.ready_event);
         }
+        cudaSetDevice(old);
     }
 
     static DeviceMemoryPool& instance() {
@@ -199,6 +199,8 @@ struct DeviceMemoryPool {
 // reusable for any nearby request size, avoiding per-exact-size fragmentation.
 std::size_t size_class(std::size_t bytes) {
     constexpr std::size_t min_class = 256;
+    if (bytes > std::numeric_limits<std::size_t>::max()/2 + 1)
+        throw InvalidArgumentError("Device allocation size exceeds the pool size-class limit");
     std::size_t cl = min_class;
     while (cl < bytes) cl *= 2;
     return cl;
