@@ -285,6 +285,9 @@ void gemm_cached_raw(const float* left,const float* right,float* output,const fl
                      int m,int n,int k,Epilogue epi,cudaStream_t stream) {
     if(m<0||n<0||k<0)throw InvalidArgumentError("Negative GEMM dimensions");
     GemmOptions options;options.precision=GemmPrecision::tf32;
+    // The old default vector kernels used full FP32 input precision. Preserve
+    // that contract when a long vector is redirected to the vendor backend.
+    if(epi==Epilogue::none && (m==1 || n==1))options.precision=GemmPrecision::fp32;
     options.epilogue=static_cast<GemmEpilogue>(static_cast<int>(epi));
     GemmPlanAccess::run(cached(m,n,k,options,current_device(),stream),left,right,output,bias);
 }

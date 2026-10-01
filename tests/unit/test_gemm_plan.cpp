@@ -65,6 +65,19 @@ int main() {
         for(size_t i=0;i<out.size();++i)check_near(out.data()[i],reference.data()[i],0.025,"TF32 graph agrees with FP32 reference");
         right.fill(0);graph.replay();out.mark_host_stale();out.download();
         for(float x:out.data())check_near(x,0,0,"graph reads updated input buffers");
+        section("vector kernels and long vector dispatch preserve full FP32 input precision");
+        for(size_t inner:{size_t(127),size_t(2048)}) {
+        Matrix vector=Matrix::random(1,inner,91),weights=Matrix::random(inner,127,97);
+        for(size_t i=0;i<vector.size();++i)vector.data()[i]-=0.5f;
+        for(size_t i=0;i<weights.size();++i)weights.data()[i]-=0.5f;
+        vector.upload();weights.upload();
+        Matrix product=multiply(vector,weights);product.download();
+        for(size_t j=0;j<weights.cols();++j) {
+            double reference=0;
+            for(size_t k=0;k<weights.rows();++k)reference+=static_cast<double>(vector.data()[k])*weights.data()[k*weights.cols()+j];
+            check_near(product.at(0,j),reference,2e-5,"long vector agrees with strict double-dot tolerance");
+        }
+        }
         section("default cached GEMM across concurrent threads");
         auto worker=[](float value){
             Matrix x=Matrix::ones(256,256)*value,y=Matrix::ones(256,256),z(256,256,MemoryMode::device_only);
