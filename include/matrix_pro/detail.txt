@@ -82,7 +82,7 @@ sparse/sparse.hpp       CSR, spmv, sparse×dense.
 sparse/sparse_formats.hpp  COO, CSC, dönüşüm, sparse_add, SpGEMM benzeri yollar.
 indexing/indexing.hpp   gather, scatter, embedding.
 view/view.hpp           Sıfır kopya MatrixView (stride).
-rng/rng.hpp             Philox tabanlı cihaz RNG ve genişletilmiş dağılımlar.
+rng/rng.hpp             Hash-mix sayaç tabanlı cihaz RNG ve genişletilmiş dağılımlar.
 streams/stream_pool.hpp Havuz stream'leri, async argmax/argmin, pinned host.
 streams/execution.hpp   CUDA Graph, Pipeline.
 
@@ -96,3 +96,11 @@ detail/gemm/gemm_config.cuh Eşikler ve select_backend().
 Her alt klasörün kendi detail.txt dosyası, o klasördeki dosyaları tek tek açar.
 Uygulama gövdeleri src/ altındadır; src/detail.txt ve src/ops/gemm/detail.txt
 aynı isimlerin .cu karşılığını anlatır.
+
+
+Yeni özel uygulama yapısı
+------------------------
+Kamusal başlıklar ve include yolları korunmuştur. src/ altındaki yeni .inc
+ve .cuh parçaları yalnız sahip CUDA derleme birimine aittir; bu şemsiyeye
+dahil edilmez ve install paketinin public başlıkları arasına girmez.
+Fiziksel dosya haritası: ../../detail.txt ve ../../src/detail.txt.

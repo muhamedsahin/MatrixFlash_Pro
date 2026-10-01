@@ -78,7 +78,8 @@ gemm_plan.cu
     Plan oluşturma ve tune() graph capture sırasında reddedilir.
     tune() en fazla 16 heuristic adayını scratch çıktıya yazar; kullanıcının
     C tamponu ve beta girdisi değişmez. Üç kısa denemenin ortanca süresi
-    seçilir. Önbellek üst sınırı 128 plandır; taşınca en eski anahtar silinir.
+    seçilir. Önbellek üst sınırı 128 plandır; taşınca sıralı anahtar haritasının
+    ilk girdisi silinir.
     Graph, convenience cache'in ömrüne bağlanmamalıdır: açık GemmPlan tutun.
     Plan oluşturulduğu thread, cihaz ve stream dışında execute edilemez.
     Çıktı A, B ve bias'tan ayrı, bitişik ve doğru cihazda olmalıdır.
@@ -96,3 +97,12 @@ ve Next.js /docs/performans sayfasındadır. Kısa özet:
 - 1024³ ve 2048³ yeni varsayılan, eski varsayılandan yavaş (0.85× ve 0.90×).
 - Küçük şekillerde saat kilitli olmadığı için yüzde birkaçlık farklara
   hız iddiası bağlanmaz. PyTorch ve CuPy bu ortamda ölçülmedi.
+
+
+Görev dosyalarına ayrılan uygulamalar
+------------------------------------
+gemm_plan.cu -> plan/detail.txt
+Bu .cu dosyaları küçük derleme girişleridir; uygulama gövdeleri yukarıdaki
+klasörlerdeki .inc/.cuh parçalarıdır. Parçalar aynı namespace ve derleme
+biriminde kaldığından inlining, statik cache ve cihaz kernel düzeni korunur.
+Ayrıntılı mimari/bakım rehberi: kütüphane kökündeki detail.txt.

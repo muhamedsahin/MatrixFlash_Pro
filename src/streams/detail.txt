@@ -20,3 +20,12 @@ execution.cu
 doc performans sayfasında ve PERFORMANCE_REPORT.md bölüm 6'dadır. Küçük
 şekillerde host gönderim maliyeti düşer; her çıktıyı host'ta okuyan kod
 aynı kazancı alamaz.
+
+
+Görev dosyalarına ayrılan uygulamalar
+------------------------------------
+execution.cu -> execution/detail.txt
+Bu .cu dosyaları küçük derleme girişleridir; uygulama gövdeleri yukarıdaki
+klasörlerdeki .inc/.cuh parçalarıdır. Parçalar aynı namespace ve derleme
+biriminde kaldığından inlining, statik cache ve cihaz kernel düzeni korunur.
+Ayrıntılı mimari/bakım rehberi: kütüphane kökündeki detail.txt.

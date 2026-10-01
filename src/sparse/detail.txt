@@ -17,3 +17,13 @@ sparse_formats.cu
     optimize edilmemiştir.
 
 İlgili başlıklar: include/matrix_pro/sparse/sparse.hpp ve sparse_formats.hpp.
+
+
+Görev dosyalarına ayrılan uygulamalar
+------------------------------------
+sparse_formats.cu -> formats/detail.txt
+sparse.cu -> csr/detail.txt
+Bu .cu dosyaları küçük derleme girişleridir; uygulama gövdeleri yukarıdaki
+klasörlerdeki .inc/.cuh parçalarıdır. Parçalar aynı namespace ve derleme
+biriminde kaldığından inlining, statik cache ve cihaz kernel düzeni korunur.
+Ayrıntılı mimari/bakım rehberi: kütüphane kökündeki detail.txt.

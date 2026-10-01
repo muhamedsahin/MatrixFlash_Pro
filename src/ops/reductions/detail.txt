@@ -1,0 +1,56 @@
+MatrixFlash-Pro — src/ops/reductions
+====================================
+
+Sahip derleme birimi: src/ops/statistics.cu
+Bu klasör kamusal API içermez. Başlıklar include/matrix_pro altındadır.
+.inc dosyaları uygulama gövdeleridir; .cuh dosyaları CUDA yardımcılarıdır.
+Dosyalar yalnızca sahip .cu içinden, orada açılan namespace kapsamında
+dahil edilir. Tek başlarına derlenmez veya uygulama koduna include edilmez.
+
+Dosyalar (sahip .cu içindeki okuma sırası)
+---------------------------------------
+
+scratch.inc
+    Pinned host scratch ve SM sayısına göre sınırlı reduction grid.
+
+scalar_kernels.cuh
+    Blok içi toplam/norm/min/max ve indeks indirgeme çekirdekleri.
+
+axis_kernels.cuh
+    Satır ve sütun indirgemeleri; mevcut warp/shared-memory düzeni korunur.
+
+moment_kernels.cuh
+    Merkezleme, geniş birikim, varyans ve korelasyon çekirdekleri.
+
+scalars.inc
+    GPU partial sonuçlarını hostta birleştirir; skaler API buradadır.
+
+variance.inc
+    İki geçişli varyans; ortalama double ile biriktirilir.
+
+indices.inc
+    Argmin/argmax; eşitliklerde mevcut indeks seçimi korunur.
+
+trace.inc
+    Trace çekirdeği ve skaler host sonucu.
+
+axes.inc
+    Satır/sütun toplamlarını GPU matrisi olarak döndürür.
+
+matrix_methods.inc
+    Matrix metotlarını serbest fonksiyon API ile eşler.
+
+covariance.inc
+    SVD tabanlı condition number, covariance ve correlation.
+
+Performans ve bakım sözleşmesi
+-----------------------------
+Parçalar aynı CUDA derleme biriminde kaldığı için mevcut inlining,
+anonim namespace, kernel launch sırası ve yerel statik durum korunur.
+Yeni sanal çağrı, ek tahsis, veri transferi veya senkronizasyon eklenmez.
+Bir parçayı ayrıca add_library/target_sources içine derlenen kaynak olarak
+eklemeyin: CMake envanterinde HEADER_FILE_ONLY olarak listelenir.
+Yeni bağımlılık gerekiyorsa standart/kamusal başlığı sahip .cu'nun başındaki
+include listesine ekleyin; namespace içindeki parçadan standart başlık açmayın.
+Yeni parçayı cmake/MatrixFlashSources.cmake envanterine ve bu haritaya ekleyin.
+İlgili testleri çalıştırın; sıcak yol değişirse aynı ayarlarla benchmark alın.

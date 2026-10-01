@@ -1,10 +1,15 @@
-MatrixFlash-Pro — src/rng/rng.cu
-=================================
-Sayaç tabanlı Philox RNG. Çekirdek cihaz üzerinde doldurur; her thread
-ayrık bir sayaç aralığı alır, böylece aynı seed aynı diziyi üretir.
+MatrixFlash-Pro — RNG
+=====================
+Kamusal API: include/matrix_pro/rng/rng.hpp. Derleme girişi: rng.cu.
+detail/       Global atomik seed/counter, hash_mix ve dağılım CUDA kernel'leri.
+distributions/  Temel/genişletilmiş girişler ve bağımsız RNGState.
+Her alt klasördeki detail.txt ilgili dosyaları ve okuma sırasını listeler.
 
-uniform ve normal (randn) doldurma, dropout maskesi ve rng_seed burada.
-Genişletilmiş dağılımlar ve RNGState başlığı include/matrix_pro/rng/rng.hpp
-içindedir. Host tarafı std::mt19937 kullanan fabrikalarla cihaz RNG
-dizileri birebir aynı değildir; benchmark karşılaştırırken seed eşitliği
-değer eşitliği anlamına gelmez.
+Mevcut algoritma hash-mix sayaç tabanlıdır; kernel adlarında Philox yazması
+tam Philox algoritması kullanıldığı anlamına gelmez. Refactor üreticiyi,
+sayaç ilerleme miktarlarını, seed davranışını veya örnek sırasını değiştirmez.
+Global seed/counter tek derleme biriminde kalır; her dağılım için ayrı durum
+oluşturulmaz. RNGState kendi seed/counter değerlerini taşır.
+Normal doldurma Box-Muller kullanır. Bazı genişletilmiş işlemler (randperm)
+host sıralaması içerir. Host std::mt19937 fabrikalarıyla cihaz dizileri aynı
+değildir. Mevcut test_rng_extended tekrarlanabilirlik ve dağılımları kontrol eder.

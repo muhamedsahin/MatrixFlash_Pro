@@ -68,3 +68,17 @@ factorization.cu
     sütun-majör faktöre kopyalanır, cusolverDnSgetrf, köşegen ve pivot
     host'a inip double log-abs ve işaret hesaplanır, solve_into getrs
     kullanır ve tahsis yapmaz.
+
+
+Görev dosyalarına ayrılan uygulamalar
+------------------------------------
+statistics.cu -> reductions/detail.txt
+linalg.cu -> linalg/detail.txt
+linalg_extended.cu -> linalg/detail.txt
+masking.cu -> masking/detail.txt
+elementwise.cu -> elementwise/detail.txt
+shape.cu -> shape/detail.txt
+Bu .cu dosyaları küçük derleme girişleridir; uygulama gövdeleri yukarıdaki
+klasörlerdeki .inc/.cuh parçalarıdır. Parçalar aynı namespace ve derleme
+biriminde kaldığından inlining, statik cache ve cihaz kernel düzeni korunur.
+Ayrıntılı mimari/bakım rehberi: kütüphane kökündeki detail.txt.

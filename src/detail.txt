@@ -1,72 +1,72 @@
-MatrixFlash-Pro — src/ uygulama haritası
-=======================================
-Başlıklar include/matrix_pro altındadır. Buradaki .cu dosyaları kütüphane
-hedefine derlenir; kullanıcı bunları include etmez.
+MatrixFlash-Pro — uygulama haritası
+==================================
+Kamusal bildirimler include/matrix_pro altındadır. .cu dosyaları CMake'in
+derlediği girişlerdir. Büyük girişler artık işi aşağıdaki görev klasörlerindeki
+.inc/.cuh parçalarına yönlendirir. Her klasörün detail.txt dosyası ayrıntı verir.
+Mimari ve bakım sözleşmesi: ../detail.txt. Kaynak envanteri:
+../cmake/MatrixFlashSources.cmake.
 
-src/core
-    matrix.cu            Yaşam döngüsü, kopya, upload/download, host bayatlığı, at().
-    matrix_factories.cu  zeros, ones, identity, random, uniform, randn, glorot.
-    tensor.cu            Rank-N Tensor tahsisi, görünüm ve cihaz kopyası.
-    memory_pool.cu       Cihaz etiketli havuz, sınıf boyutu, empty_cache, kapanış.
-    backend.cu           Cihaz sayımı, set_device, DeviceScope.
-    cuda_utils.cu        checkCuda, stream/handle önbelleği, senkronizasyon.
-    serialization.cu     Checkpoint yazma/okuma. Pointer ve bayat bayrağı düzeltilir.
+core/
+    matrix.cu            Matrix sahipliği, kopya/taşıma ve host/cihaz erişimi.
+    matrix_factories.cu  zeros/ones/identity ve rastgele fabrikalar.
+    tensor.cu -> tensor/ Depolama, transfer, contiguous, görünüm ve dilimleme.
+    cuda_utils.cu -> runtime/  Context/handle, havuz, stream ve cihaz seçimi.
+    serialization.cu -> serialization/  Tensor I/O ve checkpoint okuma/yazma.
+    memory_pool.cu       Havuz sorgusu, cache yönetimi ve unified memory.
+    backend.cu           Backend/hardware bilgi sorguları.
 
-src/ops
-    elementwise.cu       Noktasal aritmetik ve skaler çekirdekler.
-    math.cu              SFU trigonometri, erf, rsqrt, addcmul.
-    matmul.cu            multiply / multiply_into / outer; gemm_rowmajor'a iner.
-    gemm/                Ayrıntı: src/ops/gemm/detail.txt
-    factorization.cu     LUFactorization ve slogdet. cuSOLVER GETRF/GETRS.
-    linalg.cu            QR, SVD, özdeğer, Cholesky, pinv, least squares.
-    linalg_extended.cu   lu, trsm, trmm, matrix_power, matrix_exp, batch_*.
-    reductions -> statistics.cu   sum/mean/min/max/norm ve eksen indirgemeleri.
-    statistics.cu        GPU indirgeme çekirdekleri.
-    broadcast çekirdekleri elementwise/shape tarafında.
-    shape.cu             reshape, concat, stack, slice, one_hot.
-    transforms.cu        transpose, relu, softmax, flatten.
-    masking.cu           maske ve koşullu seçim.
-    precision.cu         paketleme / açma.
-    advanced.cu          determinant, inverse.
-    extended.cu          ileri tek atışlık yardımcılar.
-    dtype.cu             DType tamponu, fp16, geniş birikim.
-    view.cu              MatrixView materialize ve stride hesapları.
+ops/
+    elementwise.cu -> elementwise/  Functor, float4 kernel, aritmetik/broadcast.
+    statistics.cu -> reductions/   Toplam, norm, eksen, varyans, indeks/covariance.
+    linalg.cu -> linalg/           Solve, QR, SVD, Cholesky, eigen ve türev çözümler.
+    linalg_extended.cu -> linalg/  LU/triangular ve matrix/batched işlevler.
+    masking.cu -> masking/        Karşılaştırma, predicate ve koşullu seçim.
+    shape.cu -> shape/            Broadcast, reshape, slice, one_hot, concat/stack.
+    matmul.cu                     multiply/multiply_into/outer_product girişi.
+    gemm/                         Backend dispatch ve özel hızlı kernel'ler.
+    gemm/gemm_plan.cu -> gemm/plan/  Descriptor, workspace, execute, tuning/cache.
+    factorization.cu              Tekrar kullanılan LUFactorization ve slogdet.
+    math.cu                       SFU ve geniş matematik işlemleri.
+    transforms.cu                 Transpose, flatten, softmax ve eski aktivasyonlar.
+    precision.cu, dtype.cu        DType/FP16 tamponları ve hassasiyet dönüşümleri.
+    advanced.cu, extended.cu     Tek çağrılık ileri işlemler ve yardımcılar.
+    view.cu                       MatrixView stride ve materialize.
 
-src/nn
-    activation.cu        İleri aktivasyonlar ve geri türev çekirdekleri.
-    loss.cu              BCE-with-logits, softmax cross-entropy.
-    ml.cu                batch_norm, layer_norm, dropout.
-    conv.cu              NCHW conv ve pooling ileri; cuDNN varsa onu, yoksa CUDA.
-    conv_backward.cu     conv/pool geri yayılım, im2col + GEMM.
-    batch.cu             strided batched GEMM.
-    fused.cu             elementwise fused zincirler (bias+gelu, relu+add, ...).
-    inplace.cu           *_ yerinde güncellemeler.
+nn/
+    activation.cu, loss.cu        Aktivasyonlar, fused kayıplar ve geri türevleri.
+    ml.cu                        Normalization ve dropout.
+    conv.cu                      NCHW convolution/pooling ileri geçişi.
+    conv_backward.cu -> backward/  Conv/pool geri geçişi ve Tensor primitifleri.
+    batch.cu                     Strided batched GEMM.
+    fused.cu, inplace.cu         Birleşik kernel'ler ve yerinde güncelleme.
 
-src/autograd/autograd.cu
-    Variable / VarTensor tape, topolojik geri yayılım, NoGrad, detach,
-    checkpoint. Ara değerler GPU'da kalır.
+autograd/
+    autograd.cu                  Aynı tape derleme biriminin küçük giriş dosyası.
+    detail/                      Node, topolojik sıra ve NoGrad durumu.
+    variable/                    Matrix ileri/geri işlemleri ve graph kontrolü.
+    tensor/                      Rank-N, CNN, batched GEMM ve custom türevler.
 
-src/sparse
-    sparse.cu            CSR kurma, spmv, sparse×dense.
-    sparse_formats.cu    COO sıralama ve koordinat birleştirme, CSC↔CSR,
-                         sparse_add (alpha*A+beta*B), boş CSR sıfırlama.
-                         Dönüşümlerin bir kısmı host sıralaması yapar; bu
-                         dosya "tamamen GPU sparse motoru" değildir.
+sparse/
+    sparse.cu -> csr/            CSR kurma, depolama ve ürünler.
+    sparse_formats.cu -> formats/  COO/CSC dönüşüm, coalesce, SpGEMM ve toplama.
+    Bazı dönüşümler host sıralaması ve stream senkronizasyonu kullanır.
 
-src/indexing/indexing.cu
-    index_select, gather, scatter_add, embedding ve geri türev.
+rng/
+    rng.cu -> detail/ + distributions/
+    Mevcut hash-mix sayaç üreticisi, seed, dağılımlar ve RNGState.
+    Kernel adlarında Philox geçse de hash_mix tam Philox algoritması değildir.
 
-src/rng/rng.cu
-    Philox sayaç RNG, uniform/normal, dropout maskesi, rng_seed.
+streams/
+    streams.cu                  Stream havuzu, pinned host ve async arg indeksleri.
+    execution.cu -> execution/   Graph capture/replay, Pipeline ve profiler.
 
-src/streams
-    streams.cu           4'lü stream havuzu, pinned host, async argmax/argmin.
-    execution.cu         CUDA Graph capture/replay ve Pipeline stream seçimi.
-                         Exception sonrası stream geri yüklenir; yarım capture
-                         reset ile temizlenir.
+indexing/
+    indexing.cu                 Gather, scatter_add, index_select ve embedding.
 
-Testler tests/, ölçümler benchmarks/, örnekler examples/ altındadır.
-1 Ekim 2026 adil GEMM ölçümünün kaynakları:
-    benchmarks/bench_gemm_fair.cpp
-    tools/bench_rivals_fair.py
-    benchmarks/reports/2026-10-01/
+Çalışma sözleşmesi
+-----------------
+Ara matris/tensörler GPU'da kalır. Skaler CPU sonuçları ve format dönüşümleri
+gerekli noktalarda stream'i bekler. .inc/.cuh ayırımı bu davranışı değiştirmez.
+Device-only veri için download() host aynasını oluşturur/günceller. Bayat
+ayna üzerinden okumayı reddeden kontrolleri kaldırmayın. Non-owning view,
+veri sahibinin belleği yaşadığı sürece geçerlidir.

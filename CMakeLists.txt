@@ -62,56 +62,10 @@ endif()
 # ============================================================================
 #  matrix_pro library
 # ============================================================================
+include(MatrixFlashSources)
 add_library(matrix_pro STATIC
-	# --- core ---
-	src/core/cuda_utils.cu
-	src/core/matrix.cu
-	src/core/matrix_factories.cu
-	src/core/tensor.cu
-	src/core/backend.cu
-	src/core/memory_pool.cu
-	src/core/serialization.cu
-	# --- ops ---
-	src/ops/elementwise.cu
-	src/ops/math.cu
-	src/ops/matmul.cu
-	src/ops/gemm/gemm_dispatch.cu
-	src/ops/gemm/gemm_plan.cu
-	src/ops/gemm/gemm_cublas_ex.cu
-	src/ops/gemm/gemm_cublas_lt.cu
-	src/ops/gemm/gemm_micro.cu
-	src/ops/gemm/gemm_gemv.cu
-	src/ops/gemm/gemm_tiled.cu
-	src/ops/gemm/gemm_fused.cu
-	src/ops/transforms.cu
-	src/ops/statistics.cu
-	src/ops/shape.cu
-	src/ops/dtype.cu
-	src/ops/advanced.cu
-	src/ops/linalg.cu
-	src/ops/linalg_extended.cu
-	src/ops/factorization.cu
-	src/ops/masking.cu
-	src/ops/extended.cu
-	src/ops/precision.cu
-	src/ops/view.cu
-	# --- nn ---
-	src/nn/activation.cu
-	src/nn/loss.cu
-	src/nn/conv_backward.cu
-	src/nn/batch.cu
-	src/nn/ml.cu
-	src/nn/conv.cu
-	src/nn/fused.cu
-	src/nn/inplace.cu
-	# --- autograd / sparse / indexing / rng / streams ---
-	src/autograd/autograd.cu
-	src/sparse/sparse.cu
-	src/sparse/sparse_formats.cu
-	src/indexing/indexing.cu
-	src/rng/rng.cu
-	src/streams/streams.cu
-	src/streams/execution.cu
+    ${MATRIX_PRO_LIBRARY_SOURCES}
+    ${MATRIX_PRO_IMPLEMENTATION_PARTS}
 )
 
 add_library(matrix_pro::matrix_pro ALIAS matrix_pro)

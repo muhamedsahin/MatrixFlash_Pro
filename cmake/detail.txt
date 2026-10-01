@@ -1,0 +1,26 @@
+MatrixFlash-Pro — derleme modülleri
+==================================
+CMakeLists.txt               Proje/bağımlılık/hedef ve optimizasyon ayarları.
+MatrixFlashSources.cmake     Açık .cu envanteri ve HEADER_FILE_ONLY özel parçalar.
+MatrixFlashOptions.cmake     Test, benchmark, örnek, cuDNN ve fast-math seçenekleri.
+MatrixFlashWarnings.cmake    Host/CUDA uyarı ayarları.
+MatrixFlashInstall.cmake     find_package(matrix_pro) için install/export kuralları.
+matrix_pro-config.cmake.in   Tüketicinin CUDA bağımlılıklarını bulan paket şablonu.
+
+Kaynak envanteri neden açık liste?
+-------------------------------
+Derlenen .cu dosyaları ve sıraları görünürdür. Uygulama parçaları IDE'de kaynak
+ağacında görünür, ancak ikinci kez derlenmez. Public include yolları ve
+matrix_pro::matrix_pro hedefi korunur. Paket yalnız include/ altını kurar;
+src/ uygulama parçaları tüketicinin public API'sine sızmaz.
+CUDA optimizasyon bayrakları, mimari, precision ve workspace ayarları bu
+dosya mimarisi düzenlemesinde değiştirilmemiştir.
+
+Yalnız CXX dili kullanan tüketici projesi
+--------------------------------------
+Mevcut export vendor bağımlılıklarını taşır; CUDA dilini etkinleştirmeyen
+tüketici CUDA runtime bağlantısını ayrıca seçmelidir. Doğrulama örneği:
+    find_package(matrix_pro CONFIG REQUIRED)
+    target_link_libraries(app PRIVATE matrix_pro::matrix_pro CUDA::cudart_static)
+CUDA dili etkin projede derleyicinin runtime bağlantısı da devreye girer.
+Bu refactor mevcut runtime/link davranışını değiştirmez.

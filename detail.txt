@@ -1,0 +1,100 @@
+MatrixFlash-Pro — mimari başlangıç rehberi
+=========================================
+Kütüphaneyi okumaya buradan başlayın. Kamusal kullanım API'si ve hesaplama
+davranışı korunarak büyük uygulamalar tek görevli dosyalara ayrılmıştır.
+
+Katmanlar
+---------
+include/matrix_pro/       Kamusal C++ API. matrix_pro.hpp toplu giriş başlığıdır.
+src/                     CUDA uygulaması. Tam dosya haritası: src/detail.txt.
+cmake/                   Derleme seçenekleri, kaynak envanteri ve paket export.
+tests/unit/              Matematiksel işlem, şekil ve hata sözleşmeleri.
+tests/integration/       Autograd, CNN, stream, graph ve dosya akışları.
+benchmarks/              Aynı GPU üzerinde davranış/hız karşılaştırmaları.
+examples/                Kütüphaneyi kullanan çalıştırılabilir örnekler.
+
+Bir işlemi bulma
+---------------
+1. include/matrix_pro/<modül> içindeki başlıktan imzayı ve sözleşmeyi okuyun.
+2. src/detail.txt içinden sahip .cu dosyasını bulun.
+3. Küçük .cu dosyası ilgili uygulama parçalarını okuma sırasıyla listeler.
+4. Alt klasörün detail.txt dosyası parçaların görevini ve bağımlılıklarını anlatır.
+5. tests/unit veya tests/integration içinden davranış örneklerine bakın.
+
+Büyük modüllerin yeni iç yapısı
+------------------------------
+autograd/detail/          Tape düğümleri, topoloji ve thread-local NoGrad.
+autograd/variable/        Matrix türevleri: aritmetik, broadcast, şekil, kayıp,
+                         aktivasyon, checkpoint ve gradyan kontrolü.
+autograd/tensor/          Tensor türevleri: yaşam döngüsü, aritmetik, CNN ve custom.
+core/runtime/            Stream/handle önbellekleri, cihaz seçimi ve bellek havuzu.
+core/tensor/             Depolama, transfer, bitişik kopya, görünüm ve dilimleme.
+core/serialization/      Tensor I/O ve checkpoint okuma/yazma/erişim.
+ops/elementwise/         Functor, vektörize broadcast ve işlem girişleri.
+ops/reductions/          Scalar/axis kernel, varyans, indeks ve covariance.
+ops/linalg/              Yerleşim, çözüm, QR, SVD, Cholesky, eigen ve batch işlemler.
+ops/masking/             Karşılaştırma, predicate, seçim ve Matrix metotları.
+ops/shape/               Broadcast, reshape/slice ve concat.
+ops/gemm/plan/           Environment, plan sahipliği, tuning ve cache.
+nn/backward/             Conv/pool kernel ve gradyanları, Tensor/batch primitifleri.
+sparse/csr/              CSR kurma, sahiplik ve ürünler.
+sparse/formats/          COO, CSC, dönüşüm, SpGEMM ve toplama.
+rng/detail/              Paylaşılan sayaç ve cihaz kernel'leri.
+rng/distributions/       Temel/genişletilmiş dağılımlar ve bağımsız RNGState.
+streams/execution/       CUDA Graph, Pipeline ve profiler.
+
+Dosya bölme neden yeni derleme birimi oluşturmadı?
+------------------------------------------------
+.cu dosyaları derleme girişidir. .inc uygulama parçaları ve .cuh CUDA
+yardımcıları yalnızca sahip .cu tarafından include edilir. Fiziksel dosyalar
+küçüktür, ancak derleyici önceki fonksiyonları birlikte görmeye devam eder.
+Bu sayede inlining, yerel statik cache, RNG sayacı, anonim namespace ve
+kernel launch düzeni korunur. Sıcak yola ek yönlendirme katmanı eklenmez.
+Kamusal include yolları, sınıf yerleşimleri ve CMake hedef adı değişmez.
+
+Bakım kuralları
+--------------
+Yeni kodu görevine uygun parçaya yerleştirin. Bir parçanın kapsadığı görevi
+başındaki yorumda, dosya ilişkilerini yanındaki detail.txt içinde açıklayın.
+Namespace sahip .cu tarafından açılır; bu parçalar bağımsız başlık değildir.
+cmake/MatrixFlashSources.cmake kaynakları açıkça listeler ve özel parçaları
+HEADER_FILE_ONLY işaretler. CMake include bağımlılıklarını izler; bir parçayı
+değiştirmek sahip CUDA nesnesini yeniden derler.
+GPU sonucu yazınca host aynasını bayat işaretleme sözleşmesini koruyun.
+Stream/event sıralamasını, workspace/cache sınırlarını ve hassasiyet seçimini
+okunabilirlik amacıyla değiştirmeyin. Görünümler veri sahibinin ömrünü uzatmaz.
+.clang-format yalnız biçim standardını tanımlar; include sırasını değiştirmez.
+
+Doğrulama
+---------
+Release derlemesi: aynı MSVC/CUDA araçları ve mevcut build/perf-release ayarları.
+Testler: ctest --test-dir build/perf-release -C Release --output-on-failure
+GEMM: benchmarks/bench_gemm_fair.cpp; tahsis ve transfer ölçüm dışında kalır.
+Genel ölçüm: matrix_pro_bench_all --sizes 128,512 --warmup 3 --repeats 9
+Yerel doğrulama çıktıları: build/refactor/ ve build/refactor_* log dosyaları.
+Bu düzenleme doc/ klasörünü veya Next.js sitelerinin kaynaklarını değiştirmez.
+
+Tamamlanan kontroller
+--------------------
+- Release kütüphane, tüm testler, benchmark programları ve örnekler derlendi.
+- 26/26 CTest geçti; dört örnek program başarıyla çalıştı.
+- Tensor, sparse formats, linalg extended, RNG, autograd extended ve GEMM plan
+  testlerinde compute-sanitizer memcheck: altı çalıştırma, sıfır hata.
+- Yerel install/export paketi ayrı CXX tüketici projesinde kullanıldı;
+  Matrix, autograd ve Tensor işlemleri geçti. Runtime bağlantı örneği:
+  cmake/detail.txt.
+- Ayrılan 16 modülün yeniden birleştirilmiş çalıştırılabilir kod token'ları
+  önceki kaynakla aynı. Derlenen .cu listesi, sırası ve optimizasyon ayarları aynı.
+- Karşılaştırılan 203 GPU fonksiyonunun talimat ve scheduling kodları aynı.
+- GEMM: önce/sonra ikişer koşu, koşu başına 182 doğruluk kontrolü yapılan
+  durum, 30 örnek, 32 işlem/batch. Genel ölçüm: koşu başına 96 durum.
+- Ek ölçüm: küçük işlemler için 30, büyük elementwise/reduction/activation/math
+  işlemleri için 68 durum; önce/sonra üçer koşu, 10 warmup ve 60 örnek.
+- GEMM'de yavaşlama gözlenmedi. Ek ölçümün grup özetinde reduction yaklaşık
+  +%0,7, training +%4,1 süre farkı gösterdi; diğer grupların süreleri daha düşüktü.
+  Aynı GPU kodu ve değişmeyen karşılaştırma yolları da zamanlama dalgalanması
+  gösterdiğinden bu farklar için hız kazanımı iddiası yapılmaz. Ham sonuçlar
+  build/refactor/comparison.json ve targeted_comparison.json içindedir.
+- Kontroller mevcut tek RTX 3070 Laptop GPU'da, Release ve cuDNN kapalıyken
+  yapıldı; diğer GPU/cuDNN kombinasyonları bu çalışmada denenmedi.
+- Kamusal başlıklar, test/benchmark kaynakları ve izlenen doc/ dosyaları aynı.

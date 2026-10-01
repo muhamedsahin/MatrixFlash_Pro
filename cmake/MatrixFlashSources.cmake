@@ -1,0 +1,165 @@
+# Explicit library inventory. .inc/.cuh parts keep their owning CUDA
+# translation unit, so splitting files adds no runtime call boundaries.
+set(MATRIX_PRO_LIBRARY_SOURCES
+	# --- core ---
+	src/core/cuda_utils.cu
+	src/core/matrix.cu
+	src/core/matrix_factories.cu
+	src/core/tensor.cu
+	src/core/backend.cu
+	src/core/memory_pool.cu
+	src/core/serialization.cu
+	# --- ops ---
+	src/ops/elementwise.cu
+	src/ops/math.cu
+	src/ops/matmul.cu
+	src/ops/gemm/gemm_dispatch.cu
+	src/ops/gemm/gemm_plan.cu
+	src/ops/gemm/gemm_cublas_ex.cu
+	src/ops/gemm/gemm_cublas_lt.cu
+	src/ops/gemm/gemm_micro.cu
+	src/ops/gemm/gemm_gemv.cu
+	src/ops/gemm/gemm_tiled.cu
+	src/ops/gemm/gemm_fused.cu
+	src/ops/transforms.cu
+	src/ops/statistics.cu
+	src/ops/shape.cu
+	src/ops/dtype.cu
+	src/ops/advanced.cu
+	src/ops/linalg.cu
+	src/ops/linalg_extended.cu
+	src/ops/factorization.cu
+	src/ops/masking.cu
+	src/ops/extended.cu
+	src/ops/precision.cu
+	src/ops/view.cu
+	# --- nn ---
+	src/nn/activation.cu
+	src/nn/loss.cu
+	src/nn/conv_backward.cu
+	src/nn/batch.cu
+	src/nn/ml.cu
+	src/nn/conv.cu
+	src/nn/fused.cu
+	src/nn/inplace.cu
+	# --- autograd / sparse / indexing / rng / streams ---
+	src/autograd/autograd.cu
+	src/sparse/sparse.cu
+	src/sparse/sparse_formats.cu
+	src/indexing/indexing.cu
+	src/rng/rng.cu
+	src/streams/streams.cu
+	src/streams/execution.cu
+)
+
+# Private implementation parts are visible in IDEs but not compiled alone.
+set(MATRIX_PRO_IMPLEMENTATION_PARTS
+    src/autograd/detail/node_types.inc
+    src/autograd/detail/tape_helpers.inc
+    src/autograd/variable/lifecycle.inc
+    src/autograd/variable/arithmetic.inc
+    src/autograd/variable/broadcast.inc
+    src/autograd/variable/shape.inc
+    src/autograd/variable/activations.inc
+    src/autograd/variable/losses.inc
+    src/autograd/tensor/lifecycle.inc
+    src/autograd/tensor/arithmetic.inc
+    src/autograd/tensor/cnn.inc
+    src/autograd/tensor/custom_ops.inc
+    src/autograd/detail/grad_mode.inc
+    src/autograd/variable/graph_control.inc
+    src/core/tensor/storage_kernels.cuh
+    src/core/tensor/storage.inc
+    src/core/tensor/transfers.inc
+    src/core/tensor/contiguous.inc
+    src/core/tensor/views.inc
+    src/core/tensor/slicing.inc
+    src/core/runtime/execution_context.inc
+    src/core/runtime/solver_context.inc
+    src/core/runtime/pool_state.inc
+    src/core/runtime/allocation.inc
+    src/core/runtime/stream_access.inc
+    src/core/runtime/device_access.inc
+    src/core/runtime/solver_access.inc
+    src/core/serialization/tensor_io.inc
+    src/core/serialization/checkpoint_write.inc
+    src/core/serialization/checkpoint_read.inc
+    src/core/serialization/checkpoint_access.inc
+    src/ops/reductions/scratch.inc
+    src/ops/reductions/scalar_kernels.cuh
+    src/ops/reductions/axis_kernels.cuh
+    src/ops/reductions/moment_kernels.cuh
+    src/ops/reductions/scalars.inc
+    src/ops/reductions/variance.inc
+    src/ops/reductions/indices.inc
+    src/ops/reductions/trace.inc
+    src/ops/reductions/axes.inc
+    src/ops/reductions/matrix_methods.inc
+    src/ops/reductions/covariance.inc
+    src/ops/linalg/layout_kernels.cuh
+    src/ops/linalg/solve.inc
+    src/ops/linalg/qr.inc
+    src/ops/linalg/svd.inc
+    src/ops/linalg/cholesky.inc
+    src/ops/linalg/eigen.inc
+    src/ops/linalg/derived_solvers.inc
+    src/ops/linalg/matrix_methods.inc
+    src/ops/linalg/extended_kernels.cuh
+    src/ops/linalg/triangular.inc
+    src/ops/linalg/matrix_functions.inc
+    src/ops/linalg/batched_solvers.inc
+    src/ops/masking/kernels.cuh
+    src/ops/masking/comparisons.inc
+    src/ops/masking/predicates.inc
+    src/ops/masking/selection.inc
+    src/ops/masking/matrix_methods.inc
+    src/ops/elementwise/functors.cuh
+    src/ops/elementwise/broadcast_kernels.cuh
+    src/ops/elementwise/unary_launch.inc
+    src/ops/elementwise/arithmetic.inc
+    src/ops/elementwise/broadcast.inc
+    src/ops/elementwise/matrix_methods.inc
+    src/ops/shape/kernels.cuh
+    src/ops/shape/broadcast.inc
+    src/ops/shape/reshape_slice.inc
+    src/ops/shape/concatenate.inc
+    src/ops/gemm/plan/environment.inc
+    src/ops/gemm/plan/epilogue.cuh
+    src/ops/gemm/plan/implementation.inc
+    src/ops/gemm/plan/public_api.inc
+    src/ops/gemm/plan/tuning.inc
+    src/ops/gemm/plan/cache.inc
+    src/ops/gemm/plan/convenience.inc
+    src/sparse/formats/kernels.cuh
+    src/sparse/formats/coo.inc
+    src/sparse/formats/csc.inc
+    src/sparse/formats/conversions.inc
+    src/sparse/formats/spgemm.inc
+    src/sparse/formats/addition.inc
+    src/sparse/csr/kernels.cuh
+    src/sparse/csr/construction.inc
+    src/sparse/csr/storage.inc
+    src/sparse/csr/products.inc
+    src/rng/detail/counter_state.inc
+    src/rng/detail/base_kernels.cuh
+    src/rng/detail/counter_access.inc
+    src/rng/distributions/basic.inc
+    src/rng/detail/distribution_kernels.cuh
+    src/rng/distributions/extended.inc
+    src/rng/distributions/state.inc
+    src/nn/backward/convolution_kernels.cuh
+    src/nn/backward/pooling_kernels.cuh
+    src/nn/backward/tensor_kernels.cuh
+    src/nn/backward/convolution.inc
+    src/nn/backward/pooling.inc
+    src/nn/backward/tensor_arithmetic.inc
+    src/nn/backward/batched_matmul.inc
+    src/streams/execution/graph.inc
+    src/streams/execution/pipeline.inc
+    src/streams/execution/profiler.inc
+)
+
+set_source_files_properties(${MATRIX_PRO_IMPLEMENTATION_PARTS}
+    PROPERTIES HEADER_FILE_ONLY TRUE)
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Implementation"
+    FILES ${MATRIX_PRO_LIBRARY_SOURCES} ${MATRIX_PRO_IMPLEMENTATION_PARTS})

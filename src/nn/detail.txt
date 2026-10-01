@@ -22,8 +22,8 @@ conv.cu
     fallback yolu test edildi, cuDNN yolu bu raporda ölçülmedi.
 
 conv_backward.cu
-    Girdi, ağırlık ve bias gradyanı. Max-pool geri geçişi ileri geçişte
-    saklanan argmax maskesini kullanır. Avg-pool gradyanı pencereye yayılır.
+    Girdi, ağırlık ve bias gradyanı. Max-pool geri geçişi argmax indeksini
+    girdiden yeniden hesaplar ve gradyanı atomicAdd ile dağıtır. Avg-pool gradyanı pencereye yayılır.
 
 batch.cu
     Aynı şekilli bir grup matrisin strided batched GEMM'i.
@@ -36,3 +36,12 @@ fused.cu
 inplace.cu
     relu_, add_, add_scalar_, broadcast_add_, gelu_ ve benzerleri.
     Yeni matris tahsis etmez; mevcut cihaz tamponunu yazar ve aynayı bayatlar.
+
+
+Görev dosyalarına ayrılan uygulamalar
+------------------------------------
+conv_backward.cu -> backward/detail.txt
+Bu .cu dosyaları küçük derleme girişleridir; uygulama gövdeleri yukarıdaki
+klasörlerdeki .inc/.cuh parçalarıdır. Parçalar aynı namespace ve derleme
+biriminde kaldığından inlining, statik cache ve cihaz kernel düzeni korunur.
+Ayrıntılı mimari/bakım rehberi: kütüphane kökündeki detail.txt.

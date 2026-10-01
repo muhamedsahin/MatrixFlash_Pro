@@ -37,3 +37,14 @@ serialization.cu
     .mfc / matris dosyası. Diske yazılan şey boyut, dtype ve değerlerdir;
     cihaz adresi ve host_current bayrağı yüklenince yeniden kurulur.
     Aksi halde başka süreçte anlamsız pointer okunur.
+
+
+Görev dosyalarına ayrılan uygulamalar
+------------------------------------
+tensor.cu -> tensor/detail.txt
+cuda_utils.cu -> runtime/detail.txt
+serialization.cu -> serialization/detail.txt
+Bu .cu dosyaları küçük derleme girişleridir; uygulama gövdeleri yukarıdaki
+klasörlerdeki .inc/.cuh parçalarıdır. Parçalar aynı namespace ve derleme
+biriminde kaldığından inlining, statik cache ve cihaz kernel düzeni korunur.
+Ayrıntılı mimari/bakım rehberi: kütüphane kökündeki detail.txt.

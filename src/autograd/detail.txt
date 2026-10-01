@@ -1,19 +1,32 @@
-MatrixFlash-Pro — src/autograd/autograd.cu
-============================================
-Ters-mod otomatik türev. Variable (Matrix) ve VarTensor (rank-N) bir tape
-üstüne düğüm yazar. backward() bandı topolojik sırada yürütür; ara değerler
-GPU'da kalır.
+MatrixFlash-Pro — autograd
+==========================
+Kamusal API: include/matrix_pro/autograd/autograd.hpp.
+autograd.cu yalnızca aşağıdaki parçaları aynı derleme biriminde birleştirir.
 
-Desteklenen geri türev grupları:
-    Aritmetik: add, subtract, Hadamard, divide, matmul, skaler mul/add, negate, pow.
-    Broadcast: satır/sütun vektörü ekleme ve çarpma; geri geçişte eksen boyunca toplama.
-    Şekil: transpose, flatten, reshape, slice (scatter-grad).
-    Aktivasyon: nn/activation.hpp listesinin tamamı, prelu dahil.
-    Tensor/CNN: batch_matmul, conv2d (girdi+ağırlık+bias), max_pool (argmax), avg_pool.
+Okuma sırası
+------------
+detail/node_types.inc       Variable/VarTensor değer, gradyan ve ebeveyn düğümleri.
+detail/tape_helpers.inc     make_node ve collect_nodes; topolojik geri geçiş sırası.
+variable/lifecycle.inc     Variable value/grad, sum, zero_grad ve backward.
+variable/arithmetic.inc    Matris/skaler aritmetiğin türevleri.
+variable/broadcast.inc     Yayınlanan eksenleri geri toplayan türevler.
+variable/shape.inc         Concat, transpose, flatten, reshape ve slice.
+variable/activations.inc   Aktivasyon türevleri, öğrenilebilir prelu dahil.
+variable/losses.inc        custom_unary/custom_loss ve hazır kayıplar.
+tensor/lifecycle.inc       VarTensor yaşam döngüsü ve backward.
+tensor/arithmetic.inc      Tensor ve batched matmul türevleri.
+tensor/cnn.inc             Conv2d, max_pool2d ve avg_pool2d türevleri.
+tensor/custom_ops.inc      Kullanıcı Tensor işlemleri ve kayıpları.
+detail/grad_mode.inc       Thread-local takip durumu ve NoGradGuard.
+variable/graph_control.inc Detach, clone, clipping, retain_grad ve checkpoint.
 
-NoGrad kapsamında düğüm yazılmaz. detach() değeri kopyalayıp grafikten koparır.
-Checkpoint, ara aktivasyonu saklamak yerine yeniden hesaplar; upstream gradyan
-doğru düğüme eklenir (bu turda toplam türev ve checkpoint upstream onarıldı).
-
-Özel op: kullanıcı CUDA yazmadan mevcut primitifleri bir fonksiyon gibi
-kompoze edebilir; tape her primitifin kendi geri türevini kaydeder.
+Sözleşmeler
+-----------
+backward kök gradyanını birlerle başlatır, düğümleri ters topolojik sırada
+çalıştırır. Ebeveyn gradyanları birikir; bağımsız iterasyon için zero_grad kullanın.
+NoGrad yeni düğümlerin requires_gradient isteğini kapatır ve çıkışta önceki
+thread durumunu geri yükler. detach değeri kopyalayıp takipten ayırır.
+Checkpoint ileri ara değerleri yeniden hesaplar; upstream gradyanı yeniden
+hesaplanan sonuçla çarpıp girdiye biriktirir. Mevcut sahiplik davranışı korunur.
+Node tipleri ve yardımcılar kamusal başlığa taşınmaz; GPU primitifleri değişmez.
+İlgili testler: test_autograd, test_autograd_extended, test_batch, test_conv.

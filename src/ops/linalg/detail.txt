@@ -1,0 +1,59 @@
+MatrixFlash-Pro — src/ops/linalg
+================================
+
+Sahip derleme birimi: src/ops/linalg.cu, src/ops/linalg_extended.cu
+Bu klasör kamusal API içermez. Başlıklar include/matrix_pro altındadır.
+.inc dosyaları uygulama gövdeleridir; .cuh dosyaları CUDA yardımcılarıdır.
+Dosyalar yalnızca sahip .cu içinden, orada açılan namespace kapsamında
+dahil edilir. Tek başlarına derlenmez veya uygulama koduna include edilmez.
+
+Dosyalar (sahip .cu içindeki okuma sırası)
+---------------------------------------
+
+layout_kernels.cuh
+    cuSOLVER için row-major/column-major dönüşüm ve üçgen çıkarma.
+
+solve.inc
+    LU faktörleme ve geri yerine koyma; geçici tamponlar hata yolunda da iade edilir.
+
+qr.inc
+    QR faktörleme; Q/R cihaz yerleşim dönüşümleri.
+
+svd.inc
+    SVD ve U/S/Vt sonuçlarının cihaz/host sözleşmesi.
+
+cholesky.inc
+    Pozitif tanımlı matrisin alt üçgen Cholesky faktörü.
+
+eigen.inc
+    Simetrik özdeğer/özvektör çözümunun vendor yolu.
+
+derived_solvers.inc
+    Pseudoinverse, sayısal rank ve least-squares bileşimi.
+
+matrix_methods.inc
+    Matrix üzerindeki çözüm metotlarının API yönlendirmesi.
+
+extended_kernels.cuh
+    LU, permutation ve log-determinant yardımcı çekirdekleri.
+
+triangular.inc
+    LU sonuçları, triangular solve ve triangular multiply.
+
+matrix_functions.inc
+    Matrix power, exponential ve log-determinant.
+
+batched_solvers.inc
+    Batch solve, inverse ve determinant; mevcut yerleşimler korunur.
+
+Performans ve bakım sözleşmesi
+-----------------------------
+Parçalar aynı CUDA derleme biriminde kaldığı için mevcut inlining,
+anonim namespace, kernel launch sırası ve yerel statik durum korunur.
+Yeni sanal çağrı, ek tahsis, veri transferi veya senkronizasyon eklenmez.
+Bir parçayı ayrıca add_library/target_sources içine derlenen kaynak olarak
+eklemeyin: CMake envanterinde HEADER_FILE_ONLY olarak listelenir.
+Yeni bağımlılık gerekiyorsa standart/kamusal başlığı sahip .cu'nun başındaki
+include listesine ekleyin; namespace içindeki parçadan standart başlık açmayın.
+Yeni parçayı cmake/MatrixFlashSources.cmake envanterine ve bu haritaya ekleyin.
+İlgili testleri çalıştırın; sıcak yol değişirse aynı ayarlarla benchmark alın.
