@@ -29,6 +29,7 @@ public:
     Variable divide(const Variable& other) const;
     Variable matmul(const Variable& other) const;
     Variable multiply(float scalar) const;
+    Variable sum() const;
     Variable add_scalar(float scalar) const;
     Variable negate() const;
     Variable pow(float exponent) const;

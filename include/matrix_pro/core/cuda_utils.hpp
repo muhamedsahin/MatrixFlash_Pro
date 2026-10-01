@@ -26,6 +26,10 @@ void checkCuda(cudaError_t status, const char* operation);
 void synchronize();
 cudaStream_t compute_stream();
 cublasHandle_t& cublas_handle();
+namespace detail {
+// Internal stream override used by Pipeline; nullptr restores the default.
+void set_compute_stream(cudaStream_t stream);
+}
 // Number of SMs on the current device (cached). Used to size persistent-style
 // reduction grids so partial buffers stay small and host reduction is cheap.
 int sm_count();

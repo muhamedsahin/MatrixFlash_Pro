@@ -20,6 +20,8 @@ namespace {
 struct CudaExecutionContext {
     int device = 0;
     cudaStream_t stream = nullptr;
+    cudaStream_t override_stream = nullptr;
+    cudaStream_t blas_stream = nullptr;
     cublasHandle_t blas = nullptr;
     // Persistent cuBLAS workspace: without it cuBLAS allocates/frees an
     // internal scratch buffer on the first GEMM of every new shape, which
@@ -41,6 +43,7 @@ struct CudaExecutionContext {
             cudaStreamDestroy(stream);
             throw CudaError("cublasSetStream failed");
         }
+        blas_stream = stream;
         if (cudaMalloc(&blas_workspace, workspace_bytes) == cudaSuccess) {
             if (cublasSetWorkspace(blas, blas_workspace, workspace_bytes) != CUBLAS_STATUS_SUCCESS) {
                 cublasSetWorkspace(blas, nullptr, 0);
@@ -317,8 +320,30 @@ int sm_count() {
     return cached.emplace(device, sms).first->second;
 }
 
-cudaStream_t compute_stream() { return execution_context().stream; }
-cublasHandle_t& cublas_handle() { return execution_context().blas; }
+cudaStream_t compute_stream() {
+    auto& context = execution_context();
+    return context.override_stream ? context.override_stream : context.stream;
+}
+namespace detail {
+void set_compute_stream(cudaStream_t stream) {
+    auto& context = execution_context();
+    context.override_stream = stream == context.stream ? nullptr : stream;
+}
+}
+cublasHandle_t& cublas_handle() {
+    auto& context = execution_context();
+    const auto stream = compute_stream();
+    if (context.blas_stream != stream) {
+        if (cublasSetStream(context.blas, stream) != CUBLAS_STATUS_SUCCESS)
+            throw CudaError("cublasSetStream failed");
+        // cublasSetStream resets the workspace. On alternate streams let cuBLAS
+        // own its workspace so pending default-stream work cannot race with it.
+        if (stream == context.stream && context.blas_workspace)
+            cublasSetWorkspace(context.blas, context.blas_workspace, context.workspace_bytes);
+        context.blas_stream = stream;
+    }
+    return context.blas;
+}
 
 int device_count() {
     static const int count = [] {

@@ -1,5 +1,5 @@
 #include "matrix_pro/streams/execution.hpp"
-#include "matrix_pro/utils/cuda_utils.hpp"
+#include "matrix_pro/core/cuda_utils.hpp"
 #include "matrix_pro/core/errors.hpp"
 #include <cuda_runtime.h>
 #include <sstream>
@@ -34,29 +34,32 @@ CudaGraph& CudaGraph::operator=(CudaGraph&& other) noexcept {
 void CudaGraph::begin_capture() {
     if (capturing_) throw InvalidArgumentError("Graph is already capturing.");
     reset();
-    cudaStream_t stream = detail::compute_stream();
+    cudaStream_t stream = compute_stream();
     checkCuda(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal), "cudaStreamBeginCapture");
     capturing_ = true;
 }
 
 void CudaGraph::end_capture() {
     if (!capturing_) throw InvalidArgumentError("Graph is not capturing.");
-    cudaStream_t stream = detail::compute_stream();
-    cudaGraph_t graph_temp;
-    checkCuda(cudaStreamEndCapture(stream, &graph_temp), "cudaStreamEndCapture");
+    cudaStream_t stream = compute_stream();
+    cudaGraph_t graph_temp = nullptr;
+    const auto status = cudaStreamEndCapture(stream, &graph_temp);
+    capturing_ = false;
+    checkCuda(status, "cudaStreamEndCapture");
     
-    cudaGraphExec_t exec_temp;
+    cudaGraphExec_t exec_temp = nullptr;
     // Note: CUDA 11+ instantiation. nullptr params for error logging are omitted for brevity per standard use cases.
-    checkCuda(cudaGraphInstantiate(&exec_temp, graph_temp, nullptr, nullptr, 0), "cudaGraphInstantiate");
+    const auto instantiate_status = cudaGraphInstantiate(&exec_temp, graph_temp, nullptr, nullptr, 0);
     
     checkCuda(cudaGraphDestroy(graph_temp), "cudaGraphDestroy");
+    checkCuda(instantiate_status, "cudaGraphInstantiate");
     exec_ = exec_temp;
     capturing_ = false;
 }
 
 void CudaGraph::replay() {
     if (!is_compiled()) throw InvalidArgumentError("Graph is not compiled.");
-    checkCuda(cudaGraphLaunch(static_cast<cudaGraphExec_t>(exec_), detail::compute_stream()), "cudaGraphLaunch");
+    checkCuda(cudaGraphLaunch(static_cast<cudaGraphExec_t>(exec_), compute_stream()), "cudaGraphLaunch");
 }
 
 bool CudaGraph::is_capturing() const noexcept {
@@ -119,12 +122,16 @@ void Pipeline::enqueue(std::function<void()> fn) {
     int stage = impl_->current_stage;
     cudaStream_t stream = impl_->streams[stage];
     
-    cudaStream_t old_stream = detail::compute_stream();
+    cudaStream_t old_stream = compute_stream();
     detail::set_compute_stream(stream);
     
-    fn();
-    
-    checkCuda(cudaEventRecord(impl_->events[stage], stream), "cudaEventRecord");
+    try {
+        fn();
+        checkCuda(cudaEventRecord(impl_->events[stage], stream), "cudaEventRecord");
+    } catch (...) {
+        detail::set_compute_stream(old_stream);
+        throw;
+    }
     detail::set_compute_stream(old_stream);
     
     impl_->current_stage = (stage + 1) % impl_->num_stages;
@@ -180,7 +187,7 @@ void ExecutionProfiler::begin(const std::string& label) {
     pair.label = label;
     checkCuda(cudaEventCreate(&pair.start), "cudaEventCreate (start)");
     checkCuda(cudaEventCreate(&pair.stop), "cudaEventCreate (stop)");
-    checkCuda(cudaEventRecord(pair.start, detail::compute_stream()), "cudaEventRecord (start)");
+    checkCuda(cudaEventRecord(pair.start, compute_stream()), "cudaEventRecord (start)");
     impl_->events.push_back(pair);
 }
 
@@ -188,7 +195,7 @@ void ExecutionProfiler::end() {
     if (impl_->events.empty()) throw InvalidArgumentError("No active profiler event.");
     
     auto& pair = impl_->events.back();
-    checkCuda(cudaEventRecord(pair.stop, detail::compute_stream()), "cudaEventRecord (stop)");
+    checkCuda(cudaEventRecord(pair.stop, compute_stream()), "cudaEventRecord (stop)");
     checkCuda(cudaEventSynchronize(pair.stop), "cudaEventSynchronize");
     
     float ms = 0;

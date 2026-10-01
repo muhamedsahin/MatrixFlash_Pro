@@ -1,5 +1,6 @@
 #include "matrix_pro/matrix_pro.hpp"
 #include "../support/test_support.hpp"
+#include <atomic>
 
 using namespace matrix_pro;
 using matrix_pro::test::Context;
@@ -10,22 +11,26 @@ int main() {
 
         ctx.section("CudaGraph capture & replay");
         {
-            Matrix a(100, 100, 2.0f);
-            Matrix b(100, 100, 3.0f);
-            Matrix c(100, 100);
+            Matrix a = Matrix::ones(100, 100) * 2.0f;
+            Matrix b = Matrix::ones(100, 100) * 3.0f;
+            Matrix c(100, 100, MemoryMode::device_only);
 
             CudaGraph graph;
             ctx.check(!graph.is_capturing(), "initially not capturing");
             ctx.check(!graph.is_compiled(), "initially not compiled");
 
             // Warmup
-            c = a + b;
+            c.fill(0);
+            add_(c, a);
+            add_(c, b);
             c.synchronize();
 
             // Capture
             graph.begin_capture();
             ctx.check(graph.is_capturing(), "capturing state is true");
-            c = a + b;
+            c.fill(0);
+            add_(c, a);
+            add_(c, b);
             graph.end_capture();
             ctx.check(!graph.is_capturing(), "capturing ended");
             ctx.check(graph.is_compiled(), "graph is compiled");
@@ -74,4 +79,3 @@ int main() {
         return 99;
     }
 }
-

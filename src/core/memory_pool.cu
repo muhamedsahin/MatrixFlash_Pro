@@ -99,13 +99,23 @@ void prefetch_to_device(void* ptr, std::size_t bytes, int device) {
         checkCudaMem(cudaGetDevice(&device), "cudaGetDevice");
     }
     
+#if CUDART_VERSION >= 13000
+    cudaMemLocation location{cudaMemLocationTypeDevice, device};
+    checkCudaMem(cudaMemPrefetchAsync(ptr, bytes, location, 0, nullptr), "cudaMemPrefetchAsync");
+#else
     checkCudaMem(cudaMemPrefetchAsync(ptr, bytes, device, nullptr), "cudaMemPrefetchAsync");
+#endif
 }
 
 void prefetch_to_host(void* ptr, std::size_t bytes) {
     if (!ptr || bytes == 0) return;
     
+#if CUDART_VERSION >= 13000
+    cudaMemLocation location{cudaMemLocationTypeHost, 0};
+    checkCudaMem(cudaMemPrefetchAsync(ptr, bytes, location, 0, nullptr), "cudaMemPrefetchAsync");
+#else
     checkCudaMem(cudaMemPrefetchAsync(ptr, bytes, cudaCpuDeviceId, nullptr), "cudaMemPrefetchAsync");
+#endif
 }
 
 }

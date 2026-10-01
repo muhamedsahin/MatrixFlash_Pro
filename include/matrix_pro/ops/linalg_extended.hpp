@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <vector>
+#include "matrix_pro/core/matrix.hpp"
 
 namespace matrix_pro {
 

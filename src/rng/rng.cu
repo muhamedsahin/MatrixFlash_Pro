@@ -6,6 +6,9 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <vector>
+#include <algorithm>
+#include <utility>
 
 namespace matrix_pro {
 namespace {
@@ -276,10 +279,6 @@ Matrix randint_gpu(std::size_t rows, std::size_t cols, int low, int high) {
     return out;
 }
 
-#include <vector>
-#include <algorithm>
-#include <utility>
-
 Matrix randperm_gpu(std::size_t n) {
     Matrix out(n, 1);
     if (n == 0) return out;
@@ -348,4 +347,3 @@ Matrix RNGState::bernoulli(std::size_t rows, std::size_t cols, float prob) {
 }
 
 } // namespace matrix_pro
-

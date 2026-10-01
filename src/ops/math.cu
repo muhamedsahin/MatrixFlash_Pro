@@ -140,7 +140,7 @@ struct AddcdivOp {
 #define IMPLEMENT_UNARY(func_name, op_struct) \
 Matrix func_name(const Matrix& m) { \
     Matrix result(m.rows(), m.cols(), MemoryMode::device_only); \
-    detail::launch_unary(m.device_data(), result.device_data(), m.elements(), op_struct{}, compute_stream()); \
+    detail::launch_unary(m.device_data(), result.device_data(), m.size(), op_struct{}, compute_stream()); \
     result.mark_host_stale(); \
     return result; \
 }
@@ -149,7 +149,7 @@ Matrix func_name(const Matrix& m) { \
 Matrix func_name(const Matrix& a, const Matrix& b) { \
     if (a.rows() != b.rows() || a.cols() != b.cols()) throw ShapeMismatchError(#func_name " requires matching shapes"); \
     Matrix result(a.rows(), a.cols(), MemoryMode::device_only); \
-    detail::launch_binary(a.device_data(), b.device_data(), result.device_data(), a.elements(), op_struct{}, compute_stream()); \
+    detail::launch_binary(a.device_data(), b.device_data(), result.device_data(), a.size(), op_struct{}, compute_stream()); \
     result.mark_host_stale(); \
     return result; \
 }
@@ -189,7 +189,7 @@ Matrix lerp(const Matrix& a, const Matrix& b, float t) {
         throw ShapeMismatchError("lerp requires matching shapes");
     }
     Matrix result(a.rows(), a.cols(), MemoryMode::device_only);
-    detail::launch_binary(a.device_data(), b.device_data(), result.device_data(), a.elements(), LerpScalarOp{t}, compute_stream());
+    detail::launch_binary(a.device_data(), b.device_data(), result.device_data(), a.size(), LerpScalarOp{t}, compute_stream());
     result.mark_host_stale();
     return result;
 }
@@ -199,7 +199,7 @@ Matrix lerp(const Matrix& a, const Matrix& b, const Matrix& t) {
         throw ShapeMismatchError("lerp requires matching shapes");
     }
     Matrix result(a.rows(), a.cols(), MemoryMode::device_only);
-    launch_ternary(a.device_data(), b.device_data(), t.device_data(), result.device_data(), a.elements(), LerpOp{});
+    launch_ternary(a.device_data(), b.device_data(), t.device_data(), result.device_data(), a.size(), LerpOp{});
     result.mark_host_stale();
     return result;
 }
@@ -209,7 +209,7 @@ Matrix addcmul(const Matrix& self, const Matrix& t1, const Matrix& t2, float alp
         throw ShapeMismatchError("addcmul requires matching shapes");
     }
     Matrix result(self.rows(), self.cols(), MemoryMode::device_only);
-    launch_ternary(self.device_data(), t1.device_data(), t2.device_data(), result.device_data(), self.elements(), AddcmulOp{alpha});
+    launch_ternary(self.device_data(), t1.device_data(), t2.device_data(), result.device_data(), self.size(), AddcmulOp{alpha});
     result.mark_host_stale();
     return result;
 }
@@ -219,7 +219,7 @@ Matrix addcdiv(const Matrix& self, const Matrix& t1, const Matrix& t2, float alp
         throw ShapeMismatchError("addcdiv requires matching shapes");
     }
     Matrix result(self.rows(), self.cols(), MemoryMode::device_only);
-    launch_ternary(self.device_data(), t1.device_data(), t2.device_data(), result.device_data(), self.elements(), AddcdivOp{alpha});
+    launch_ternary(self.device_data(), t1.device_data(), t2.device_data(), result.device_data(), self.size(), AddcdivOp{alpha});
     result.mark_host_stale();
     return result;
 }

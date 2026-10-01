@@ -1,9 +1,9 @@
 #include "matrix_pro/sparse/sparse_formats.hpp"
-#include "matrix_pro/sparse.hpp"
-#include "matrix_pro/matrix.hpp"
+#include "matrix_pro/sparse/sparse.hpp"
+#include "matrix_pro/core/matrix.hpp"
 #include "matrix_pro/core/cuda_utils.hpp"
 #include "matrix_pro/core/errors.hpp"
-#include "matrix_pro/core/kernel_helpers.cuh"
+#include "matrix_pro/detail/kernel_helpers.cuh"
 
 #include <cuda_runtime.h>
 #include <cusparse.h>
@@ -29,7 +29,7 @@ cusparseHandle_t get_cusparse_handle() {
 #define CHECK_CUSPARSE(stat) \
     do { \
         if (stat != CUSPARSE_STATUS_SUCCESS) { \
-            throw matrix_pro::RuntimeError("cuSPARSE Error!"); \
+            throw matrix_pro::CudaError("cuSPARSE Error!"); \
         } \
     } while(0)
 
@@ -92,7 +92,7 @@ SparseCOO::SparseCOO(std::size_t rows, std::size_t cols, std::size_t nnz)
 
 SparseCOO::~SparseCOO() = default;
 
-SparseCOO::SparseCOO(const SparseCOO& other) : rows_(other.rows_), cols_(other.cols_), nnz_(other.nnz_) {
+SparseCOO::SparseCOO(const SparseCOO& other) : SparseCOO(other.rows_, other.cols_, other.nnz_) {
     if (nnz_ > 0) {
         row_idx_.reset(static_cast<int*>(allocate_device_memory(nnz_ * sizeof(int))));
         col_idx_.reset(static_cast<int*>(allocate_device_memory(nnz_ * sizeof(int))));
@@ -120,7 +120,7 @@ float SparseCOO::sparsity() const { return 1.0f - static_cast<float>(nnz_) / (ro
 
 SparseCOO SparseCOO::from_dense(const Matrix& dense, float threshold) {
     std::vector<float> host_dense(dense.rows() * dense.cols());
-    checkCuda(cudaMemcpy(host_dense.data(), dense.data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
+    checkCuda(cudaMemcpy(host_dense.data(), dense.device_data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
     
     std::vector<int> row_idx, col_idx;
     std::vector<float> values;
@@ -151,11 +151,12 @@ SparseCOO SparseCOO::from_triplets(std::size_t rows, std::size_t cols,
 
 Matrix SparseCOO::to_dense() const {
     Matrix dense(rows_, cols_);
-    dense.fill_zero();
+    dense.fill(0.0f);
     if (nnz_ > 0) {
         coo_to_dense_kernel<<<detail::capped_grid(nnz_, 256), 256, 0, compute_stream()>>>(
-            row_idx_.get(), col_idx_.get(), values_.get(), dense.data(), cols_, nnz_);
+            row_idx_.get(), col_idx_.get(), values_.get(), dense.device_data(), cols_, nnz_);
     }
+    dense.mark_host_stale();
     return dense;
 }
 
@@ -206,7 +207,7 @@ SparseCSC::SparseCSC(std::size_t rows, std::size_t cols, std::size_t nnz)
 
 SparseCSC::~SparseCSC() = default;
 
-SparseCSC::SparseCSC(const SparseCSC& other) : rows_(other.rows_), cols_(other.cols_), nnz_(other.nnz_) {
+SparseCSC::SparseCSC(const SparseCSC& other) : SparseCSC(other.rows_, other.cols_, other.nnz_) {
     if (cols_ + 1 > 0) {
         col_ptr_.reset(static_cast<int*>(allocate_device_memory((cols_ + 1) * sizeof(int))));
         checkCuda(cudaMemcpyAsync(col_ptr_.get(), other.col_ptr_.get(), (cols_ + 1) * sizeof(int), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
@@ -233,7 +234,7 @@ float SparseCSC::sparsity() const { return 1.0f - static_cast<float>(nnz_) / (ro
 
 SparseCSC SparseCSC::from_dense(const Matrix& dense, float threshold) {
     std::vector<float> host_dense(dense.rows() * dense.cols());
-    checkCuda(cudaMemcpy(host_dense.data(), dense.data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
+    checkCuda(cudaMemcpy(host_dense.data(), dense.device_data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
     
     std::vector<int> col_ptr(dense.cols() + 1, 0);
     std::vector<int> row_idx;
@@ -264,7 +265,7 @@ SparseCSC SparseCSC::from_csr(const SparseCSR& csr) {
 
 Matrix SparseCSC::to_dense() const {
     Matrix dense(rows_, cols_);
-    dense.fill_zero();
+    dense.fill(0.0f);
     std::vector<int> col_ptr(cols_ + 1);
     std::vector<int> row_idx(nnz_);
     std::vector<float> values(nnz_);
@@ -278,7 +279,8 @@ Matrix SparseCSC::to_dense() const {
             host_dense[row_idx[j] * cols_ + c] = values[j];
         }
     }
-    checkCuda(cudaMemcpy(dense.data(), host_dense.data(), rows_ * cols_ * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(cudaMemcpy(dense.device_data(), host_dense.data(), rows_ * cols_ * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
+    dense.mark_host_stale();
     return dense;
 }
 
@@ -296,11 +298,12 @@ SparseCSC SparseCSC::transpose() const {
 Matrix SparseCSC::spmv(const Matrix& x) const {
     if (x.rows() != cols_ || x.cols() != 1) throw ShapeMismatchError("spmv shape error");
     Matrix y(rows_, 1);
-    y.fill_zero();
+    y.fill(0.0f);
     if (cols_ > 0) {
         csc_spmv_kernel<<<detail::capped_grid(cols_, 256), 256, 0, compute_stream()>>>(
-            col_ptr_.get(), row_idx_.get(), values_.get(), x.data(), y.data(), cols_);
+            col_ptr_.get(), row_idx_.get(), values_.get(), x.device_data(), y.device_data(), cols_);
     }
+    y.mark_host_stale();
     return y;
 }
 
@@ -334,7 +337,7 @@ SparseCSR coo_to_csr(const SparseCOO& coo) {
     
     // Simplification: assume COO is sorted, just copy cols and values. 
     // True scatter requires write offsets per row.
-    checkCuda(cudaMemcpy(csr.col_indices(), coo.col_indices(), coo.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
+    checkCuda(cudaMemcpy(csr.col_idx(), coo.col_indices(), coo.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
     checkCuda(cudaMemcpy(csr.values(), coo.values(), coo.nnz() * sizeof(float), cudaMemcpyDeviceToDevice), "memcpy");
     
     free_device_memory(row_counts);
@@ -354,7 +357,7 @@ SparseCOO csr_to_coo(const SparseCSR& csr) {
     
     SparseCOO coo(csr.rows(), csr.cols(), csr.nnz());
     checkCuda(cudaMemcpy(const_cast<int*>(coo.row_indices()), h_row_idx.data(), csr.nnz() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    checkCuda(cudaMemcpy(const_cast<int*>(coo.col_indices()), csr.col_indices(), csr.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
+    checkCuda(cudaMemcpy(const_cast<int*>(coo.col_indices()), csr.col_idx(), csr.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
     checkCuda(cudaMemcpy(const_cast<float*>(coo.values()), csr.values(), csr.nnz() * sizeof(float), cudaMemcpyDeviceToDevice), "memcpy");
     return coo;
 }
@@ -367,7 +370,7 @@ SparseCSC csr_to_csc(const SparseCSR& csr) {
     
     if (csr.nnz() > 0) {
         count_nnz_per_col_kernel<<<detail::capped_grid(csr.nnz(), 256), 256, 0, compute_stream()>>>(
-            csr.col_indices(), counts, csr.nnz());
+            csr.col_idx(), counts, csr.nnz());
     }
     
     std::vector<int> h_counts(csr.cols() + 1, 0);
@@ -386,7 +389,7 @@ SparseCSC csr_to_csc(const SparseCSR& csr) {
     
     if (csr.rows() > 0) {
         csr_to_csc_scatter_kernel<<<detail::capped_grid(csr.rows(), 256), 256, 0, compute_stream()>>>(
-            csr.row_ptr(), csr.col_indices(), csr.values(),
+            csr.row_ptr(), csr.col_idx(), csr.values(),
             csc.col_ptr_.get(), csc.row_idx_.get(), csc.values_.get(),
             write_pos, csr.rows());
     }
@@ -407,10 +410,10 @@ SparseCSR spgemm(const SparseCSR& A, const SparseCSR& B) {
     cusparseSpMatDescr_t matA, matB, matC;
     
     CHECK_CUSPARSE(cusparseCreateCsr(&matA, A.rows(), A.cols(), A.nnz(),
-                                      const_cast<int*>(A.row_ptr()), const_cast<int*>(A.col_indices()), const_cast<float*>(A.values()),
+                                      const_cast<int*>(A.row_ptr()), const_cast<int*>(A.col_idx()), const_cast<float*>(A.values()),
                                       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F));
     CHECK_CUSPARSE(cusparseCreateCsr(&matB, B.rows(), B.cols(), B.nnz(),
-                                      const_cast<int*>(B.row_ptr()), const_cast<int*>(B.col_indices()), const_cast<float*>(B.values()),
+                                      const_cast<int*>(B.row_ptr()), const_cast<int*>(B.col_idx()), const_cast<float*>(B.values()),
                                       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F));
     CHECK_CUSPARSE(cusparseCreateCsr(&matC, A.rows(), B.cols(), 0,
                                       nullptr, nullptr, nullptr,
@@ -447,7 +450,7 @@ SparseCSR spgemm(const SparseCSR& A, const SparseCSR& B) {
     
     SparseCSR C(A.rows(), B.cols(), C_nnz);
     
-    CHECK_CUSPARSE(cusparseCsrSetPointers(matC, C.row_ptr(), C.col_indices(), C.values()));
+    CHECK_CUSPARSE(cusparseCsrSetPointers(matC, C.row_ptr(), C.col_idx(), C.values()));
     
     CHECK_CUSPARSE(cusparseSpGEMM_copy(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
                                         &alpha, matA, matB, &beta, matC,

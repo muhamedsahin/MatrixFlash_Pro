@@ -5,6 +5,7 @@
 #include "benchmark_support.hpp"
 #include "matrix_pro/core/matrix.hpp"
 #include "matrix_pro/streams/execution.hpp"
+#include "matrix_pro/nn/inplace.hpp"
 
 namespace matrix_pro {
 namespace bench {
@@ -17,22 +18,28 @@ void run(const Options& options, std::vector<Result>& out) {
     for (std::size_t n : sizes) {
         Matrix a = Matrix::ones(n, n);
         Matrix b = Matrix::ones(n, n);
-        Matrix c(n, n);
+        Matrix c(n, n, MemoryMode::device_only);
 
         // Standard repeated launch
         const Stats ms_standard = sample_ms([&] {
-            c = a + b;
+            c.fill(0);
+            add_(c, a);
+            add_(c, b);
         }, options);
         add_result(out, "execution", std::to_string(n) + "x" + std::to_string(n) + " direct",
                    n, ms_standard, 0.0, "ms", "standard kernel launch");
 
         // CUDA Graph captured launch
         CudaGraph graph;
-        c = a + b;
+        c.fill(0);
+        add_(c, a);
+        add_(c, b);
         c.synchronize();
 
         graph.begin_capture();
-        c = a + b;
+        c.fill(0);
+        add_(c, a);
+        add_(c, b);
         graph.end_capture();
 
         const Stats ms_graph = sample_ms([&] {
@@ -55,4 +62,3 @@ const BenchmarkInfo& execution_benchmark() {
 
 } // namespace bench
 } // namespace matrix_pro
-

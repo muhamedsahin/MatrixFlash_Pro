@@ -47,6 +47,8 @@ private:
 
 // CSC (Compressed Sparse Column) format
 class SparseCSC {
+    friend SparseCSC csr_to_csc(const SparseCSR& csr);
+    friend SparseCSR csc_to_csr(const SparseCSC& csc);
 public:
     SparseCSC() = default;
     SparseCSC(std::size_t rows, std::size_t cols, std::size_t nnz);

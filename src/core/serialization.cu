@@ -2,7 +2,7 @@
 #include "matrix_pro/core/matrix.hpp"
 #include "matrix_pro/core/tensor.hpp"
 #include "matrix_pro/core/errors.hpp"
-#include "matrix_pro/utils/cuda_utils.hpp"
+#include "matrix_pro/core/cuda_utils.hpp"
 #include <fstream>
 #include <cstring>
 #include <cstdint>
@@ -35,8 +35,8 @@ void save_tensor(const Tensor& tensor, const std::string& filename) {
     size_t data_size = tensor.size() * sizeof(float);
     std::vector<float> host_data(tensor.size());
     
-    checkCuda(cudaMemcpyAsync(host_data.data(), tensor.data(), data_size, cudaMemcpyDeviceToHost, detail::compute_stream()), "cudaMemcpyAsync D2H");
-    checkCuda(cudaStreamSynchronize(detail::compute_stream()), "cudaStreamSynchronize");
+    checkCuda(cudaMemcpyAsync(host_data.data(), tensor.device_data(), data_size, cudaMemcpyDeviceToHost, compute_stream()), "cudaMemcpyAsync D2H");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "cudaStreamSynchronize");
 
     out.write(reinterpret_cast<const char*>(host_data.data()), data_size);
     if (!out.good()) {
@@ -79,9 +79,10 @@ Tensor load_tensor(const std::string& filename) {
     }
 
     Tensor tensor(shape);
-    checkCuda(cudaMemcpyAsync(tensor.data(), host_data.data(), data_size, cudaMemcpyHostToDevice, detail::compute_stream()), "cudaMemcpyAsync H2D");
-    checkCuda(cudaStreamSynchronize(detail::compute_stream()), "cudaStreamSynchronize");
+    checkCuda(cudaMemcpyAsync(tensor.device_data(), host_data.data(), data_size, cudaMemcpyHostToDevice, compute_stream()), "cudaMemcpyAsync H2D");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "cudaStreamSynchronize");
 
+    tensor.mark_host_stale();
     return tensor;
 }
 
@@ -92,8 +93,8 @@ void Checkpoint::add(const std::string& name, const Matrix& matrix) {
     entry.shape = { matrix.rows(), matrix.cols() };
     entry.data.resize(matrix.size());
     
-    checkCuda(cudaMemcpyAsync(entry.data.data(), matrix.data(), matrix.size() * sizeof(float), cudaMemcpyDeviceToHost, detail::compute_stream()), "cudaMemcpyAsync D2H");
-    checkCuda(cudaStreamSynchronize(detail::compute_stream()), "cudaStreamSynchronize");
+    checkCuda(cudaMemcpyAsync(entry.data.data(), matrix.device_data(), matrix.size() * sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "cudaMemcpyAsync D2H");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "cudaStreamSynchronize");
     
     entries_[name] = std::move(entry);
 }
@@ -104,8 +105,8 @@ void Checkpoint::add(const std::string& name, const Tensor& tensor) {
     entry.shape = tensor.shape();
     entry.data.resize(tensor.size());
     
-    checkCuda(cudaMemcpyAsync(entry.data.data(), tensor.data(), tensor.size() * sizeof(float), cudaMemcpyDeviceToHost, detail::compute_stream()), "cudaMemcpyAsync D2H");
-    checkCuda(cudaStreamSynchronize(detail::compute_stream()), "cudaStreamSynchronize");
+    checkCuda(cudaMemcpyAsync(entry.data.data(), tensor.device_data(), tensor.size() * sizeof(float), cudaMemcpyDeviceToHost, compute_stream()), "cudaMemcpyAsync D2H");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "cudaStreamSynchronize");
     
     entries_[name] = std::move(entry);
 }
@@ -244,8 +245,9 @@ Matrix Checkpoint::get_matrix(const std::string& name) const {
     if (entry.shape.size() != 2) throw InvalidArgumentError("Matrix entry must have 2 dimensions: " + name);
     
     Matrix mat(entry.shape[0], entry.shape[1]);
-    checkCuda(cudaMemcpyAsync(mat.data(), entry.data.data(), entry.data.size() * sizeof(float), cudaMemcpyHostToDevice, detail::compute_stream()), "cudaMemcpyAsync H2D");
-    checkCuda(cudaStreamSynchronize(detail::compute_stream()), "cudaStreamSynchronize");
+    checkCuda(cudaMemcpyAsync(mat.device_data(), entry.data.data(), entry.data.size() * sizeof(float), cudaMemcpyHostToDevice, compute_stream()), "cudaMemcpyAsync H2D");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "cudaStreamSynchronize");
+    mat.mark_host_stale();
     return mat;
 }
 
@@ -257,8 +259,9 @@ Tensor Checkpoint::get_tensor(const std::string& name) const {
     if (entry.type != EntryType::tensor) throw InvalidArgumentError("Entry is not a tensor: " + name);
     
     Tensor tensor(entry.shape);
-    checkCuda(cudaMemcpyAsync(tensor.data(), entry.data.data(), entry.data.size() * sizeof(float), cudaMemcpyHostToDevice, detail::compute_stream()), "cudaMemcpyAsync H2D");
-    checkCuda(cudaStreamSynchronize(detail::compute_stream()), "cudaStreamSynchronize");
+    checkCuda(cudaMemcpyAsync(tensor.device_data(), entry.data.data(), entry.data.size() * sizeof(float), cudaMemcpyHostToDevice, compute_stream()), "cudaMemcpyAsync H2D");
+    checkCuda(cudaStreamSynchronize(compute_stream()), "cudaStreamSynchronize");
+    tensor.mark_host_stale();
     return tensor;
 }
 

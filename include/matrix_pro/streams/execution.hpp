@@ -56,8 +56,10 @@ struct KernelTiming {
 
 class ExecutionProfiler {
 public:
-    ExecutionProfiler() = default;
+    ExecutionProfiler();
     ~ExecutionProfiler();
+    ExecutionProfiler(const ExecutionProfiler&) = delete;
+    ExecutionProfiler& operator=(const ExecutionProfiler&) = delete;
 
     void begin(const std::string& label = "");
     void end();

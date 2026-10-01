@@ -101,8 +101,8 @@ DeviceInfo get_device_info(int device) {
     info.warp_size = prop.warpSize;
     info.max_shared_memory_per_block = prop.sharedMemPerBlock;
     info.max_threads_per_block = prop.maxThreadsPerBlock;
-    info.clock_rate_khz = prop.clockRate;
-    info.memory_clock_khz = prop.memoryClockRate;
+    checkCudaBackend(cudaDeviceGetAttribute(&info.clock_rate_khz, cudaDevAttrClockRate, device), "clock rate");
+    checkCudaBackend(cudaDeviceGetAttribute(&info.memory_clock_khz, cudaDevAttrMemoryClockRate, device), "memory clock rate");
     info.memory_bus_width = prop.memoryBusWidth;
     
     return info;

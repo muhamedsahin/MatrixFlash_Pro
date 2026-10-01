@@ -1,11 +1,10 @@
 #include "matrix_pro/ops/linalg_extended.hpp"
 #include "matrix_pro/core/matrix.hpp"
 #include "matrix_pro/core/tensor.hpp"
-#include "matrix_pro/utils/cuda_utils.hpp"
-#include "matrix_pro/utils/errors.hpp"
+#include "matrix_pro/core/cuda_utils.hpp"
+#include "matrix_pro/core/errors.hpp"
 #include "matrix_pro/ops/linalg.hpp"
-#include "matrix_pro/ops/math_ops.hpp"
-#include "matrix_pro/ops/creation.hpp"
+#include "matrix_pro/ops/operations.hpp"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
@@ -88,7 +87,7 @@ __global__ void log_det_kernel(const float* LU_cm, const int* ipiv, std::size_t 
         int sign = 1;
         for (std::size_t i = 0; i < n; i++) {
             float diag = LU_cm[i * n + i];
-            log_det += logf(abs(diag));
+            log_det += logf(fabsf(diag));
             if (diag < 0.0f) sign = -sign;
             if (ipiv[i] != i + 1) sign = -sign;
         }
@@ -104,25 +103,25 @@ LUResult lu(const Matrix& A) {
 
     Matrix LU_cm(n, n, MemoryMode::device_only);
     int num_blocks = (n * n + 255) / 256;
-    detail::row_to_col_major_kernel<<<num_blocks, 256, 0, compute_stream()>>>(A.data(), LU_cm.data(), n, n);
+    detail::row_to_col_major_kernel<<<num_blocks, 256, 0, compute_stream()>>>(A.device_data(), LU_cm.device_data(), n, n);
 
     int lwork = 0;
-    cusolverDnSgetrf_bufferSize(cusolver_handle(), n, n, LU_cm.data(), n, &lwork);
+    cusolverDnSgetrf_bufferSize(cusolver_handle(), n, n, LU_cm.device_data(), n, &lwork);
 
     float* d_work; cudaMalloc(&d_work, lwork * sizeof(float));
     int* d_ipiv; cudaMalloc(&d_ipiv, n * sizeof(int));
     int* d_info; cudaMalloc(&d_info, sizeof(int));
 
-    cusolverDnSgetrf(cusolver_handle(), n, n, LU_cm.data(), n, d_work, d_ipiv, d_info);
+    cusolverDnSgetrf(cusolver_handle(), n, n, LU_cm.device_data(), n, d_work, d_ipiv, d_info);
 
     LUResult result;
     result.L = Matrix(n, n, MemoryMode::device_only);
     result.U = Matrix(n, n, MemoryMode::device_only);
     result.P = Matrix(n, n, MemoryMode::device_only);
 
-    detail::extract_L_kernel<<<num_blocks, 256, 0, compute_stream()>>>(LU_cm.data(), result.L.data(), n);
-    detail::extract_U_kernel<<<num_blocks, 256, 0, compute_stream()>>>(LU_cm.data(), result.U.data(), n);
-    detail::build_permutation_matrix_kernel<<<1, 1, 0, compute_stream()>>>(d_ipiv, result.P.data(), n);
+    detail::extract_L_kernel<<<num_blocks, 256, 0, compute_stream()>>>(LU_cm.device_data(), result.L.device_data(), n);
+    detail::extract_U_kernel<<<num_blocks, 256, 0, compute_stream()>>>(LU_cm.device_data(), result.U.device_data(), n);
+    detail::build_permutation_matrix_kernel<<<1, 1, 0, compute_stream()>>>(d_ipiv, result.P.device_data(), n);
     
     cudaFree(d_work); cudaFree(d_ipiv); cudaFree(d_info);
     result.L.mark_host_stale(); result.U.mark_host_stale(); result.P.mark_host_stale();
@@ -132,13 +131,13 @@ LUResult lu(const Matrix& A) {
 
 Matrix trsm(const Matrix& A, const Matrix& B, bool upper, bool left, bool unit_diag) {
     Matrix X(B.rows(), B.cols(), MemoryMode::device_only);
-    cudaMemcpyAsync(X.data(), B.data(), B.rows() * B.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+    cudaMemcpyAsync(X.device_data(), B.device_data(), B.rows() * B.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
 
     cublasFillMode_t fill = upper ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     cublasSideMode_t side = left ? CUBLAS_SIDE_RIGHT : CUBLAS_SIDE_LEFT;
     cublasDiagType_t diag = unit_diag ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
     const float alpha = 1.0f;
-    cublasStrsm(cublas_handle(), side, fill, CUBLAS_OP_N, diag, B.cols(), B.rows(), &alpha, A.data(), A.cols(), X.data(), B.cols());
+    cublasStrsm(cublas_handle(), side, fill, CUBLAS_OP_N, diag, B.cols(), B.rows(), &alpha, A.device_data(), A.cols(), X.device_data(), B.cols());
     
     X.mark_host_stale();
     return X;
@@ -146,38 +145,38 @@ Matrix trsm(const Matrix& A, const Matrix& B, bool upper, bool left, bool unit_d
 
 Matrix trmm(const Matrix& A, const Matrix& B, bool upper, bool left) {
     Matrix X(B.rows(), B.cols(), MemoryMode::device_only);
-    cudaMemcpyAsync(X.data(), B.data(), B.rows() * B.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+    cudaMemcpyAsync(X.device_data(), B.device_data(), B.rows() * B.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
     cublasFillMode_t fill = upper ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     cublasSideMode_t side = left ? CUBLAS_SIDE_RIGHT : CUBLAS_SIDE_LEFT;
     const float alpha = 1.0f;
-    cublasStrmm(cublas_handle(), side, fill, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, B.cols(), B.rows(), &alpha, A.data(), A.cols(), B.data(), B.cols(), X.data(), B.cols());
+    cublasStrmm(cublas_handle(), side, fill, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, B.cols(), B.rows(), &alpha, A.device_data(), A.cols(), B.device_data(), B.cols(), X.device_data(), B.cols());
     X.mark_host_stale();
     return X;
 }
 
 Matrix matrix_power(const Matrix& A, int n) {
     if (A.rows() != A.cols()) throw ShapeMismatchError("Matrix must be square");
-    if (n == 0) return eye(A.rows());
+    if (n == 0) return Matrix::identity(A.rows());
     if (n == 1) {
         Matrix res(A.rows(), A.cols(), MemoryMode::device_only);
-        cudaMemcpyAsync(res.data(), A.data(), A.rows() * A.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(res.device_data(), A.device_data(), A.rows() * A.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         return res;
     }
     
     Matrix base = (n < 0) ? inverse(A) : A;
     int p = std::abs(n);
-    Matrix res = eye(A.rows());
+    Matrix res = Matrix::identity(A.rows());
     Matrix temp(A.rows(), A.cols(), MemoryMode::device_only);
     
     while (p > 0) {
         if (p % 2 == 1) {
             temp = multiply(res, base);
-            cudaMemcpyAsync(res.data(), temp.data(), res.rows() * res.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+            cudaMemcpyAsync(res.device_data(), temp.device_data(), res.rows() * res.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         }
         p /= 2;
         if (p > 0) {
             temp = multiply(base, base);
-            cudaMemcpyAsync(base.data(), temp.data(), base.rows() * base.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+            cudaMemcpyAsync(base.device_data(), temp.device_data(), base.rows() * base.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         }
     }
     res.mark_host_stale();
@@ -187,17 +186,17 @@ Matrix matrix_power(const Matrix& A, int n) {
 Matrix matrix_exp(const Matrix& A, int order) {
     if (A.rows() != A.cols()) throw ShapeMismatchError("Matrix must be square");
     int n = A.rows();
-    Matrix res = eye(n);
-    Matrix term = eye(n);
+    Matrix res = Matrix::identity(n);
+    Matrix term = Matrix::identity(n);
     Matrix temp(n, n, MemoryMode::device_only);
     
     for (int i = 1; i <= order; ++i) {
         temp = multiply(term, A);
         const float alpha = 1.0f / i;
-        cublasSscal(cublas_handle(), n * n, &alpha, temp.data(), 1);
-        cudaMemcpyAsync(term.data(), temp.data(), n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cublasSscal(cublas_handle(), n * n, &alpha, temp.device_data(), 1);
+        cudaMemcpyAsync(term.device_data(), temp.device_data(), n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         const float alpha_add = 1.0f;
-        cublasSaxpy(cublas_handle(), n * n, &alpha_add, term.data(), 1, res.data(), 1);
+        cublasSaxpy(cublas_handle(), n * n, &alpha_add, term.device_data(), 1, res.device_data(), 1);
     }
     res.mark_host_stale();
     return res;
@@ -208,19 +207,19 @@ float log_determinant(const Matrix& A) {
     std::size_t n = A.rows();
     Matrix LU_cm(n, n, MemoryMode::device_only);
     int num_blocks = (n * n + 255) / 256;
-    detail::row_to_col_major_kernel<<<num_blocks, 256, 0, compute_stream()>>>(A.data(), LU_cm.data(), n, n);
+    detail::row_to_col_major_kernel<<<num_blocks, 256, 0, compute_stream()>>>(A.device_data(), LU_cm.device_data(), n, n);
 
     int lwork = 0;
-    cusolverDnSgetrf_bufferSize(cusolver_handle(), n, n, LU_cm.data(), n, &lwork);
+    cusolverDnSgetrf_bufferSize(cusolver_handle(), n, n, LU_cm.device_data(), n, &lwork);
 
     float* d_work; cudaMalloc(&d_work, lwork * sizeof(float));
     int* d_ipiv; cudaMalloc(&d_ipiv, n * sizeof(int));
     int* d_info; cudaMalloc(&d_info, sizeof(int));
 
-    cusolverDnSgetrf(cusolver_handle(), n, n, LU_cm.data(), n, d_work, d_ipiv, d_info);
+    cusolverDnSgetrf(cusolver_handle(), n, n, LU_cm.device_data(), n, d_work, d_ipiv, d_info);
 
     float* d_det; cudaMalloc(&d_det, sizeof(float));
-    detail::log_det_kernel<<<1, 1, 0, compute_stream()>>>(LU_cm.data(), d_ipiv, n, d_det);
+    detail::log_det_kernel<<<1, 1, 0, compute_stream()>>>(LU_cm.device_data(), d_ipiv, n, d_det);
 
     float h_det;
     cudaMemcpyAsync(&h_det, d_det, sizeof(float), cudaMemcpyDeviceToHost, compute_stream());
@@ -246,13 +245,13 @@ Tensor batch_solve(const Tensor& A, const Tensor& B) {
 
     for (int i = 0; i < batch_size; ++i) {
         Matrix Ai(n, n, MemoryMode::device_only);
-        cudaMemcpyAsync(Ai.data(), A.data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(Ai.device_data(), A.device_data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         
         Matrix Bi(n, m, MemoryMode::device_only);
-        cudaMemcpyAsync(Bi.data(), B.data() + i * n * m, n * m * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(Bi.device_data(), B.device_data() + i * n * m, n * m * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         
         Matrix Xi = solve(Ai, Bi);
-        cudaMemcpyAsync(X.data() + i * n * m, Xi.data(), n * m * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(X.device_data() + i * n * m, Xi.device_data(), n * m * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
     }
     
     X.mark_host_stale();
@@ -269,10 +268,10 @@ Tensor batch_inverse(const Tensor& A) {
     Tensor inv(shape, MemoryMode::device_only);
     for (int i = 0; i < batch_size; ++i) {
         Matrix Ai(n, n, MemoryMode::device_only);
-        cudaMemcpyAsync(Ai.data(), A.data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(Ai.device_data(), A.device_data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         
         Matrix Ai_inv = inverse(Ai);
-        cudaMemcpyAsync(inv.data() + i * n * n, Ai_inv.data(), n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(inv.device_data() + i * n * n, Ai_inv.device_data(), n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
     }
     inv.mark_host_stale();
     return inv;
@@ -288,7 +287,7 @@ std::vector<float> batch_det(const Tensor& A) {
     
     for (int i = 0; i < batch_size; ++i) {
         Matrix Ai(n, n, MemoryMode::device_only);
-        cudaMemcpyAsync(Ai.data(), A.data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
+        cudaMemcpyAsync(Ai.device_data(), A.device_data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
         dets[i] = std::exp(log_determinant(Ai)); // assuming det is positive for simplicity, real log_det returns log(abs(det))
     }
     

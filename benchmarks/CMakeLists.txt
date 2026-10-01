@@ -12,6 +12,10 @@
 
 find_package(Threads REQUIRED)
 
+# Standalone fairness harness avoids inheriting the legacy comparison methods.
+add_executable(matrix_pro_bench_gemm_fair bench_gemm_fair.cpp)
+target_link_libraries(matrix_pro_bench_gemm_fair PRIVATE matrix_pro)
+
 # --- shared harness + workload bodies ---------------------------------------
 add_library(matrix_pro_bench_support STATIC
 	support/benchmark_support.cpp

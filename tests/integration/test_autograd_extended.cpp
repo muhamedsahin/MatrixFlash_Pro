@@ -25,13 +25,13 @@ int main() {
             Matrix m(2, 2, {1.0f, 2.0f, 3.0f, 4.0f});
             Variable v(m, true);
             Variable d = v.detach();
-            ctx.check(!d.requires_gradient(), "detached variable requires_grad is false");
+            ctx.check(!d.requires_grad(), "detached variable requires_grad is false");
             ctx.check(d.is_leaf(), "detached variable is leaf");
 
             Variable c = v.clone();
             ctx.check(c.is_leaf(), "cloned variable is leaf");
-            c.value().download();
-            ctx.check_near(c.value().at(0, 0), 1.0f, 1e-5, "cloned value matches");
+            Matrix cloned = c.value(); cloned.download();
+            ctx.check_near(cloned.at(0, 0), 1.0f, 1e-5, "cloned value matches");
         }
 
         ctx.section("Variable clip_grad_value_");
@@ -39,15 +39,15 @@ int main() {
             Matrix m(1, 4, {1.0f, 1.0f, 1.0f, 1.0f});
             Variable v(m, true);
             // loss = (v * 10).sum() => grad = 10
-            Variable loss = (v * 10.0f).sum();
+            Variable loss = v.multiply(10.0f).sum();
             loss.backward();
 
             std::vector<Variable> params = {v};
             Variable::clip_grad_value_(params, 5.0f);
 
-            v.gradient().download();
+            Matrix gradient = v.grad(); gradient.download();
             bool all_clipped = true;
-            for (float g : v.gradient().data()) {
+            for (float g : gradient.data()) {
                 if (g > 5.0f + 1e-4f || g < -5.0f - 1e-4f) all_clipped = false;
             }
             ctx.check(all_clipped, "gradients clipped to [-5, 5]");
@@ -58,14 +58,14 @@ int main() {
             Matrix m(1, 4, {1.0f, 1.0f, 1.0f, 1.0f});
             Variable v(m, true);
             // loss = (v * 10).sum() => grad = [10, 10, 10, 10], norm = 20
-            Variable loss = (v * 10.0f).sum();
+            Variable loss = v.multiply(10.0f).sum();
             loss.backward();
 
             std::vector<Variable> params = {v};
             Variable::clip_grad_norm_(params, 10.0f); // clip norm from 20 to 10
 
-            v.gradient().download();
-            float norm = v.gradient().l2_norm();
+            Matrix gradient = v.grad(); gradient.download();
+            float norm = v.grad().l2_norm();
             ctx.check_near(norm, 10.0f, 0.05, "gradient L2 norm clipped to 10");
         }
 

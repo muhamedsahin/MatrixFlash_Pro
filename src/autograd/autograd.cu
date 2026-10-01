@@ -28,6 +28,7 @@ struct VarTensor::Node {
 namespace {
 
 std::shared_ptr<Variable::Node> make_node(const Matrix& value, bool requires_gradient) {
+    requires_gradient = requires_gradient && is_grad_enabled();
     auto node = std::make_shared<Variable::Node>();
     node->value = value;
     node->requires_gradient = requires_gradient;
@@ -36,6 +37,7 @@ std::shared_ptr<Variable::Node> make_node(const Matrix& value, bool requires_gra
 }
 
 std::shared_ptr<VarTensor::Node> make_node(const Tensor& value, bool requires_gradient) {
+    requires_gradient = requires_gradient && is_grad_enabled();
     auto node = std::make_shared<VarTensor::Node>();
     node->value = value;
     node->requires_gradient = requires_gradient;
@@ -86,6 +88,21 @@ const Matrix& Variable::grad() const {
 }
 
 bool Variable::requires_grad() const { return node_ && node_->requires_gradient; }
+
+Variable Variable::sum() const {
+    auto result = make_node(scalar_matrix(value().sum()), requires_grad());
+    result->parents = {node_};
+    auto parent = node_;
+    auto* self = result.get();
+    result->backward_function = [parent, self] {
+        if (parent->requires_gradient) {
+            Matrix zeros(parent->value.rows(), parent->value.cols(), MemoryMode::device_only);
+            zeros.fill(0);
+            parent->gradient += matrix_pro::broadcast_add(zeros, self->gradient);
+        }
+    };
+    return Variable(result);
+}
 
 void Variable::zero_grad() {
     if (requires_grad()) node_->gradient = Matrix::zeros(value().rows(), value().cols());
@@ -871,12 +888,12 @@ NoGradGuard::~NoGradGuard() { tl_grad_enabled = prev_state_; }
 
 // Variable extensions
 Variable Variable::detach() const {
-    Variable result(value());
+    Variable result(value(), false);
     return result;
 }
 
 Variable Variable::clone() const {
-    Variable result(Matrix(value()));
+    Variable result{Matrix(value())};
     return result;
 }
 
@@ -937,10 +954,9 @@ Variable Variable::checkpoint(std::function<Variable(const Variable&)> fn, const
             Variable recomputed_input(input_node->value, true);
             Variable recomputed_output = fn_copy(recomputed_input);
             
-            recomputed_output.node_->gradient = result_node->gradient;
-            recomputed_output.backward();
+            recomputed_output.elementwise_multiply(Variable(result_node->gradient, false)).sum().backward();
             
-            input_node->gradient = add(input_node->gradient, recomputed_input.grad());
+            input_node->gradient = matrix_pro::add(input_node->gradient, recomputed_input.grad());
         };
     }
     return result;
