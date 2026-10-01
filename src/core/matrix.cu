@@ -8,6 +8,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <utility>
+#include <limits>
 
 namespace matrix_pro {
 namespace {
@@ -24,6 +25,8 @@ Matrix::Matrix(std::size_t rows, std::size_t cols)
 Matrix::Matrix(std::size_t rows, std::size_t cols, MemoryMode mode)
     : rows_(rows), cols_(cols), device_data_(nullptr, release_device),
       device_only_(mode == MemoryMode::device_only) {
+    if(cols && rows>std::numeric_limits<std::size_t>::max()/sizeof(float)/cols)
+        throw InvalidArgumentError("Matrix shape overflows allocation size");
     if (!device_only_) host_data_.resize(rows * cols);
     allocate_device();
 }

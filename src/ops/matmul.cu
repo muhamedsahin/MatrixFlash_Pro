@@ -3,9 +3,16 @@
 #include "matrix_pro/detail/gemm/gemm_api.hpp"
 
 #include <stdexcept>
+#include <limits>
 
 namespace matrix_pro {
 namespace {
+void validate_dimensions(const Matrix& left,const Matrix& right) {
+    if(left.cols()!=right.rows())throw ShapeMismatchError("Matrix dimensions are incompatible for multiplication");
+    const auto max=static_cast<std::size_t>(std::numeric_limits<int>::max());
+    if(left.rows()>max || left.cols()>max || right.cols()>max)
+        throw InvalidArgumentError("GEMM dimension exceeds 32-bit backend limit");
+}
 
 __global__ void outer_product_kernel(const float* left, const float* right, float* output,
                                      std::size_t left_count, std::size_t right_count) {
@@ -19,6 +26,7 @@ __global__ void outer_product_kernel(const float* left, const float* right, floa
 } // namespace
 
 Matrix multiply(const Matrix& left, const Matrix& right) {
+    validate_dimensions(left,right);
     if (left.cols() != right.rows()) {
         throw ShapeMismatchError("Matrix dimensions are incompatible for multiplication");
     }
@@ -39,6 +47,7 @@ Matrix multiply(const Matrix& left, const Matrix& right) {
 }
 
 void multiply_into(const Matrix& left, const Matrix& right, Matrix& output) {
+    validate_dimensions(left,right);
     if (left.cols() != right.rows()) {
         throw ShapeMismatchError("Matrix dimensions are incompatible for multiplication");
     }
@@ -46,6 +55,8 @@ void multiply_into(const Matrix& left, const Matrix& right, Matrix& output) {
         throw ShapeMismatchError("multiply_into output shape mismatch");
     }
     if (left.rows() * right.cols() == 0) return;
+    if(output.device_data()==left.device_data() || output.device_data()==right.device_data())
+        throw InvalidArgumentError("multiply_into output cannot alias an input");
     detail::gemm::gemm_rowmajor(
         left.device_data(), right.device_data(), output.device_data(),
         static_cast<int>(left.rows()), static_cast<int>(right.cols()),
@@ -54,6 +65,7 @@ void multiply_into(const Matrix& left, const Matrix& right, Matrix& output) {
 }
 
 Matrix gemm_bias_relu(const Matrix& left, const Matrix& right, const Matrix& bias) {
+    validate_dimensions(left,right);
     if (left.cols() != right.rows()) {
         throw ShapeMismatchError("gemm_bias_relu: incompatible GEMM shapes");
     }
@@ -73,6 +85,7 @@ Matrix gemm_bias_relu(const Matrix& left, const Matrix& right, const Matrix& bia
 }
 
 Matrix gemm_bias_gelu(const Matrix& left, const Matrix& right, const Matrix& bias) {
+    validate_dimensions(left,right);
     if (left.cols() != right.rows()) {
         throw ShapeMismatchError("gemm_bias_gelu: incompatible GEMM shapes");
     }

@@ -20,3 +20,7 @@ matrix_pro_set_warnings(matrix_pro_demo_high_perf)
 add_executable(matrix_pro_demo_mlp autograd_mlp_demo.cpp)
 target_link_libraries(matrix_pro_demo_mlp PRIVATE matrix_pro)
 matrix_pro_set_warnings(matrix_pro_demo_mlp)
+
+add_executable(matrix_pro_demo_planned_gemm planned_gemm.cpp)
+target_link_libraries(matrix_pro_demo_planned_gemm PRIVATE matrix_pro)
+matrix_pro_set_warnings(matrix_pro_demo_planned_gemm)

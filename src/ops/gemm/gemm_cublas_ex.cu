@@ -28,7 +28,7 @@ void gemm_cublas_ex(const float* a, const float* b, float* c,
         a, CUDA_R_32F, k,
         &beta,
         c, CUDA_R_32F, n,
-        CUDA_R_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+        CUBLAS_COMPUTE_32F_FAST_TF32, CUBLAS_GEMM_DEFAULT);
     if (status != CUBLAS_STATUS_SUCCESS) {
         // Older drivers / GPUs without tensor-op may reject TENSOR_OP; fall back.
         const cublasStatus_t retry = cublasGemmEx(
@@ -39,7 +39,7 @@ void gemm_cublas_ex(const float* a, const float* b, float* c,
             a, CUDA_R_32F, k,
             &beta,
             c, CUDA_R_32F, n,
-            CUDA_R_32F, CUBLAS_GEMM_DEFAULT);
+            CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
         if (retry != CUBLAS_STATUS_SUCCESS) {
             throw CudaError("cublasGemmEx failed");
         }

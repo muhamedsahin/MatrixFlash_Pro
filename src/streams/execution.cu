@@ -71,6 +71,12 @@ bool CudaGraph::is_compiled() const noexcept {
 }
 
 void CudaGraph::reset() {
+    if(capturing_) {
+        cudaGraph_t discarded=nullptr;
+        cudaStreamEndCapture(compute_stream(),&discarded);
+        if(discarded)cudaGraphDestroy(discarded);
+        capturing_=false;
+    }
     if (exec_ != nullptr) {
         cudaGraphExecDestroy(static_cast<cudaGraphExec_t>(exec_));
         exec_ = nullptr;

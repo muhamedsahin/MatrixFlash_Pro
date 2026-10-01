@@ -22,6 +22,8 @@
 #include "matrix_pro/ops/masking.hpp"
 #include "matrix_pro/ops/precision.hpp"
 #include "matrix_pro/ops/product.hpp"
+#include "matrix_pro/ops/gemm.hpp"
+#include "matrix_pro/ops/factorization.hpp"
 #include "matrix_pro/ops/reductions.hpp"
 #include "matrix_pro/ops/shape.hpp"
 #include "matrix_pro/ops/transforms.hpp"

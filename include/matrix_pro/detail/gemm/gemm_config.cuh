@@ -43,23 +43,19 @@ enum class GemmBackend {
 
 inline GemmBackend select_backend(int m, int n, int k) noexcept {
     if (m <= 0 || n <= 0 || k <= 0) return GemmBackend::cublas;
+    // Large vector x matrix has a long strided reduction. Vendor GEMV/GEMM is
+    // faster on the measured Ampere device; retain custom kernels for small K.
+    if (m == 1 && k >= 1024) return GemmBackend::cublaslt;
     if (n <= kGemvMaxInner || m <= kGemvMaxInner) return GemmBackend::gemv;
     if (n <= kSkinnyMaxN && k >= 128) return GemmBackend::gemv;
-    const long long flops =
-        2ll * static_cast<long long>(m) * static_cast<long long>(n) *
-        static_cast<long long>(k);
-    if (m <= kSmallMaxDim && n <= kSmallMaxDim && k <= kSmallMaxDim &&
-        flops <= kSmallMaxFlops) {
+    if (m <= kSmallMaxDim && n <= kSmallMaxDim && k <= kSmallMaxDim) {
         return GemmBackend::micro;
     }
     // Large / medium: prefer algo-cached cublasLt (TF32). After the first call
     // per shape the heuristic is reused, which keeps us on the vendor peak
-    // path and often matches or beats a cold GemmEx pick. GemmEx TENSOR_OP
-    // remains the fallback inside gemm_cublas_lt / for smaller medium shapes.
-    if (flops >= kLtMinFlops || (m >= 256 && n >= 256 && k >= 256)) {
-        return GemmBackend::cublaslt;
-    }
-    return GemmBackend::cublas;
+    // path. GemmEx remains the fallback when Lt cannot serve the operation.
+    // Cached descriptors remove the old reason to bypass Lt for medium GEMMs.
+    return GemmBackend::cublaslt;
 }
 
 } // namespace gemm

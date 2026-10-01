@@ -27,10 +27,12 @@ Matrix trmm(const Matrix& A, const Matrix& B, bool upper = true, bool left = tru
 // Matrix power via repeated squaring: A^n
 Matrix matrix_power(const Matrix& A, int n);
 
-// Matrix exponential via Padé approximation
+// Scaling and squaring: order=13 uses [13/13] Pade; other orders 1..64
+// use a scaled Taylor polynomial. Internal GEMMs use strict FP32.
 Matrix matrix_exp(const Matrix& A, int order = 13);
 
-// Log determinant (numerically stable via LU)
+// Log absolute determinant (numerically stable via reusable LU).
+// Use slogdet() from factorization.hpp when the sign is needed.
 float log_determinant(const Matrix& A);
 
 // Batch linear algebra on rank-3 tensors (batch of square matrices)

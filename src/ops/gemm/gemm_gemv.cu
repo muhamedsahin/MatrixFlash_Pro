@@ -62,13 +62,23 @@ __global__ void gemv_cols_kernel(const float* __restrict__ x,
                                  const float* __restrict__ b,
                                  float* __restrict__ y,
                                  int n, int k) {
-    const int col = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
-    if (col >= n) return;
+    // Eight warps cooperate along K while lanes load consecutive B columns.
+    // This exposes K parallelism and launches one block per 32 columns instead
+    // of leaving almost every SM idle behind a serial K loop.
+    __shared__ float partial[8][32];
+    const int col = static_cast<int>(blockIdx.x * 32 + threadIdx.x);
     float sum = 0.0f;
-    for (int p = 0; p < k; ++p) {
-        sum += x[p] * b[static_cast<std::size_t>(p) * n + col];
+    if(col<n) for (int p = threadIdx.y; p < k; p += 8) {
+        sum = fmaf(x[p], b[static_cast<std::size_t>(p) * n + col], sum);
     }
-    y[col] = sum;
+    partial[threadIdx.y][threadIdx.x]=sum;
+    __syncthreads();
+    if(threadIdx.y==0 && col<n) {
+        float total=0;
+        #pragma unroll
+        for(int i=0;i<8;++i)total+=partial[i][threadIdx.x];
+        y[col]=total;
+    }
 }
 
 } // namespace
@@ -82,8 +92,8 @@ void gemm_gemv(const float* a, const float* b, float* c,
             (static_cast<unsigned>(m) + rows_per_block - 1) / rows_per_block;
         gemv_rows_kernel<<<grid, block, 0, stream>>>(a, b, c, m, k);
     } else if (m == 1) {
-        const unsigned block = 256;
-        const unsigned grid = (static_cast<unsigned>(n) + block - 1) / block;
+        dim3 block(32, 8);
+        const unsigned grid = (static_cast<unsigned>(n) + 31) / 32;
         gemv_cols_kernel<<<grid, block, 0, stream>>>(a, b, c, n, k);
     } else if (n <= 4) {
         dim3 block(32, 4);

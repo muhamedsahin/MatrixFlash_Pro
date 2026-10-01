@@ -22,6 +22,10 @@ enum class Epilogue {
 void gemm_rowmajor(const float* a, const float* b, float* c,
                    int m, int n, int k, cudaStream_t stream);
 
+// Thread/device/stream-isolated descriptor and algorithm cache.
+void gemm_cached_raw(const float* a, const float* b, float* c, const float* bias,
+                     int m, int n, int k, Epilogue epi, cudaStream_t stream);
+
 // In-place epilogue after a plain GEMM (used when fused Lt path unavailable).
 void apply_epilogue(float* c, const float* bias, int m, int n,
                     Epilogue epi, cudaStream_t stream);

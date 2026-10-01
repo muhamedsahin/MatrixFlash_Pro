@@ -14,6 +14,8 @@ find_package(Threads REQUIRED)
 
 set(MATRIX_PRO_UNIT_TESTS
 	unit/test_matrix.cpp
+	unit/test_gemm_plan.cpp
+	unit/test_factorization.cpp
 	unit/test_operations.cpp
 	unit/test_linalg.cpp
 	unit/test_errors.cpp

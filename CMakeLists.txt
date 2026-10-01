@@ -17,6 +17,11 @@
 
 cmake_minimum_required(VERSION 3.24)
 
+# Set the default before CUDA compiler detection initializes its own default.
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()
+
 project(MatrixFlashPro
         VERSION 1.0.0
         DESCRIPTION "GPU-accelerated matrix / tensor library (CUDA, cuBLAS, cuSOLVER)"
@@ -34,10 +39,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-# Target the GPU actually installed in the build machine.
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES native)
-endif()
 
 if(MSVC)
 	# Keep the CUDA and host compilers' exception/optimization behaviour aligned.
@@ -75,6 +76,7 @@ add_library(matrix_pro STATIC
 	src/ops/math.cu
 	src/ops/matmul.cu
 	src/ops/gemm/gemm_dispatch.cu
+	src/ops/gemm/gemm_plan.cu
 	src/ops/gemm/gemm_cublas_ex.cu
 	src/ops/gemm/gemm_cublas_lt.cu
 	src/ops/gemm/gemm_micro.cu
@@ -88,6 +90,7 @@ add_library(matrix_pro STATIC
 	src/ops/advanced.cu
 	src/ops/linalg.cu
 	src/ops/linalg_extended.cu
+	src/ops/factorization.cu
 	src/ops/masking.cu
 	src/ops/extended.cu
 	src/ops/precision.cu

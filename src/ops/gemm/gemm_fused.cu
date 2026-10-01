@@ -1,10 +1,6 @@
 #include "matrix_pro/detail/gemm/gemm_api.hpp"
 #include "matrix_pro/core/cuda_utils.hpp"
 
-#include <cublasLt.h>
-#include <cublas_v2.h>
-
-#include <mutex>
 
 namespace matrix_pro {
 namespace detail {
@@ -29,95 +25,6 @@ __global__ void epilogue_col_bias_kernel(float* __restrict__ c,
     c[index] = v;
 }
 
-struct FusedLt {
-    cublasLtHandle_t handle = nullptr;
-    void* workspace = nullptr;
-    std::size_t workspace_bytes = 64u * 1024u * 1024u;
-    std::mutex mutex;
-
-    FusedLt() {
-        if (cublasLtCreate(&handle) != CUBLAS_STATUS_SUCCESS) {
-            handle = nullptr;
-            return;
-        }
-        if (cudaMalloc(&workspace, workspace_bytes) != cudaSuccess) {
-            cudaGetLastError();
-            workspace = nullptr;
-            workspace_bytes = 0;
-        }
-    }
-    ~FusedLt() {
-        if (workspace != nullptr) cudaFree(workspace);
-        if (handle != nullptr) cublasLtDestroy(handle);
-    }
-    static FusedLt& instance() {
-        static FusedLt s;
-        return s;
-    }
-};
-
-cublasLtEpilogue_t to_lt_epilogue(Epilogue epi) {
-    switch (epi) {
-        case Epilogue::bias: return CUBLASLT_EPILOGUE_BIAS;
-        case Epilogue::bias_relu: return CUBLASLT_EPILOGUE_RELU_BIAS;
-        case Epilogue::bias_gelu: return CUBLASLT_EPILOGUE_GELU_BIAS;
-        default: return CUBLASLT_EPILOGUE_DEFAULT;
-    }
-}
-
-bool try_lt_fused(const float* a, const float* b, float* c, const float* bias,
-                  int m, int n, int k, Epilogue epi, cudaStream_t stream) {
-    if (epi == Epilogue::none || bias == nullptr) return false;
-    FusedLt& lt = FusedLt::instance();
-    if (lt.handle == nullptr) return false;
-
-    std::lock_guard<std::mutex> lock(lt.mutex);
-    cublasLtMatmulDesc_t op_desc = nullptr;
-    cublasLtMatrixLayout_t adesc = nullptr;
-    cublasLtMatrixLayout_t bdesc = nullptr;
-    cublasLtMatrixLayout_t cdesc = nullptr;
-    cublasLtMatmulPreference_t pref = nullptr;
-
-    if (cublasLtMatmulDescCreate(&op_desc, CUBLAS_COMPUTE_32F_FAST_TF32,
-                                 CUDA_R_32F) != CUBLAS_STATUS_SUCCESS) {
-        return false;
-    }
-    const cublasLtEpilogue_t lt_epi = to_lt_epilogue(epi);
-    if (cublasLtMatmulDescSetAttribute(op_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
-                                       &lt_epi, sizeof(lt_epi)) !=
-        CUBLAS_STATUS_SUCCESS) {
-        cublasLtMatmulDescDestroy(op_desc);
-        return false;
-    }
-    if (cublasLtMatmulDescSetAttribute(op_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER,
-                                       &bias, sizeof(bias)) !=
-        CUBLAS_STATUS_SUCCESS) {
-        cublasLtMatmulDescDestroy(op_desc);
-        return false;
-    }
-
-    cublasLtMatrixLayoutCreate(&adesc, CUDA_R_32F, n, k, n);
-    cublasLtMatrixLayoutCreate(&bdesc, CUDA_R_32F, k, m, k);
-    cublasLtMatrixLayoutCreate(&cdesc, CUDA_R_32F, n, m, n);
-    cublasLtMatmulPreferenceCreate(&pref);
-    cublasLtMatmulPreferenceSetAttribute(
-        pref, CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES, &lt.workspace_bytes,
-        sizeof(lt.workspace_bytes));
-
-    const float alpha = 1.0f;
-    const float beta = 0.0f;
-    const cublasStatus_t status = cublasLtMatmul(
-        lt.handle, op_desc, &alpha, b, adesc, a, bdesc, &beta, c, cdesc, c,
-        cdesc, nullptr, lt.workspace, lt.workspace_bytes, stream);
-
-    cublasLtMatmulPreferenceDestroy(pref);
-    cublasLtMatrixLayoutDestroy(cdesc);
-    cublasLtMatrixLayoutDestroy(bdesc);
-    cublasLtMatrixLayoutDestroy(adesc);
-    cublasLtMatmulDescDestroy(op_desc);
-    return status == CUBLAS_STATUS_SUCCESS;
-}
-
 } // namespace
 
 void apply_epilogue(float* c, const float* bias, int m, int n, Epilogue epi,
@@ -137,9 +44,7 @@ void apply_epilogue(float* c, const float* bias, int m, int n, Epilogue epi,
 void gemm_bias_epilogue(const float* a, const float* b, float* c,
                         const float* bias, int m, int n, int k, Epilogue epi,
                         cudaStream_t stream) {
-    if (try_lt_fused(a, b, c, bias, m, n, k, epi, stream)) return;
-    gemm_rowmajor(a, b, c, m, n, k, stream);
-    apply_epilogue(c, bias, m, n, epi, stream);
+    gemm_cached_raw(a, b, c, bias, m, n, k, epi, stream);
 }
 
 } // namespace gemm

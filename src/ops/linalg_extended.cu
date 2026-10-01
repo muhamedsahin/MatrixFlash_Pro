@@ -10,6 +10,9 @@
 #include <cusolverDn.h>
 #include <vector>
 #include <cmath>
+#include <limits>
+#include "matrix_pro/ops/gemm.hpp"
+#include "matrix_pro/ops/factorization.hpp"
 
 namespace matrix_pro {
 
@@ -154,79 +157,53 @@ Matrix trmm(const Matrix& A, const Matrix& B, bool upper, bool left) {
     return X;
 }
 
-Matrix matrix_power(const Matrix& A, int n) {
-    if (A.rows() != A.cols()) throw ShapeMismatchError("Matrix must be square");
-    if (n == 0) return Matrix::identity(A.rows());
-    if (n == 1) {
-        Matrix res(A.rows(), A.cols(), MemoryMode::device_only);
-        cudaMemcpyAsync(res.device_data(), A.device_data(), A.rows() * A.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
-        return res;
+Matrix matrix_power(const Matrix& A, int exponent) {
+    if(A.rows()!=A.cols())throw ShapeMismatchError("matrix_power requires square input");
+    std::uint64_t power=exponent<0?static_cast<std::uint64_t>(-static_cast<std::int64_t>(exponent)):static_cast<std::uint64_t>(exponent);
+    Matrix result=Matrix::identity(A.rows());
+    if(!power)return result;
+    Matrix base=exponent<0?inverse(A):Matrix(A);
+    while(power) {
+        if(power&1)result=gemm(result,base);
+        power>>=1;
+        if(power)base=gemm(base,base);
     }
-    
-    Matrix base = (n < 0) ? inverse(A) : A;
-    int p = std::abs(n);
-    Matrix res = Matrix::identity(A.rows());
-    Matrix temp(A.rows(), A.cols(), MemoryMode::device_only);
-    
-    while (p > 0) {
-        if (p % 2 == 1) {
-            temp = multiply(res, base);
-            cudaMemcpyAsync(res.device_data(), temp.device_data(), res.rows() * res.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
-        }
-        p /= 2;
-        if (p > 0) {
-            temp = multiply(base, base);
-            cudaMemcpyAsync(base.device_data(), temp.device_data(), base.rows() * base.cols() * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
-        }
-    }
-    res.mark_host_stale();
-    return res;
+    return result;
 }
 
 Matrix matrix_exp(const Matrix& A, int order) {
-    if (A.rows() != A.cols()) throw ShapeMismatchError("Matrix must be square");
-    int n = A.rows();
-    Matrix res = Matrix::identity(n);
-    Matrix term = Matrix::identity(n);
-    Matrix temp(n, n, MemoryMode::device_only);
-    
-    for (int i = 1; i <= order; ++i) {
-        temp = multiply(term, A);
-        const float alpha = 1.0f / i;
-        cublasSscal(cublas_handle(), n * n, &alpha, temp.device_data(), 1);
-        cudaMemcpyAsync(term.device_data(), temp.device_data(), n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
-        const float alpha_add = 1.0f;
-        cublasSaxpy(cublas_handle(), n * n, &alpha_add, term.device_data(), 1, res.device_data(), 1);
+    if(A.rows()!=A.cols())throw ShapeMismatchError("matrix_exp requires square input");
+    if(order<1||order>64)throw InvalidArgumentError("matrix_exp order must be in [1,64]");
+    if(A.empty())return Matrix(0,0,MemoryMode::device_only);
+    // Infinity norm bounds the spectral radius and governs scaling. FP32 GEMM
+    // forbids implicit TF32 input conversion throughout this scientific path.
+    const float norm=matrix_pro::abs(A).row_sum().max();
+    if(!std::isfinite(norm))throw InvalidArgumentError("matrix_exp requires finite input and norm");
+    const double threshold=order==13?4.25:0.5;
+    const int squarings=norm>threshold?static_cast<int>(std::ceil(std::log2(norm/threshold))):0;
+    Matrix a=A*std::ldexp(1.0f,-squarings),identity=Matrix::identity(A.rows()),result;
+    if(order==13) {
+        // [13/13] Pade; coefficients normalized by b0 keep FP32 intermediates
+        // away from the huge unnormalized coefficients (~6.5e16).
+        const double coefficients[]={64764752532480000.,32382376266240000.,7771770303897600.,
+            1187353796428800.,129060195264000.,10559470521600.,670442572800.,33522128640.,
+            1323241920.,40840800.,960960.,16380.,182.,1.};
+        float b[14];for(int i=0;i<14;++i)b[i]=static_cast<float>(coefficients[i]/coefficients[0]);
+        Matrix a2=gemm(a,a),a4=gemm(a2,a2),a6=gemm(a4,a2);
+        Matrix u=gemm(a,gemm(a6,a6*b[13]+a4*b[11]+a2*b[9])+a6*b[7]+a4*b[5]+a2*b[3]+identity*b[1]);
+        Matrix v=gemm(a6,a6*b[12]+a4*b[10]+a2*b[8])+a6*b[6]+a4*b[4]+a2*b[2]+identity;
+        LUFactorization denominator(v-u,A.cols());
+        result=denominator.solve(v+u);
+    } else {
+        result=identity;Matrix term=identity;
+        for(int i=1;i<=order;++i) {term=gemm(term,a)*(1.0f/i);result=result+term;}
     }
-    res.mark_host_stale();
-    return res;
+    for(int i=0;i<squarings;++i)result=gemm(result,result);
+    result.mark_host_stale();return result;
 }
 
 float log_determinant(const Matrix& A) {
-    if (A.rows() != A.cols()) throw ShapeMismatchError("Matrix must be square");
-    std::size_t n = A.rows();
-    Matrix LU_cm(n, n, MemoryMode::device_only);
-    int num_blocks = (n * n + 255) / 256;
-    detail::row_to_col_major_kernel<<<num_blocks, 256, 0, compute_stream()>>>(A.device_data(), LU_cm.device_data(), n, n);
-
-    int lwork = 0;
-    cusolverDnSgetrf_bufferSize(cusolver_handle(), n, n, LU_cm.device_data(), n, &lwork);
-
-    float* d_work; cudaMalloc(&d_work, lwork * sizeof(float));
-    int* d_ipiv; cudaMalloc(&d_ipiv, n * sizeof(int));
-    int* d_info; cudaMalloc(&d_info, sizeof(int));
-
-    cusolverDnSgetrf(cusolver_handle(), n, n, LU_cm.device_data(), n, d_work, d_ipiv, d_info);
-
-    float* d_det; cudaMalloc(&d_det, sizeof(float));
-    detail::log_det_kernel<<<1, 1, 0, compute_stream()>>>(LU_cm.device_data(), d_ipiv, n, d_det);
-
-    float h_det;
-    cudaMemcpyAsync(&h_det, d_det, sizeof(float), cudaMemcpyDeviceToHost, compute_stream());
-    cudaStreamSynchronize(compute_stream());
-
-    cudaFree(d_work); cudaFree(d_ipiv); cudaFree(d_info); cudaFree(d_det);
-    return h_det;
+    return static_cast<float>(slogdet(A).log_abs_det);
 }
 
 Tensor batch_solve(const Tensor& A, const Tensor& B) {
@@ -288,7 +265,7 @@ std::vector<float> batch_det(const Tensor& A) {
     for (int i = 0; i < batch_size; ++i) {
         Matrix Ai(n, n, MemoryMode::device_only);
         cudaMemcpyAsync(Ai.device_data(), A.device_data() + i * n * n, n * n * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream());
-        dets[i] = std::exp(log_determinant(Ai)); // assuming det is positive for simplicity, real log_det returns log(abs(det))
+        dets[i] = determinant(Ai);
     }
     
     return dets;
