@@ -1,0 +1,12 @@
+========= COMPUTE-SANITIZER
+[ RUN      ] SparseCOO from triplets & to_dense
+[ RUN      ] SparseCOO to SparseCSR roundtrip
+[ RUN      ] SparseCSC from_dense & to_dense
+[ RUN      ] SparseCSC SpMV: y = A * x
+[ RUN      ] Sparse conversions: csr_to_coo and csr_to_csc
+[ RUN      ] unsorted duplicate COO, rectangular CSC and scaled sparse addition
+[ RUN      ] COO grid-stride traversal covers more than one occupancy grid
+[ RUN      ] empty CSR returns zero DEVICE results
+[==========] SPARSE_FORMATS: 62 checks, 0 failures
+[  PASSED  ] SPARSE_FORMATS
+========= ERROR SUMMARY: 0 errors

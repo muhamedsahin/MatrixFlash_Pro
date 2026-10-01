@@ -1,0 +1,15 @@
+Internal ctest changing into directory: C:/Users/muham/Desktop/Nexus/lib/MatrixFlash-Pro/build/perf-release
+Test project C:/Users/muham/Desktop/Nexus/lib/MatrixFlash-Pro/build/perf-release
+    Start 16: matrix_pro_test_sparse_formats
+    Test #16: matrix_pro_test_sparse_formats ...   Passed    0.35 sec
+    Start 16: matrix_pro_test_sparse_formats
+    Test #16: matrix_pro_test_sparse_formats ...   Passed    0.35 sec
+    Start 16: matrix_pro_test_sparse_formats
+1/1 Test #16: matrix_pro_test_sparse_formats ...   Passed    0.35 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+unit    =   0.35 sec*proc (1 test)
+
+Total Test time (real) =   1.07 sec

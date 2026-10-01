@@ -1,0 +1,9 @@
+========= COMPUTE-SANITIZER
+[ RUN      ] transpose, scaling, accumulation, and fused epilogues
+[ RUN      ] empty inner dimension, alias rejection and validation
+[ RUN      ] tuning preserves beta input and captures without allocation
+[ RUN      ] vector kernels and long vector dispatch preserve full FP32 input precision
+[ RUN      ] default cached GEMM across concurrent threads
+[==========] GEMM_PLAN: 50462 checks, 0 failures
+[  PASSED  ] GEMM_PLAN
+========= ERROR SUMMARY: 0 errors

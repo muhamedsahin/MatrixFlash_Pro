@@ -1,0 +1,7 @@
+========= COMPUTE-SANITIZER
+[ RUN      ] reused LU solves multiple RHS and transposed systems
+[ RUN      ] signed log determinant avoids FP32 overflow and preserves sign
+[ RUN      ] scaled matrix exponential and negative batched determinant
+[==========] FACTORIZATION: 42 checks, 0 failures
+[  PASSED  ] FACTORIZATION
+========= ERROR SUMMARY: 0 errors

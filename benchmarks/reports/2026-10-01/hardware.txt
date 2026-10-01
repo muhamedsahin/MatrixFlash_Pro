@@ -1,0 +1,6 @@
+name, driver_version, memory.total [MiB], power.limit [W], clocks.max.sm [MHz]
+NVIDIA GeForce RTX 3070 Laptop GPU, 610.88, 8192 MiB, [N/A], 2100 MHz
+
+CPU: AMD Ryzen 7 5800H with Radeon Graphics
+Compiler: CUDA 13.4 / nvcc 13.4.59; MSVC 14.44; native SM86; Release; cuDNN OFF
+GPU clocks not locked. CPU BLAS thread count not pinned. Windows WDDM.

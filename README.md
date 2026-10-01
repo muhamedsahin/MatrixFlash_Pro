@@ -45,12 +45,12 @@ Son geliştirme turunda kütüphane, yüksek performans için aşağıdaki optim
 
 - **Shape-aware GEMM dispatcher** (`src/ops/gemm/`): mikro kernel, GEMV, algo-cache’li cublasLt, TENSOR_OP GemmEx
 - **`multiply_into` + `device_only` çıktı** — tahsis maliyetini hot path’ten çıkarır
-- **`gemm_bias_relu` / `gemm_bias_gelu`** — cublasLt fused epilogue (zincire göre 1–6×)
+- **`gemm_bias_relu` / `gemm_bias_gelu`** — cache'li cuBLASLt fused epilogue
 - **TF32 Tensor Core** matematik modu + 64 MiB kalıcı cuBLAS workspace
 - GPU bellek havuzu, pinned host, async transferler
 - float4 vektörize broadcast / reduction
 
-Ölçüm (RTX 3070 Laptop): **1024²’de cuBLAS’ın ~%99’u**, **2048² ve 512²’de ham cuBLAS’ı geçer**. Detay: [`/docs/performans`](./doc) ve aşağıdaki benchmark bölümü.
+1 Ekim 2026 ölçümü (RTX 3070 Laptop): uzun vektör × matris yolunda önceki sürüme göre **3,98×** hızlanma. Büyük kare matrislerde evrensel üstünlük yok; ölçülen gerilemeler de [detaylı raporda](./PERFORMANCE_REPORT.md) yer alıyor. Ham cuBLAS, cuBLASLt ve NumPy/OpenBLAS ölçümleri ile tüm örnekler repoda saklanıyor.
 
 Kütüphane özellikle şu kullanım senaryoları için tasarlanmıştır:
 
@@ -70,6 +70,45 @@ Kütüphane özellikle şu kullanım senaryoları için tasarlanmıştır:
 | **Hot path** | `multiply_into`, `gemm_bias_relu`, `gemm_bias_gelu` |
 | **Doğrusal Cebir** | `transpose`, `flatten`, `slice`, `trace`, `determinant`, `inverse`, QR/SVD/eig |
 | **Dış Çarpım** | `outer_product` |
+
+### ⚙️ Tekrar Kullanılabilir GEMM ve LU Planları
+
+- `GemmPlan`: A/B transpose, alpha/beta accumulation, açık FP32/TF32,
+  fused bias/ReLU/GELU, en fazla 16 adayla isteğe bağlı tuning.
+- `gemm` / `gemm_into`: bounded thread/device/stream plan cache'i.
+- `LUFactorization`: bir kez faktörleme, preallocated `solve_into`, çoklu RHS,
+  transpose çözümü ve işaretli `slogdet`.
+- `matrix_exp`: [13/13] Padé scaling/squaring; sayısal iç çarpımlar strict FP32.
+- Plan/buffer'lar capture öncesinde hazırlanır; sıcak yürütme descriptor,
+  heuristic veya çıktı tahsisi yapmaz. Planlar oluşturuldukları thread/device/stream'e bağlıdır.
+
+```cpp
+#include "matrix_pro/matrix_pro.hpp"
+using namespace matrix_pro;
+
+Matrix a = Matrix::random(512, 512, 17);
+Matrix b = Matrix::random(512, 512, 23);
+Matrix bias = Matrix::ones(1, 512);
+Matrix c(512, 512, MemoryMode::device_only);
+GemmOptions options;
+options.precision = GemmPrecision::tf32; // hız/doğruluk tercihi açık
+options.epilogue = GemmEpilogue::bias_relu;
+GemmPlan plan(512, 512, 512, options);
+plan.tune(a, b, c, 1, 0, &bias);         // isteğe bağlı; senkronize eder
+plan.execute(a, b, c, 1, 0, &bias);
+c.download();
+
+Matrix coefficients(2, 2, {4, 1, 1, 3});
+Matrix rhs(2, 1, {1, 2});
+LUFactorization factor(coefficients);
+Matrix solution = factor.solve(rhs);    // aynı factor diğer RHS'lerde tekrar kullanılır
+auto signed_log = factor.slogdet();
+```
+
+Yeni `gemm` API'sinin varsayılanı strict FP32'dir; eski `multiply_into` API'si
+mevcut şekle bağlı precision politikasını korur. Tuning her şekli hızlandırmaz.
+Graph ve buffer ömrü sözleşmesi için [rapora](./PERFORMANCE_REPORT.md#8-kullanım-sözleşmesi-ve-sınırlar),
+çalışır graph örneği için [`examples/planned_gemm.cpp`](./examples/planned_gemm.cpp) dosyasına bakın.
 
 ### 📉 GPU Üzerinde İndirgemeler (Reductions)
 ```
@@ -459,96 +498,36 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 📈 Performans / Benchmark
 
-> 📊 **Dokümantasyon:** interaktif grafik + rakip motorlar tablosu → site içinde `/docs/performans`  
-> Veri: `doc/public/data/benchmarks/{comparison,rivals,training}.json`  
-> Üretim: `tools/bench_rivals.py` + `tools/gen_bench_page.py` + `tools/sync_benchmark_data.py`
+**1 Ekim 2026, RTX 3070 Laptop:** iki ayrı tur, 14 matris şekli, 30 örnek ve
+32-GEMM batch. Girdiler sıfır olmayan seeded rastgele FP32 değerler; sonuçlar
+bağımsız CPU double dot-product ile kontrol edilir. Tahsis/transfer/tuning zamanı
+sıcak GEMM ölçümünün dışındadır. FP32 ve TF32 sonuçları ayrı karşılaştırılır.
 
-### Son doğrulanmış ölçüm (RTX 3070 Laptop, sm_86 — 19.09.2026)
+| Ölçülen durum | Sonuç |
+|---|---|
+| `1×4096` · `4096×1024`, eski → yeni default | 185.824 → 46.656 µs; **3.98×** |
+| `1024×512` · `512×64`, eski → açık TF32 tuned | 39.264 → 16.304 µs; **2.41×** |
+| `1024²`, eski → yeni default | 159.376 → 187.584 µs; yaklaşık %17.7 daha yavaş |
+| `2048²`, eski → yeni default | 1164.528 → 1288.800 µs; yaklaşık %10.7 daha yavaş |
+| Doğruluk | 26/26 CTest; üç yeni yolda memcheck 0 hata |
 
-`multiply_into` = tahsissiz hot path (ham cuBLAS ile aynı koşul). GPU: CUDA-event medyan.
+Büyük karelerde aynı turdaki cuBLAS/cuBLASLt ile yakın sonuçlar görülür;
+“her yerde en hızlı” iddiası yapılmaz. Küçük NumPy/CPU vakaları GPU gönderim
+gecikmesinden daha hızlı olabilir. Laptop saatleri ve Windows scheduler'ı
+kilitlenmediği için küçük farklar üstünlük kanıtı sayılmaz.
 
-| Vaka | mflash `multiply_into` | ham cuBLAS | Oran | Not |
-|---|---|---|---|---|
-| 512×512 ✅ | 0.054 ms / **4946 GFLOPS** | 0.054 ms / 4949 | **%99.9** | eşdeğer |
-| 1024×1024 ✅ | 0.189 ms / **11336 GFLOPS** | 0.208 ms / 10331 | **%109.7** | cuBLAS’ı geçer |
-| 2048×2048 ✅ | 1.247 ms / **13774 GFLOPS** | 1.271 ms / 13519 | **%101.9** | cuBLAS’ı geçer |
-| 4096×4096 ✅ | 8.135 ms / **16895 GFLOPS** | 8.141 ms / 16883 | **%100.1** | cuBLAS’ı geçer |
-
-**Piyasa motorları (aynı makine, 1024²):**
-
-| Motor | Tür | GFLOPS | Durum |
-|---|---|---|---|
-| MatrixFlash-Pro `multiply_into` | C++17 / CUDA | **11336** | ölçüldü |
-| NVIDIA cuBLAS | Vendor BLAS | 10331 | ölçüldü |
-| NVIDIA cublasLt (soğuk) | Vendor Lt | ~7600 | ölçüldü |
-| Naive CUDA Kernel | Global Memory | 948 | ölçüldü (11.9× yavaş) |
-| NumPy @ OpenBLAS | Python / CPU | ~343 | ölçüldü |
-| CPU Single-Thread C++ | C++ Baseline | ~2.6 | ölçüldü (4,300× yavaş) |
-
-\*Bu makinedeki Python 3.14 için resmi `torch` tekerleği yok; kurulunca `py -3 tools/bench_rivals.py` ölçer.
-
-**Fused `gemm_bias_relu` vs 3 ayrı kernel (batch=64, K=256):** h=1024’te yaklaşık **6×** hızlanma.
-
-### Karşılaştırma benchmark'ını yeniden üret
+[**Detaylı rapor**](./PERFORMANCE_REPORT.md): bütün şekiller, strict FP32/TF32
+vendor karşılaştırması, aynı kapsamlı CUDA Graph tablosu, CPU bağlamı,
+gerilemeler, API sınırları ve yeniden üretim komutları.
+[**Ham JSON ve test kanıtları**](./benchmarks/reports/2026-10-01/).
+PyTorch/CuPy bu ölçüm ortamında kurulu değildi; onlar için sonuç uydurulmadı.
 
 ```powershell
-cmake --preset release
-cmake --build --preset release --target matrix_pro_bench_comparison matrix_pro_bench_external_gemm matrix_pro_bench_training
-.\build\benchmarks\Release\matrix_pro_bench_comparison.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/comparison.json
-.\build\benchmarks\Release\matrix_pro_bench_external_gemm.exe --sizes 256,512,1024,2048 --warmup 12 --repeats 40 --json benchmarks/results/external_gemm.json
-py -3 tools/bench_rivals.py
-python tools/gen_bench_page.py
-python tools/sync_benchmark_data.py
+python tools/build_local.py --reconfigure --jobs 4
+ctest --test-dir build/perf-release -C Release --output-on-failure -j 1
+.\build\perf-release\benchmarks\matrix_pro_bench_gemm_fair.exe --output benchmarks/results/run1.json --tag reproduced --warmup 10 --repeats 30 --batch 32
+python tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json
 ```
-
-### Eski tekil workload çalıştırıcıları
-
-`benchmarks/perf_matrix.cpp` dosyası, cuBLAS destekli matris çarpımının GPU performansını karşılaştırmalı biçimde ölçmek için kullanılır. Benchmark, tek bir boyut yerine birden fazla kare matris boyutunu sırayla çalıştırır; her boyut için ortalama, minimum, maksimum süre, GFLOPS ve tahmini bant genişliği değerlerini raporlar.
-
-### Temel kullanım
-
-```powershell
-.\build\Release\matrix_pro_benchmark.exe 1024
-```
-
-### Çoklu karşılaştırma ve detaylı rapor
-
-```powershell
-.\build\Release\matrix_pro_benchmark.exe --sizes 2048,4096,8192,16384 --repeats 3
-```
-
-Bu komut aşağıdaki bilgileri üretir:
-- her boyut için ortalama / minimum / maksimum çalışma süresi
-- GFLOPS oranı
-- tahmini bant genişliği (GB/s)
-- referans boyutuna göre göreceli hız karşılaştırması
-- en yüksek verim elde edilen boyut
-
-### Son doğrulanmış benchmark çıktısı
-
-```text
-========================================
- MatrixFlash-Pro GPU Benchmark Report
-========================================
-Repeats per size: 3 (warm-up run excluded from all measurements)
-
-Size        Avg(ms)     Min(ms)     Max(ms)     GFLOPS      BW(GB/s)        Rel. to base
-------------------------------------------------------------------------------------------
-2048        18.235      15.241      20.685      942.13      2.76            1.00            x
-4096        69.994      69.016      71.024      1963.57     2.88            2.08            x
-8192        363.579     341.118     377.545     3024.13     2.21            3.21            x
-16384       2735.710    2470.501    2905.017    3215.29     1.18            3.41            x
-
-Interpretation:
-- Baseline size: 2048x2048 (reference)
-- Relative to baseline > 1.0x indicates faster throughput than the reference size.
-- GFLOPS is computed as: 2 * n^3 / elapsed_time_seconds
-- Memory bandwidth is estimated from the matrix data movement involved in the multiply workload.
-
-Best throughput observed: 16384x16384 with 3215.29 GFLOPS
-```
-
-Bu sonuçlar, kütüphanenin son optimize edilmiş versiyonunda matris çarpımının hem büyüklük ölçeğinde yüksek verim verdiğini hem de büyük matrislerde daha iyi göreceli performans sağladığını göstermektedir. Özellikle 16384×16384 matris boyutunda görülen 3215.29 GFLOPS, proje için kritik başarı ölçütüdür.
 
 ---
 

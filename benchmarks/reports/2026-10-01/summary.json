@@ -1,0 +1,117 @@
+{
+  "aggregation": "median of all 60 final samples per entry",
+  "results": [
+    {
+      "m": 16,
+      "n": 16,
+      "k": 16,
+      "baseline_default_ms": 0.0101920003071,
+      "final_default_ms": 0.00948800006881,
+      "default_speedup": 1.0741990127723826
+    },
+    {
+      "m": 32,
+      "n": 32,
+      "k": 32,
+      "baseline_default_ms": 0.0145600000396,
+      "final_default_ms": 0.0119985002093,
+      "default_speedup": 1.2134850010932692
+    },
+    {
+      "m": 64,
+      "n": 64,
+      "k": 64,
+      "baseline_default_ms": 0.0155840003863,
+      "final_default_ms": 0.0153919998556,
+      "default_speedup": 1.0124740470699878
+    },
+    {
+      "m": 128,
+      "n": 128,
+      "k": 128,
+      "baseline_default_ms": 0.0161119997501,
+      "final_default_ms": 0.01820799987765,
+      "default_speedup": 0.8848857567204401
+    },
+    {
+      "m": 256,
+      "n": 256,
+      "k": 256,
+      "baseline_default_ms": 0.0141120003536,
+      "final_default_ms": 0.0143360001966,
+      "default_speedup": 0.9843750111657277
+    },
+    {
+      "m": 512,
+      "n": 512,
+      "k": 512,
+      "baseline_default_ms": 0.0348320007324,
+      "final_default_ms": 0.0313440002501,
+      "default_speedup": 1.1112812804513958
+    },
+    {
+      "m": 1024,
+      "n": 1024,
+      "k": 1024,
+      "baseline_default_ms": 0.159375995398,
+      "final_default_ms": 0.1875839978455,
+      "default_speedup": 0.8496246866924492
+    },
+    {
+      "m": 2048,
+      "n": 2048,
+      "k": 2048,
+      "baseline_default_ms": 1.16452795267,
+      "final_default_ms": 1.288800001145,
+      "default_speedup": 0.9035753814675715
+    },
+    {
+      "m": 31,
+      "n": 47,
+      "k": 19,
+      "baseline_default_ms": 0.0186240002513,
+      "final_default_ms": 0.014240000397,
+      "default_speedup": 1.3078651497245461
+    },
+    {
+      "m": 127,
+      "n": 257,
+      "k": 63,
+      "baseline_default_ms": 0.02623999957,
+      "final_default_ms": 0.0138559998013,
+      "default_speedup": 1.8937644303039112
+    },
+    {
+      "m": 64,
+      "n": 1024,
+      "k": 512,
+      "baseline_default_ms": 0.0367519985884,
+      "final_default_ms": 0.0238560000435,
+      "default_speedup": 1.540576732117074
+    },
+    {
+      "m": 1024,
+      "n": 64,
+      "k": 512,
+      "baseline_default_ms": 0.0392639990896,
+      "final_default_ms": 0.0247200001031,
+      "default_speedup": 1.5883494711100796
+    },
+    {
+      "m": 1,
+      "n": 1024,
+      "k": 4096,
+      "baseline_default_ms": 0.185824006796,
+      "final_default_ms": 0.04665600135925,
+      "default_speedup": 3.9828532532215943
+    },
+    {
+      "m": 1024,
+      "n": 1,
+      "k": 4096,
+      "baseline_default_ms": 0.0423679985106,
+      "final_default_ms": 0.04297599941495,
+      "default_speedup": 0.985852547639916
+    }
+  ]
+}

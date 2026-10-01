@@ -1,0 +1,2 @@
+Tuned 8 algorithms; output[0,0]=129.965
+Reused LU solution=0.0909091,0.636364; log|det|=2.3979

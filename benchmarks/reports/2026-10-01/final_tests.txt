@@ -1,0 +1,62 @@
+Internal ctest changing into directory: C:/Users/muham/Desktop/Nexus/lib/MatrixFlash-Pro/build/perf-release
+Test project C:/Users/muham/Desktop/Nexus/lib/MatrixFlash-Pro/build/perf-release
+      Start  1: matrix_pro_test_matrix
+ 1/26 Test  #1: matrix_pro_test_matrix ..............   Passed    0.46 sec
+      Start  2: matrix_pro_test_gemm_plan
+ 2/26 Test  #2: matrix_pro_test_gemm_plan ...........   Passed    0.61 sec
+      Start  3: matrix_pro_test_factorization
+ 3/26 Test  #3: matrix_pro_test_factorization .......   Passed    0.53 sec
+      Start  4: matrix_pro_test_operations
+ 4/26 Test  #4: matrix_pro_test_operations ..........   Passed    0.46 sec
+      Start  5: matrix_pro_test_linalg
+ 5/26 Test  #5: matrix_pro_test_linalg ..............   Passed    0.58 sec
+      Start  6: matrix_pro_test_errors
+ 6/26 Test  #6: matrix_pro_test_errors ..............   Passed    0.40 sec
+      Start  7: matrix_pro_test_transforms
+ 7/26 Test  #7: matrix_pro_test_transforms ..........   Passed    0.40 sec
+      Start  8: matrix_pro_test_indexing
+ 8/26 Test  #8: matrix_pro_test_indexing ............   Passed    0.37 sec
+      Start  9: matrix_pro_test_sparse
+ 9/26 Test  #9: matrix_pro_test_sparse ..............   Passed    0.38 sec
+      Start 10: matrix_pro_test_view
+10/26 Test #10: matrix_pro_test_view ................   Passed    0.38 sec
+      Start 11: matrix_pro_test_dtype_precision
+11/26 Test #11: matrix_pro_test_dtype_precision .....   Passed    0.47 sec
+      Start 12: matrix_pro_test_conv
+12/26 Test #12: matrix_pro_test_conv ................   Passed    0.37 sec
+      Start 13: matrix_pro_test_math
+13/26 Test #13: matrix_pro_test_math ................   Passed    0.38 sec
+      Start 14: matrix_pro_test_tensor_advanced
+14/26 Test #14: matrix_pro_test_tensor_advanced .....   Passed    0.39 sec
+      Start 15: matrix_pro_test_linalg_extended
+15/26 Test #15: matrix_pro_test_linalg_extended .....   Passed    0.55 sec
+      Start 16: matrix_pro_test_sparse_formats
+16/26 Test #16: matrix_pro_test_sparse_formats ......   Passed    0.54 sec
+      Start 17: matrix_pro_test_rng_extended
+17/26 Test #17: matrix_pro_test_rng_extended ........   Passed    0.39 sec
+      Start 18: matrix_pro_test_autograd
+18/26 Test #18: matrix_pro_test_autograd ............   Passed    0.86 sec
+      Start 19: matrix_pro_test_ml
+19/26 Test #19: matrix_pro_test_ml ..................   Passed    0.38 sec
+      Start 20: matrix_pro_test_batch
+20/26 Test #20: matrix_pro_test_batch ...............   Passed    0.53 sec
+      Start 21: matrix_pro_test_infra
+21/26 Test #21: matrix_pro_test_infra ...............   Passed    0.50 sec
+      Start 22: matrix_pro_test_new_features
+22/26 Test #22: matrix_pro_test_new_features ........   Passed    0.44 sec
+      Start 23: matrix_pro_test_repro2
+23/26 Test #23: matrix_pro_test_repro2 ..............   Passed    0.39 sec
+      Start 24: matrix_pro_test_execution
+24/26 Test #24: matrix_pro_test_execution ...........   Passed    0.41 sec
+      Start 25: matrix_pro_test_serialization
+25/26 Test #25: matrix_pro_test_serialization .......   Passed    0.40 sec
+      Start 26: matrix_pro_test_autograd_extended
+26/26 Test #26: matrix_pro_test_autograd_extended ...   Passed    0.40 sec
+
+100% tests passed, 0 tests failed out of 26
+
+Label Time Summary:
+integration    =   4.31 sec*proc (9 tests)
+unit           =   7.67 sec*proc (17 tests)
+
+Total Test time (real) =  12.05 sec

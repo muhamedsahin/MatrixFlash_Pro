@@ -146,11 +146,15 @@ int main(int argc, char** argv) {
             std::vector<float> av(s.m*s.k), bv(s.k*s.n);
             for(auto& v:av) v=dist(rng); for(auto& v:bv) v=dist(rng);
             Matrix a(s.m,s.k,av), b(s.k,s.n,bv), c(s.m,s.n,MemoryMode::device_only);
-            auto run = [&](std::string engine, std::string policy, const std::function<void()>& fn) {
+            auto run = [&](std::string engine, std::string policy, const std::function<void()>& fn, int operations=1) {
                 Measurement row{engine,policy,s};
-                fn(); c.mark_host_stale(); validate(a,b,c,policy!="fp32",row);
-                measure(fn,row,warmup,repeats,batch);
-                c.mark_host_stale(); validate(a,b,c,policy!="fp32",row);
+                const bool reduced = policy=="tf32" || (policy=="legacy_tf32" && s.m>1 && s.n>4 &&
+                    (s.m>64 || s.n>64 || s.k>64));
+                fn(); c.mark_host_stale(); validate(a,b,c,reduced,row);
+                measure(fn,row,warmup,repeats,operations==1?batch:1);
+                for(auto& value:row.device_ms)value/=operations;
+                for(auto& value:row.wall_ms)value/=operations;
+                c.mark_host_stale(); validate(a,b,c,reduced,row);
                 std::cout << engine << ' ' << policy << ' ' << s.m << 'x' << s.n << 'x' << s.k
                           << " : " << median(row.device_ms)*1000 << " us\n";
                 rows.push_back(std::move(row));
@@ -159,6 +163,17 @@ int main(int argc, char** argv) {
             for(bool fast:{false,true}) {
                 auto policy=fast?CUBLAS_COMPUTE_32F_FAST_TF32:CUBLAS_COMPUTE_32F_PEDANTIC;
                 const std::string name=fast?"tf32":"fp32";
+                GemmOptions options;options.precision=fast?GemmPrecision::tf32:GemmPrecision::fp32;
+                GemmPlan plan(s.m,s.n,s.k,options);
+                run("matrixflash_plan",name,[&]{plan.execute(a,b,c);});
+                plan.tune(a,b,c);
+                run("matrixflash_tuned",name,[&]{plan.execute(a,b,c);});
+                // CUDA Graph removes per-GEMM host submission gaps; separate scope.
+                plan.execute(a,b,c);synchronize();
+                CudaGraph graph;graph.begin_capture();
+                for(int i=0;i<batch;++i)plan.execute(a,b,c);
+                graph.end_capture();
+                run("matrixflash_graph_batch",name,[&]{graph.replay();},batch);
                 const float alpha=1,beta=0;
                 run("raw_cublas",name,[&]{blas_check(cublasGemmEx(raw.handle,CUBLAS_OP_N,CUBLAS_OP_N,
                     s.n,s.m,s.k,&alpha,b.device_data(),CUDA_R_32F,s.n,a.device_data(),CUDA_R_32F,s.k,
@@ -167,6 +182,12 @@ int main(int argc, char** argv) {
                 run("raw_cublaslt",name,[&]{blas_check(cublasLtMatmul(raw.lt,lt.op,&alpha,b.device_data(),lt.a,
                     a.device_data(),lt.b,&beta,c.device_data(),lt.c,c.device_data(),lt.c,&lt.algo,
                     raw.work,raw.bytes,compute_stream()));});
+                CudaGraph raw_graph;raw_graph.begin_capture();
+                for(int i=0;i<batch;++i)blas_check(cublasLtMatmul(raw.lt,lt.op,&alpha,b.device_data(),lt.a,
+                    a.device_data(),lt.b,&beta,c.device_data(),lt.c,c.device_data(),lt.c,&lt.algo,
+                    raw.work,raw.bytes,compute_stream()));
+                raw_graph.end_capture();
+                run("raw_cublaslt_graph_batch",name,[&]{raw_graph.replay();},batch);
             }
         }
         std::ofstream out(path);

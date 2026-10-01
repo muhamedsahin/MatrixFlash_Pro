@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-01",
+  "baseline_revision": "2210ffc",
+  "engine_and_tests_revision": "124d262a24ff04be2d240456531ea6a4fba4abe4",
+  "benchmark_source": "benchmarks/bench_gemm_fair.cpp",
+  "benchmark_source_sha256_lf": "8509e98a1d4d1ca2f9bb699fb3a4ee307c7be2558174c31909d55277736883af",
+  "note": "SHA256 uses file bytes with CRLF normalized to LF for Git portability. Optional rival measurements used NumPy PCG64; C++ used mt19937. CUDA timing is preallocated stream elapsed, including host submission gaps.",
+  "files": {
+    "baseline_gemm.json": "75443b2a38b8fea6a5cbf1b758bca87b5acca0663f6f3b9bc02b46d66bccd778",
+    "baseline_tests.txt": "00ee5cc50b6225c3032e6e63c77ebc247586f3a62922efafe1243e97c0cc2de7",
+    "final_gemm_run1.json": "4c408334e779d5752421f4518bc6cd4f9cd85dab7db6e5c303f0958cc9976938",
+    "final_gemm_run2.json": "a3ea96bc3231d8ba3cd3219b5ed583eac0719a91ef6f3954de4d5741c2c75275",
+    "final_tests.txt": "b954be9a3538849f6c1bbf3fe9075b9fd3fea15e929b4f7133b549240154c4dd",
+    "hardware.txt": "0565f42bcd0fe61f188981c9200fea5d281504f6d090005aa71dd9a2d18028d1",
+    "memcheck_factorization.txt": "68277d4c58ffa4dee4781010c297e6ec2f63a891d24a897ba57b97ec3a4dea3d",
+    "memcheck_gemm.txt": "df8afdf75da696fee13485c0dbcc52ac0d87e50279de270794816c4462809d22",
+    "memcheck_sparse.txt": "cc7abdfbe1a33fb19ddad0059d72250e7f969ef5cd9c95294e5cbd1a2a184f0e",
+    "planned_demo.txt": "2ccc0618c01e0b78ab31c4f12c68f528d0e94b1e51d57acd0d89cc77165b8520",
+    "rivals_fair.json": "57e90e15f3df27a0875bf52ff0e29a179bd7847221d59889130990860b2fac54",
+    "sparse_repeated_tests.txt": "b39975721f5746c462ccdf97f4cb4b107daf1b40081927cbccddb8acac9bb678",
+    "summary.json": "9604039b1071dacd67695de6c80e7ece2c41f1e6a48b891145a26d34acea24c2"
+  }
+}
