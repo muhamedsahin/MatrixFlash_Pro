@@ -10,10 +10,20 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <map>
+#include <limits>
 
 namespace matrix_pro {
 
 namespace {
+
+// Host-facing conversions must wait on the library's NONBLOCKING stream.
+cudaError_t copy_sync(void* dst,const void* src,std::size_t bytes,cudaMemcpyKind kind) {
+    if(!bytes)return cudaSuccess;
+    auto status=cudaMemcpyAsync(dst,src,bytes,kind,compute_stream());
+    if(status!=cudaSuccess)return status;
+    return cudaStreamSynchronize(compute_stream());
+}
 
 void release_int(int* p) { if (p) free_device_memory(p); }
 void release_float(float* p) { if (p) free_device_memory(p); }
@@ -36,14 +46,14 @@ cusparseHandle_t get_cusparse_handle() {
 __global__ void coo_to_dense_kernel(const int* row_idx, const int* col_idx, const float* values,
                                      float* dense, std::size_t cols, std::size_t nnz) {
     auto i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < nnz) {
-        dense[row_idx[i] * cols + col_idx[i]] = values[i];
+    for (; i < nnz; i += blockDim.x * gridDim.x) {
+        atomicAdd(&dense[row_idx[i] * cols + col_idx[i]], values[i]);
     }
 }
 
 __global__ void count_nnz_per_col_kernel(const int* col_idx, int* counts, std::size_t nnz) {
     auto i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < nnz) {
+    for (; i < nnz; i += blockDim.x * gridDim.x) {
         atomicAdd(&counts[col_idx[i]], 1);
     }
 }
@@ -52,7 +62,7 @@ __global__ void csr_to_csc_scatter_kernel(const int* row_ptr, const int* col_idx
                                            int* csc_col_ptr, int* csc_row_idx, float* csc_values,
                                            int* write_pos, std::size_t rows) {
     auto r = blockIdx.x * blockDim.x + threadIdx.x;
-    if (r < rows) {
+    for (; r < rows; r += blockDim.x * gridDim.x) {
         for (int j = row_ptr[r]; j < row_ptr[r + 1]; ++j) {
             int col = col_idx[j];
             int pos = atomicAdd(&write_pos[col], 1);
@@ -65,7 +75,7 @@ __global__ void csr_to_csc_scatter_kernel(const int* row_ptr, const int* col_idx
 
 __global__ void coo_to_csr_count_kernel(const int* row_idx, int* row_counts, std::size_t nnz) {
     auto i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < nnz) {
+    for (; i < nnz; i += blockDim.x * gridDim.x) {
         atomicAdd(&row_counts[row_idx[i]], 1);
     }
 }
@@ -73,7 +83,7 @@ __global__ void coo_to_csr_count_kernel(const int* row_idx, int* row_counts, std
 __global__ void csc_spmv_kernel(const int* col_ptr, const int* row_idx, const float* values,
                                  const float* x, float* y, std::size_t cols) {
     auto col = blockIdx.x * blockDim.x + threadIdx.x;
-    if (col < cols) {
+    for (; col < cols; col += blockDim.x * gridDim.x) {
         float x_col = x[col];
         for (int j = col_ptr[col]; j < col_ptr[col + 1]; ++j) {
             atomicAdd(&y[row_idx[j]], values[j] * x_col);
@@ -94,9 +104,6 @@ SparseCOO::~SparseCOO() = default;
 
 SparseCOO::SparseCOO(const SparseCOO& other) : SparseCOO(other.rows_, other.cols_, other.nnz_) {
     if (nnz_ > 0) {
-        row_idx_.reset(static_cast<int*>(allocate_device_memory(nnz_ * sizeof(int))));
-        col_idx_.reset(static_cast<int*>(allocate_device_memory(nnz_ * sizeof(int))));
-        values_.reset(static_cast<float*>(allocate_device_memory(nnz_ * sizeof(float))));
         checkCuda(cudaMemcpyAsync(row_idx_.get(), other.row_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
         checkCuda(cudaMemcpyAsync(col_idx_.get(), other.col_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
         checkCuda(cudaMemcpyAsync(values_.get(), other.values_.get(), nnz_ * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
@@ -120,7 +127,7 @@ float SparseCOO::sparsity() const { return 1.0f - static_cast<float>(nnz_) / (ro
 
 SparseCOO SparseCOO::from_dense(const Matrix& dense, float threshold) {
     std::vector<float> host_dense(dense.rows() * dense.cols());
-    checkCuda(cudaMemcpy(host_dense.data(), dense.device_data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
+    checkCuda(copy_sync(host_dense.data(), dense.device_data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
     
     std::vector<int> row_idx, col_idx;
     std::vector<float> values;
@@ -142,10 +149,13 @@ SparseCOO SparseCOO::from_triplets(std::size_t rows, std::size_t cols,
                                    const std::vector<int>& row_idx,
                                    const std::vector<int>& col_idx,
                                    const std::vector<float>& values) {
+    if(row_idx.size()!=values.size()||col_idx.size()!=values.size())throw ShapeMismatchError("COO triplet lengths differ");
+    for(std::size_t i=0;i<values.size();++i)if(row_idx[i]<0||col_idx[i]<0||static_cast<std::size_t>(row_idx[i])>=rows||static_cast<std::size_t>(col_idx[i])>=cols)
+        throw OutOfRangeError("COO triplet index out of range");
     SparseCOO coo(rows, cols, values.size());
-    checkCuda(cudaMemcpy(coo.row_idx_.get(), row_idx.data(), values.size() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    checkCuda(cudaMemcpy(coo.col_idx_.get(), col_idx.data(), values.size() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    checkCuda(cudaMemcpy(coo.values_.get(), values.data(), values.size() * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(coo.row_idx_.get(), row_idx.data(), values.size() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(coo.col_idx_.get(), col_idx.data(), values.size() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(coo.values_.get(), values.data(), values.size() * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
     return coo;
 }
 
@@ -170,9 +180,9 @@ SparseCOO SparseCOO::coalesce() const {
     // Here we download for simplicity of merging.
     std::vector<int> h_r(nnz_), h_c(nnz_);
     std::vector<float> h_v(nnz_);
-    checkCuda(cudaMemcpy(h_r.data(), row_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
-    checkCuda(cudaMemcpy(h_c.data(), col_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
-    checkCuda(cudaMemcpy(h_v.data(), values_.get(), nnz_ * sizeof(float), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(h_r.data(), row_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(h_c.data(), col_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(h_v.data(), values_.get(), nnz_ * sizeof(float), cudaMemcpyDeviceToHost), "memcpy");
     
     struct Entry { int r, c; float v; };
     std::vector<Entry> entries(nnz_);
@@ -209,12 +219,9 @@ SparseCSC::~SparseCSC() = default;
 
 SparseCSC::SparseCSC(const SparseCSC& other) : SparseCSC(other.rows_, other.cols_, other.nnz_) {
     if (cols_ + 1 > 0) {
-        col_ptr_.reset(static_cast<int*>(allocate_device_memory((cols_ + 1) * sizeof(int))));
         checkCuda(cudaMemcpyAsync(col_ptr_.get(), other.col_ptr_.get(), (cols_ + 1) * sizeof(int), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
     }
     if (nnz_ > 0) {
-        row_idx_.reset(static_cast<int*>(allocate_device_memory(nnz_ * sizeof(int))));
-        values_.reset(static_cast<float*>(allocate_device_memory(nnz_ * sizeof(float))));
         checkCuda(cudaMemcpyAsync(row_idx_.get(), other.row_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
         checkCuda(cudaMemcpyAsync(values_.get(), other.values_.get(), nnz_ * sizeof(float), cudaMemcpyDeviceToDevice, compute_stream()), "memcpy");
     }
@@ -234,7 +241,7 @@ float SparseCSC::sparsity() const { return 1.0f - static_cast<float>(nnz_) / (ro
 
 SparseCSC SparseCSC::from_dense(const Matrix& dense, float threshold) {
     std::vector<float> host_dense(dense.rows() * dense.cols());
-    checkCuda(cudaMemcpy(host_dense.data(), dense.device_data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
+    checkCuda(copy_sync(host_dense.data(), dense.device_data(), host_dense.size() * sizeof(float), cudaMemcpyDeviceToHost), "from_dense memcpy");
     
     std::vector<int> col_ptr(dense.cols() + 1, 0);
     std::vector<int> row_idx;
@@ -252,9 +259,9 @@ SparseCSC SparseCSC::from_dense(const Matrix& dense, float threshold) {
     }
     
     SparseCSC csc(dense.rows(), dense.cols(), values.size());
-    checkCuda(cudaMemcpy(csc.col_ptr_.get(), col_ptr.data(), (dense.cols() + 1) * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    checkCuda(cudaMemcpy(csc.row_idx_.get(), row_idx.data(), values.size() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    checkCuda(cudaMemcpy(csc.values_.get(), values.data(), values.size() * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(csc.col_ptr_.get(), col_ptr.data(), (dense.cols() + 1) * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(csc.row_idx_.get(), row_idx.data(), values.size() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(csc.values_.get(), values.data(), values.size() * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
     
     return csc;
 }
@@ -269,9 +276,9 @@ Matrix SparseCSC::to_dense() const {
     std::vector<int> col_ptr(cols_ + 1);
     std::vector<int> row_idx(nnz_);
     std::vector<float> values(nnz_);
-    checkCuda(cudaMemcpy(col_ptr.data(), col_ptr_.get(), (cols_ + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
-    checkCuda(cudaMemcpy(row_idx.data(), row_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
-    checkCuda(cudaMemcpy(values.data(), values_.get(), nnz_ * sizeof(float), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(col_ptr.data(), col_ptr_.get(), (cols_ + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(row_idx.data(), row_idx_.get(), nnz_ * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(values.data(), values_.get(), nnz_ * sizeof(float), cudaMemcpyDeviceToHost), "memcpy");
     
     std::vector<float> host_dense(rows_ * cols_, 0.0f);
     for (std::size_t c = 0; c < cols_; ++c) {
@@ -279,7 +286,7 @@ Matrix SparseCSC::to_dense() const {
             host_dense[row_idx[j] * cols_ + c] = values[j];
         }
     }
-    checkCuda(cudaMemcpy(dense.device_data(), host_dense.data(), rows_ * cols_ * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(dense.device_data(), host_dense.data(), rows_ * cols_ * sizeof(float), cudaMemcpyHostToDevice), "memcpy");
     dense.mark_host_stale();
     return dense;
 }
@@ -289,10 +296,11 @@ SparseCSR SparseCSC::to_csr() const {
 }
 
 SparseCSC SparseCSC::transpose() const {
-    SparseCSC t(cols_, rows_, nnz_);
-    // Essentially copying CSC to another CSC structure is like creating CSR of transposed matrix
-    // Or transposing CSC gives CSR...
-    return t; // Needs proper implementation, placeholder for structure
+    SparseCSR csr=to_csr();SparseCSC result(cols_,rows_,csr.nnz());
+    checkCuda(copy_sync(result.col_ptr_.get(),csr.row_ptr(),(rows_+1)*sizeof(int),cudaMemcpyDeviceToDevice),"CSC transpose ptr");
+    checkCuda(copy_sync(result.row_idx_.get(),csr.col_idx(),csr.nnz()*sizeof(int),cudaMemcpyDeviceToDevice),"CSC transpose indices");
+    checkCuda(copy_sync(result.values_.get(),csr.values(),csr.nnz()*sizeof(float),cudaMemcpyDeviceToDevice),"CSC transpose values");
+    return result;
 }
 
 Matrix SparseCSC::spmv(const Matrix& x) const {
@@ -316,37 +324,16 @@ Matrix SparseCSC::sparse_matmul(const Matrix& B) const {
 
 // Conversions
 SparseCSR coo_to_csr(const SparseCOO& coo) {
-    SparseCSR csr(coo.rows(), coo.cols(), coo.nnz());
-    int* row_counts = static_cast<int*>(allocate_device_memory((coo.rows() + 1) * sizeof(int)));
-    checkCuda(cudaMemsetAsync(row_counts, 0, (coo.rows() + 1) * sizeof(int), compute_stream()), "memset");
-    
-    if (coo.nnz() > 0) {
-        coo_to_csr_count_kernel<<<detail::capped_grid(coo.nnz(), 256), 256, 0, compute_stream()>>>(
-            coo.row_indices(), row_counts, coo.nnz());
-    }
-    
-    std::vector<int> h_counts(coo.rows() + 1, 0);
-    checkCuda(cudaMemcpy(h_counts.data(), row_counts, (coo.rows() + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
-    
-    std::vector<int> h_ptr(coo.rows() + 1, 0);
-    for(size_t i = 0; i < coo.rows(); ++i) {
-        h_ptr[i+1] = h_ptr[i] + h_counts[i];
-    }
-    
-    checkCuda(cudaMemcpy(csr.row_ptr(), h_ptr.data(), (coo.rows() + 1) * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    
-    // Simplification: assume COO is sorted, just copy cols and values. 
-    // True scatter requires write offsets per row.
-    checkCuda(cudaMemcpy(csr.col_idx(), coo.col_indices(), coo.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
-    checkCuda(cudaMemcpy(csr.values(), coo.values(), coo.nnz() * sizeof(float), cudaMemcpyDeviceToDevice), "memcpy");
-    
-    free_device_memory(row_counts);
-    return csr;
+    std::vector<int> rows(coo.nnz()),cols(coo.nnz());std::vector<float> values(coo.nnz());
+    checkCuda(copy_sync(rows.data(),coo.row_indices(),rows.size()*sizeof(int),cudaMemcpyDeviceToHost),"COO rows");
+    checkCuda(copy_sync(cols.data(),coo.col_indices(),cols.size()*sizeof(int),cudaMemcpyDeviceToHost),"COO cols");
+    checkCuda(copy_sync(values.data(),coo.values(),values.size()*sizeof(float),cudaMemcpyDeviceToHost),"COO values");
+    return SparseCSR::from_coo(coo.rows(),coo.cols(),rows,cols,values);
 }
 
 SparseCOO csr_to_coo(const SparseCSR& csr) {
     std::vector<int> h_ptr(csr.rows() + 1);
-    checkCuda(cudaMemcpy(h_ptr.data(), csr.row_ptr(), (csr.rows() + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(h_ptr.data(), csr.row_ptr(), (csr.rows() + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
     
     std::vector<int> h_row_idx(csr.nnz());
     for(size_t r = 0; r < csr.rows(); ++r) {
@@ -356,9 +343,9 @@ SparseCOO csr_to_coo(const SparseCSR& csr) {
     }
     
     SparseCOO coo(csr.rows(), csr.cols(), csr.nnz());
-    checkCuda(cudaMemcpy(const_cast<int*>(coo.row_indices()), h_row_idx.data(), csr.nnz() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
-    checkCuda(cudaMemcpy(const_cast<int*>(coo.col_indices()), csr.col_idx(), csr.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
-    checkCuda(cudaMemcpy(const_cast<float*>(coo.values()), csr.values(), csr.nnz() * sizeof(float), cudaMemcpyDeviceToDevice), "memcpy");
+    checkCuda(copy_sync(const_cast<int*>(coo.row_indices()), h_row_idx.data(), csr.nnz() * sizeof(int), cudaMemcpyHostToDevice), "memcpy");
+    checkCuda(copy_sync(const_cast<int*>(coo.col_indices()), csr.col_idx(), csr.nnz() * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
+    checkCuda(copy_sync(const_cast<float*>(coo.values()), csr.values(), csr.nnz() * sizeof(float), cudaMemcpyDeviceToDevice), "memcpy");
     return coo;
 }
 
@@ -374,18 +361,18 @@ SparseCSC csr_to_csc(const SparseCSR& csr) {
     }
     
     std::vector<int> h_counts(csr.cols() + 1, 0);
-    checkCuda(cudaMemcpy(h_counts.data(), counts, (csr.cols() + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
+    checkCuda(copy_sync(h_counts.data(), counts, (csr.cols() + 1) * sizeof(int), cudaMemcpyDeviceToHost), "memcpy");
     
     std::vector<int> h_ptr(csr.cols() + 1, 0);
     for(size_t i = 0; i < csr.cols(); ++i) h_ptr[i+1] = h_ptr[i] + h_counts[i];
     
-    checkCuda(cudaMemcpy(counts, h_ptr.data(), (csr.cols() + 1) * sizeof(int), cudaMemcpyHostToDevice), "memcpy"); // Now counts acts as col_ptr
+    checkCuda(copy_sync(counts, h_ptr.data(), (csr.cols() + 1) * sizeof(int), cudaMemcpyHostToDevice), "memcpy"); // Now counts acts as col_ptr
     
     int* write_pos = static_cast<int*>(allocate_device_memory(csr.cols() * sizeof(int)));
     checkCuda(cudaMemsetAsync(write_pos, 0, csr.cols() * sizeof(int), compute_stream()), "memset");
     
     // Copy col_ptr to CSC
-    checkCuda(cudaMemcpy(csc.col_ptr_.get(), counts, (csr.cols() + 1) * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
+    checkCuda(copy_sync(csc.col_ptr_.get(), counts, (csr.cols() + 1) * sizeof(int), cudaMemcpyDeviceToDevice), "memcpy");
     
     if (csr.rows() > 0) {
         csr_to_csc_scatter_kernel<<<detail::capped_grid(csr.rows(), 256), 256, 0, compute_stream()>>>(
@@ -400,13 +387,19 @@ SparseCSC csr_to_csc(const SparseCSR& csr) {
 }
 
 SparseCSR csc_to_csr(const SparseCSC& csc) {
-    // Reverse operation
-    return SparseCSR(csc.cols(), csc.rows(), csc.nnz()); // Placeholder
+    std::vector<int> ptr(csc.cols()+1),rows(csc.nnz()),cols(csc.nnz());std::vector<float> values(csc.nnz());
+    checkCuda(copy_sync(ptr.data(),csc.col_ptr_.get(),ptr.size()*sizeof(int),cudaMemcpyDeviceToHost),"CSC ptr");
+    checkCuda(copy_sync(rows.data(),csc.row_idx_.get(),rows.size()*sizeof(int),cudaMemcpyDeviceToHost),"CSC rows");
+    checkCuda(copy_sync(values.data(),csc.values_.get(),values.size()*sizeof(float),cudaMemcpyDeviceToHost),"CSC values");
+    for(std::size_t col=0;col<csc.cols();++col)for(int i=ptr[col];i<ptr[col+1];++i)cols[i]=static_cast<int>(col);
+    return SparseCSR::from_coo(csc.rows(),csc.cols(),rows,cols,values);
 }
 
 // SpGEMM and Addition
 SparseCSR spgemm(const SparseCSR& A, const SparseCSR& B) {
+    if(A.cols()!=B.rows())throw ShapeMismatchError("spgemm inner dimension mismatch");
     cusparseHandle_t handle = get_cusparse_handle();
+    CHECK_CUSPARSE(cusparseSetStream(handle,compute_stream()));
     cusparseSpMatDescr_t matA, matB, matC;
     
     CHECK_CUSPARSE(cusparseCreateCsr(&matA, A.rows(), A.cols(), A.nnz(),
@@ -468,8 +461,14 @@ SparseCSR spgemm(const SparseCSR& A, const SparseCSR& B) {
 }
 
 SparseCSR sparse_add(const SparseCSR& A, const SparseCSR& B, float alpha, float beta) {
-    // Fallback simple addition logic or use cusparse
-    return spgemm(A, B); // Simplified placeholder
+    if(A.rows()!=B.rows()||A.cols()!=B.cols())throw ShapeMismatchError("sparse_add shape mismatch");
+    std::vector<int> rows,cols;std::vector<float> values;
+    for(auto item:{std::make_pair(&A,alpha),std::make_pair(&B,beta)}) {
+        auto ptr=item.first->host_row_ptr(),idx=item.first->host_col_idx();auto v=item.first->host_values();
+        for(std::size_t r=0;r<A.rows();++r)for(int j=ptr[r];j<ptr[r+1];++j) {
+            rows.push_back(static_cast<int>(r));cols.push_back(idx[j]);values.push_back(item.second*v[j]);
+        }
+    }
+    return SparseCSR::from_coo(A.rows(),A.cols(),rows,cols,values);
 }
-
-}
+} // namespace matrix_pro

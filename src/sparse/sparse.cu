@@ -5,6 +5,7 @@
 #include <cuda_runtime.h>
 #include <algorithm>
 #include <vector>
+#include <limits>
 
 namespace matrix_pro {
 namespace {
@@ -41,6 +42,8 @@ SparseCSR::SparseCSR(std::size_t rows, std::size_t cols, std::size_t nnz)
     : rows_(rows), cols_(cols), nnz_(nnz),
       row_ptr_(nullptr, release_int), col_idx_(nullptr, release_int),
       values_(nullptr, release_float) {
+    if (rows > INT_MAX || cols > INT_MAX || nnz > INT_MAX)
+        throw InvalidArgumentError("CSR dimensions/nnz exceed int32 storage");
     if (nnz_ > 0) {
         row_ptr_.reset(static_cast<int*>(allocate_device_memory((rows_ + 1) * sizeof(int))));
         col_idx_.reset(static_cast<int*>(allocate_device_memory(nnz_ * sizeof(int))));
@@ -89,6 +92,8 @@ SparseCSR SparseCSR::from_coo(std::size_t rows, std::size_t cols,
                               const std::vector<float>& values) {
     if (row_idx.size() != col_idx.size() || row_idx.size() != values.size())
         throw ShapeMismatchError("from_coo triplet size mismatch");
+    if (rows > INT_MAX || cols > INT_MAX || values.size() > INT_MAX)
+        throw InvalidArgumentError("COO dimensions/nnz exceed int32 storage");
     std::vector<int> order(row_idx.size());
     for (std::size_t i = 0; i < order.size(); ++i) order[i] = static_cast<int>(i);
     std::sort(order.begin(), order.end(), [&](int a, int b) {
@@ -97,16 +102,21 @@ SparseCSR SparseCSR::from_coo(std::size_t rows, std::size_t cols,
     std::vector<int> row_ptr(rows + 1, 0);
     std::vector<int> cols_sorted;
     std::vector<float> vals_sorted;
+    int previous_row=-1,previous_col=-1;
     for (int o : order) {
         if (row_idx[o] < 0 || static_cast<std::size_t>(row_idx[o]) >= rows ||
             col_idx[o] < 0 || static_cast<std::size_t>(col_idx[o]) >= cols)
             throw OutOfRangeError("from_coo index out of range");
-        cols_sorted.push_back(col_idx[o]);
-        vals_sorted.push_back(values[o]);
-        row_ptr[static_cast<std::size_t>(row_idx[o]) + 1]++;
+        if(row_idx[o]==previous_row && col_idx[o]==previous_col) vals_sorted.back()+=values[o];
+        else {
+            cols_sorted.push_back(col_idx[o]);
+            vals_sorted.push_back(values[o]);
+            row_ptr[static_cast<std::size_t>(row_idx[o])+1]++;
+            previous_row=row_idx[o];previous_col=col_idx[o];
+        }
     }
     for (std::size_t r = 0; r < rows; ++r) row_ptr[r + 1] += row_ptr[r];
-    SparseCSR out(rows, cols, values.size());
+    SparseCSR out(rows, cols, vals_sorted.size());
     if (!vals_sorted.empty()) {
         checkCuda(cudaMemcpyAsync(out.row_ptr_.get(), row_ptr.data(), (rows + 1) * sizeof(int),
                                   cudaMemcpyHostToDevice, compute_stream()), "coo upload");
@@ -200,13 +210,13 @@ std::vector<float> SparseCSR::host_values() const {
 
 Matrix SparseCSR::to_dense() const {
     Matrix out(rows_, cols_);
-    if (nnz_ == 0) return out;
+    if (nnz_ == 0) { out.upload(); return out; }
     const std::vector<int> rp = host_row_ptr();
     const std::vector<int> ci = host_col_idx();
     const std::vector<float> vs = host_values();
     for (std::size_t r = 0; r < rows_; ++r)
         for (int j = rp[r]; j < rp[r + 1]; ++j)
-            out.data()[r * cols_ + static_cast<std::size_t>(ci[j])] = vs[j];
+            out.data()[r * cols_ + static_cast<std::size_t>(ci[j])] += vs[j];
     out.upload();
     return out;
 }
@@ -217,7 +227,7 @@ Matrix spmv(const SparseCSR& a, const Matrix& x) {
     if (x.cols() != 1 || x.rows() != a.cols())
         throw ShapeMismatchError("spmv requires (m x n) sparse and (n x 1) dense");
     Matrix y(a.rows(), 1);
-    if (a.empty()) return y;
+    if (a.empty()) { y.fill(0); return y; }
     spmv_kernel<<<(a.rows() + 255) / 256, 256, 0, compute_stream()>>>(
         a.row_ptr(), a.col_idx(), a.values(), x.device_data(), y.device_data(), a.rows());
     checkCuda(cudaGetLastError(), "spmv kernel launch");
@@ -229,7 +239,7 @@ Matrix sparse_matmul(const SparseCSR& a, const Matrix& b) {
     if (b.rows() != a.cols())
         throw ShapeMismatchError("sparse_matmul inner dimensions must match");
     Matrix c(a.rows(), b.cols());
-    if (a.empty() || c.empty()) return c;
+    if (a.empty() || c.empty()) { c.fill(0); return c; }
     sparse_matmul_kernel<<<(c.size() + 255) / 256, 256, 0, compute_stream()>>>(
         a.row_ptr(), a.col_idx(), a.values(), b.device_data(), c.device_data(),
         a.rows(), b.cols());
@@ -265,5 +275,3 @@ void sparse_outer_accumulate(SparseCSR& acc, const Matrix& a, const Matrix& b) {
 }
 
 } // namespace matrix_pro
-
-

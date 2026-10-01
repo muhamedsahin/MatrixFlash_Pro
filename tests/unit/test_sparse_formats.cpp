@@ -104,10 +104,43 @@ int main() {
             ctx.check_near(m_csc.at(2, 2), 3.0f, 1e-5, "csc from csr");
         }
 
+        ctx.section("unsorted duplicate COO, rectangular CSC and scaled sparse addition");
+        {
+            SparseCOO coo=SparseCOO::from_triplets(2,3,{1,0,1,0},{2,1,2,0},{2,4,3,-1});
+            Matrix dense=coo.to_dense();dense.download();
+            ctx.check_near(dense.at(1,2),5,0,"duplicate COO values accumulate");
+            SparseCSR csr=coo.to_csr();SparseCSC csc=csr_to_csc(csr);
+            Matrix back=csc.to_csr().to_dense();back.download();
+            Matrix trans=csc.transpose().to_dense();trans.download();
+            for(size_t r=0;r<2;++r)for(size_t c=0;c<3;++c) {
+                ctx.check_near(back.at(r,c),dense.at(r,c),0,"CSC roundtrip rectangular");
+                ctx.check_near(trans.at(c,r),dense.at(r,c),0,"CSC transpose rectangular");
+            }
+            Matrix scaled=sparse_add(csr,csr,2,-0.5f).to_dense();scaled.download();
+            for(size_t i=0;i<dense.size();++i)ctx.check_near(scaled.data()[i],1.5f*dense.data()[i],0,"sparse_add honors alpha/beta");
+            ctx.check_throws<OutOfRangeError>([]{SparseCOO::from_triplets(2,2,{2},{0},{1});},"reject invalid COO index");
+        }
+        ctx.section("COO grid-stride traversal covers more than one occupancy grid");
+        {
+            constexpr int count=200000;
+            std::vector<int> rows(count,0),cols(count);std::vector<float> values(count,2);
+            for(int i=0;i<count;++i)cols[i]=i;
+            Matrix dense=SparseCOO::from_triplets(1,count,rows,cols,values).to_dense();dense.download();
+            ctx.check_near(dense.at(0,count-1),2,0,"last COO entry processed");
+        }
+        ctx.section("empty CSR returns zero DEVICE results");
+        {
+            SparseCSR zero(2,3,0);
+            Matrix dense=zero.to_dense(); dense.download();
+            Matrix vector=spmv(zero,Matrix::ones(3,1)); vector.download();
+            Matrix product=sparse_matmul(zero,Matrix::ones(3,4)); product.download();
+            for(size_t i=0;i<dense.size();++i)ctx.check_near(dense.data()[i],0,0,"empty CSR dense zero");
+            for(size_t i=0;i<vector.size();++i)ctx.check_near(vector.data()[i],0,0,"empty CSR SpMV zero");
+            for(size_t i=0;i<product.size();++i)ctx.check_near(product.data()[i],0,0,"empty CSR product zero");
+        }
         return ctx.summary("SPARSE_FORMATS");
     } catch (const std::exception& e) {
         matrix_pro::test::Context{}.fatal(e);
         return 99;
     }
 }
-
