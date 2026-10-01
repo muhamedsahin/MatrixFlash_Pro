@@ -12,6 +12,7 @@ import { Cta } from '@/components/landing/cta'
 export default function HomePage() {
   return (
     <div className="relative min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+      <meta name="google-site-verification" content="oBU2n6z8B_IxbjJQ2qmMy2GM8Q16uhgRRtVIXDCqXkg" />
       <div className="pointer-events-none fixed inset-0 -z-10 mesh-aurora opacity-50" aria-hidden />
       <SiteNav />
       <main className="space-y-2">
