@@ -811,8 +811,8 @@
         "en": "2D Convolution, Pooling & Batched GEMM"
       },
       "intro": {
-        "tr": "Bu aile rank-4 NCHW `Tensor` üzerinde çalışır. cuDNN bulunuyorsa (`MATRIX_PRO_HAS_CUDNN`) konvolüsyon cuDNN'e delege edilir; bulunmuyorsa elle yazılmış CUDA çekirdekleri devreye girer — **API ve sonuçlar her iki yolda da aynıdır**.",
-        "en": "This family operates on rank-4 NCHW `Tensor` values. When cuDNN is available (`MATRIX_PRO_HAS_CUDNN`) convolution delegates to cuDNN; otherwise hand-written CUDA kernels take over — **the API and the results are identical on both paths**."
+        "tr": "Bu aile rank-4 NCHW `Tensor` üzerinde çalışır. Ölçülen yapılandırmada cuDNN zorla kapalıdır. `conv2d` `src/nn/conv.cu` içindeki `conv2d_kernel` ile çalışır. Şekil 8×3×32×32, 16 filtre, 3×3, dolgu 1: CPU 6.39 GFLOPS, cihazda duran çekirdek 48.7 GFLOPS, host gidiş-dönüş 19.0 GFLOPS. Bu CUDA sayısı PyTorch ile karşılaştırılmaz.",
+        "en": "This family operates on rank-4 NCHW `Tensor` values. In the measured configuration cuDNN is force-disabled. `conv2d` runs `conv2d_kernel` in `src/nn/conv.cu`. Shape 8×3×32×32, 16 filters, 3×3, pad 1: CPU 6.39 GFLOPS, device-resident kernel 48.7 GFLOPS, host round-trip 19.0 GFLOPS. That CUDA figure is not compared with PyTorch."
       },
       "entries": [
         {
@@ -1610,8 +1610,8 @@
         "en": "Device Management, DType & CUDA Utilities"
       },
       "intro": {
-        "tr": "Kütüphane her **(host thread, CUDA cihaz)** çifti için bir yürütme bağlamı tutar: CUDA stream + cuBLAS/cuSOLVER/cuDNN tutamaçları. Böylece farklı thread'ler stream paylaşmaz ve bağımsız cihazlar kendi tutamaçlarını alır — çoklu thread'den çalıştırma güvenlidir.",
-        "en": "The library keeps one execution context per **(host thread, CUDA device)** pair: a CUDA stream plus the cuBLAS/cuSOLVER/cuDNN handles. Different threads therefore never share a stream and independent devices get their own handles — concurrent execution from multiple threads is safe."
+        "tr": "Kütüphane her **(host thread, CUDA cihaz)** çifti için bir yürütme bağlamı tutar: CUDA stream ile cuBLAS ve cuSOLVER tutamaçları. cuDNN bu ölçülen yapılandırmada zorla kapalıdır, bu yüzden cuDNN tutamacı oluşmaz. Farklı thread'ler stream paylaşmaz.",
+        "en": "The library keeps one execution context per **(host thread, CUDA device)** pair: a CUDA stream plus cuBLAS and cuSOLVER handles. cuDNN is force-disabled in the measured configuration, so no cuDNN handle is created. Different threads do not share a stream."
       },
       "entries": [
         {
@@ -1697,10 +1697,32 @@
         "en": "GemmPlan — reusable hot GEMM"
       },
       "intro": {
-        "tr": "C = epilogue(alpha * op(A) * op(B) + beta * C). Plan kurulduğu thread, cihaz ve stream'e bağlıdır. Sıcak execute tahsis, descriptor ve heuristic yapmaz. Başlık: ops/gemm.hpp.",
-        "en": "C = epilogue(alpha * op(A) * op(B) + beta * C). A plan is bound to the thread, device and stream that created it. Warm execute does no allocation, descriptor creation or heuristic query. Header: ops/gemm.hpp."
+        "tr": "Host GEMM `gemm_f32` (bu makinede `avx2-4x16`). Cihaz GEMM cuBLAS: `hw::cuda_gemm` `cublasSgemm` çağırır. `GemmPlan` büyük şekilde cuBLAS veya cuBLASLt kullanır. AVX-512 bu CPU’da seçilmez.",
+        "en": "Host GEMM is `gemm_f32` (`avx2-4x16` on this machine). Device GEMM is cuBLAS: `hw::cuda_gemm` calls `cublasSgemm`. `GemmPlan` uses cuBLAS or cuBLASLt on large shapes. AVX-512 is not selected on this CPU."
       },
       "entries": [
+        {
+          "name": "gemm_f32",
+          "signature": "void gemm_f32(int m, int n, int k, const float* a, int lda, const float* b, int ldb, float* c, int ldc, float alpha, float beta);",
+          "badge": "CPU",
+          "returns": "void",
+          "text": {
+            "tr": "Satır-major `C = alpha * A * B + beta * C`. Başlık `include/matrix_pro/cpu/gemm.hpp`. Bu makinede `gemm_kernel_name()` `avx2-4x16` döner. AVX-512 seçilmez.",
+            "en": "Row-major `C = alpha * A * B + beta * C`. Header `include/matrix_pro/cpu/gemm.hpp`. On this machine `gemm_kernel_name()` returns `avx2-4x16`. AVX-512 is not selected."
+          },
+          "example": "#include \"matrix_pro/cpu/gemm.hpp\"\n\nmatrix_pro::gemm_f32(m, n, k, a, lda, b, ldb, c, ldc, 1.f, 0.f);"
+        },
+        {
+          "name": "hw::cuda_gemm",
+          "signature": "void cuda_gemm(int device, int m, int n, int k, const float* a, int lda, const float* b, int ldb, float* c, int ldc, float alpha, float beta);",
+          "badge": "cuBLAS",
+          "returns": "void",
+          "text": {
+            "tr": "`matrix_pro::hw` içinde, başlık `include/matrix_pro/detail/cuda_hooks.hpp`. İşaretçiler cihaz belleğidir. Gövde `cublasSgemm` çağırır. Cihaz GEMM cuBLAS’tır.",
+            "en": "In `matrix_pro::hw`, header `include/matrix_pro/detail/cuda_hooks.hpp`. The pointers are device memory. The body calls `cublasSgemm`. Device GEMM is cuBLAS."
+          },
+          "example": "#include \"matrix_pro/detail/cuda_hooks.hpp\"\n\nmatrix_pro::hw::cuda_gemm(device, m, n, k, a, lda, b, ldb, c, ldc, 1.f, 0.f);"
+        },
         {
           "name": "GemmOptions",
           "signature": "enum class GemmPrecision { fp32, tf32 };\nenum class GemmEpilogue { none, bias, bias_relu, bias_gelu };\nstruct GemmOptions {\n  bool transpose_left = false;\n  bool transpose_right = false;\n  GemmPrecision precision = GemmPrecision::fp32;\n  GemmEpilogue epilogue = GemmEpilogue::none;\n  std::size_t workspace_limit_bytes = 64u << 20;\n};",

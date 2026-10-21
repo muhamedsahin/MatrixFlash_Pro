@@ -17,15 +17,32 @@
 
 cmake_minimum_required(VERSION 3.24)
 
+# A second add_subdirectory in the same build must not redefine the targets.
+if(TARGET matrix_pro)
+    return()
+endif()
+
 # Set the default before CUDA compiler detection initializes its own default.
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES native)
 endif()
 
-project(MatrixFlashPro
-        VERSION 1.0.0
-        DESCRIPTION "GPU-accelerated matrix / tensor library (CUDA, cuBLAS, cuSOLVER)"
-        LANGUAGES CXX CUDA)
+# CUDA is optional. The CPU GEMM, thread pool, collectives and hybrid scheduler
+# always build. The historical .cu sources and cuBLAS stay behind this switch.
+if(NOT DEFINED MATRIX_PRO_ENABLE_CUDA)
+	set(MATRIX_PRO_ENABLE_CUDA ON)
+endif()
+if(MATRIX_PRO_ENABLE_CUDA)
+	project(MatrixFlashPro
+	        VERSION 1.0.0
+	        DESCRIPTION "Matrix and tensor library (CPU AVX, CUDA, collectives)"
+	        LANGUAGES CXX CUDA)
+else()
+	project(MatrixFlashPro
+	        VERSION 1.0.0
+	        DESCRIPTION "Matrix and tensor library (CPU AVX, collectives)"
+	        LANGUAGES CXX)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -37,15 +54,19 @@ enable_testing()
 # --- language / toolchain ---------------------------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+if(MATRIX_PRO_ENABLE_CUDA)
+	set(CMAKE_CUDA_STANDARD 17)
+	set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+endif()
 
-if(MSVC)
+if(MSVC AND MATRIX_PRO_ENABLE_CUDA)
 	# Keep the CUDA and host compilers' exception/optimization behaviour aligned.
 	add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/utf-8>)
 endif()
 
-find_package(CUDAToolkit REQUIRED)
+if(MATRIX_PRO_ENABLE_CUDA)
+	find_package(CUDAToolkit REQUIRED)
+endif()
 
 # --- optional cuDNN backend for convolution / pooling -----------------------
 set(MATRIX_PRO_CUDNN_FOUND FALSE)
@@ -63,10 +84,39 @@ endif()
 #  matrix_pro library
 # ============================================================================
 include(MatrixFlashSources)
-add_library(matrix_pro STATIC
-    ${MATRIX_PRO_LIBRARY_SOURCES}
-    ${MATRIX_PRO_IMPLEMENTATION_PARTS}
-)
+
+set(MATRIX_PRO_HW_CXX ${MATRIX_PRO_HW_SOURCES})
+set(MATRIX_PRO_HW_CU ${MATRIX_PRO_HW_SOURCES})
+list(FILTER MATRIX_PRO_HW_CXX EXCLUDE REGEX "\\.cu$")
+list(FILTER MATRIX_PRO_HW_CU INCLUDE REGEX "\\.cu$")
+
+# CPU translation units stay out of /GL and /fp:fast so the host GEMM keeps
+# IEEE rounding and the link does not need LTCG for these objects.
+add_library(matrix_pro_cpu OBJECT ${MATRIX_PRO_HW_CXX})
+target_include_directories(matrix_pro_cpu PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_compile_features(matrix_pro_cpu PUBLIC cxx_std_17)
+if(MATRIX_PRO_ENABLE_CUDA)
+	target_compile_definitions(matrix_pro_cpu PUBLIC MATRIX_PRO_ENABLE_CUDA=1)
+endif()
+if(MSVC)
+	target_compile_options(matrix_pro_cpu PRIVATE /W4 /permissive- /EHsc /utf-8)
+	enable_language(ASM_MASM)
+	target_sources(matrix_pro_cpu PRIVATE src/hw/gemm_avx2_kernel.asm)
+else()
+	target_compile_options(matrix_pro_cpu PRIVATE -Wall -Wextra)
+endif()
+
+if(MATRIX_PRO_ENABLE_CUDA)
+	add_library(matrix_pro STATIC
+	    ${MATRIX_PRO_LIBRARY_SOURCES}
+	    ${MATRIX_PRO_IMPLEMENTATION_PARTS}
+	    ${MATRIX_PRO_HW_CU}
+	    $<TARGET_OBJECTS:matrix_pro_cpu>
+	)
+else()
+	add_library(matrix_pro STATIC $<TARGET_OBJECTS:matrix_pro_cpu>)
+endif()
 
 add_library(matrix_pro::matrix_pro ALIAS matrix_pro)
 
@@ -84,9 +134,12 @@ target_include_directories(matrix_pro
 		$<INSTALL_INTERFACE:include>
 )
 
-# cuBLAS (GEMM), cuSOLVER (decompositions), and cuSPARSE (sparse ops) are part of
-# the public API surface: consumers must inherit them.
-target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cublasLt CUDA::cusolver CUDA::cusparse)
+if(MATRIX_PRO_ENABLE_CUDA)
+	# cuBLAS (GEMM), cuSOLVER (decompositions), and cuSPARSE (sparse ops) are part of
+	# the public API surface: consumers must inherit them.
+	target_link_libraries(matrix_pro PUBLIC CUDA::cublas CUDA::cublasLt CUDA::cusolver CUDA::cusparse)
+	target_compile_definitions(matrix_pro PUBLIC MATRIX_PRO_ENABLE_CUDA=1)
+endif()
 
 if(MATRIX_PRO_CUDNN_FOUND)
 	# PUBLIC, not PRIVATE: core/cuda_utils.hpp conditionally declares

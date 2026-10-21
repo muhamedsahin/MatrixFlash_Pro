@@ -52,6 +52,53 @@ set(MATRIX_PRO_LIBRARY_SOURCES
 	src/streams/execution.cu
 )
 
+# Phase 2 hardware layer. These are host C++ and build with or without CUDA.
+set(MATRIX_PRO_HW_SOURCES
+	src/hw/cpuid.cpp
+	src/hw/thread_pool.cpp
+	src/hw/elementwise.cpp
+	src/hw/elementwise_avx2.cpp
+	src/hw/elementwise_avx512.cpp
+	src/hw/gemm_scalar.cpp
+	src/hw/gemm_avx2.cpp
+	src/hw/gemm_avx512.cpp
+	src/hw/gemm.cpp
+	src/hw/backend_registry.cpp
+	src/hw/cpu_backend.cpp
+	src/hw/hlo_compiler.cpp
+	src/hw/collectives.cpp
+	src/hw/topology.cpp
+	src/hw/scheduler.cpp
+	src/hw/device_manager.cpp
+)
+
+if(MATRIX_PRO_ENABLE_CUDA)
+	list(APPEND MATRIX_PRO_HW_SOURCES
+		src/hw/cuda_backend.cu
+		src/hw/collectives_cuda.cu)
+else()
+	list(APPEND MATRIX_PRO_HW_SOURCES src/hw/cuda_absent.cpp)
+endif()
+
+if(MSVC)
+	set_source_files_properties(
+		src/hw/elementwise_avx2.cpp src/hw/gemm_avx2.cpp
+		PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+	set_source_files_properties(
+		src/hw/elementwise_avx512.cpp src/hw/gemm_avx512.cpp
+		PROPERTIES COMPILE_OPTIONS "/arch:AVX512")
+else()
+	set_source_files_properties(
+		src/hw/elementwise_avx2.cpp src/hw/gemm_avx2.cpp
+		PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma;-ffp-contract=off")
+	set_source_files_properties(
+		src/hw/elementwise_avx512.cpp src/hw/gemm_avx512.cpp
+		PROPERTIES COMPILE_OPTIONS "-mavx512f;-mfma;-ffp-contract=off")
+	set_source_files_properties(
+		src/hw/gemm_scalar.cpp src/hw/gemm.cpp src/hw/elementwise.cpp
+		PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
+endif()
+
 # Private implementation parts are visible in IDEs but not compiled alone.
 set(MATRIX_PRO_IMPLEMENTATION_PARTS
     src/autograd/detail/node_types.inc

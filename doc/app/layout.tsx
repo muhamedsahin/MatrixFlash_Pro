@@ -27,9 +27,9 @@ const sora = Sora({
 })
 
 export const metadata: Metadata = {
-  title: 'MatrixFlash-Pro — CUDA-Accelerated C++17 Matrix & Tensor Library',
+  title: 'MatrixFlash-Pro — C++17 matrix library (AVX2 GEMM, cuBLAS)',
   description:
-    'Shape-aware GEMM at cuBLAS-class speed, TF32 Tensor Cores, fused gemm+bias+act, Autograd, cuSOLVER, sparse CSR, async streams.',
+    'Host GEMM kernel avx2-4x16 on a Ryzen 7 5800H. Device GEMM is cuBLAS. CUDA 13.4 is optional. cuDNN is force-disabled. Apache-2.0.',
   keywords: [
     'CUDA',
     'cuBLAS',

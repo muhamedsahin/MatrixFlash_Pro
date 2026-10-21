@@ -21,12 +21,12 @@ export function Features() {
     {
       icon: Gauge,
       title: {
-        tr: 'Shape-aware GEMM · cuBLAS-sınıfı',
-        en: 'Shape-aware GEMM · cuBLAS-class',
+        tr: 'CPU avx2-4x16 · cihaz GEMM cuBLAS',
+        en: 'CPU avx2-4x16 · device GEMM is cuBLAS',
       },
       body: {
-        tr: 'Mikro / GEMV / algo-cache’li cublasLt. Uzun vektör yolunda eski sürüme göre 3.98×. FP32 tuned plan 1024²’de ham cuBLAS’tan 1.24× hızlı.',
-        en: 'Micro / GEMV / algo-cached cublasLt. 3.98× on the long-vector path versus the previous build. The FP32 tuned plan is 1.24× faster than raw cuBLAS at 1024².',
+        tr: 'Ryzen 7 5800H. AVX-512 seçilmez. N=2048: 330, 362 ve 369 GFLOPS; TensorFlow 389. Silinen Nc, MASM 6×16 ve N=512 hibrit GEMM güncel değildir.',
+        en: 'Ryzen 7 5800H. AVX-512 is not selected. N=2048: 330, 362 and 369 GFLOPS; TensorFlow 389. The deleted Nc tile, MASM 6×16 and N=512 hybrid GEMM are not current.',
       },
       tag: 'Compute',
     },
@@ -126,14 +126,14 @@ export function Features() {
           </div>
           <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
             {t(
-              'Endüstri Standardında GPU Mimarisi, Sade C++17 Arayüzü',
-              'Industry-Grade GPU Architecture, Elegant C++17 API',
+              'C++17 arayüzü, AVX2 GEMM ve cuBLAS',
+              'C++17 API, AVX2 GEMM and cuBLAS',
             )}
           </h2>
           <p className="mt-4 text-pretty text-base text-muted-foreground sm:text-lg">
             {t(
-              'cuBLAS, cuSOLVER, derin öğrenme operasyonları ve donanım dostu optimizasyonların modern bir hibrit birleşimi.',
-              'A modern hybrid fusion of cuBLAS, cuSOLVER, deep learning primitives, and hardware-friendly CUDA optimizations.',
+              'Host GEMM avx2-4x16. Cihaz GEMM cuBLAS. cuDNN zorla kapalı; conv2d CUDA çekirdeği ölçülmüştür.',
+              'Host GEMM is avx2-4x16. Device GEMM is cuBLAS. cuDNN is force-disabled; the conv2d CUDA kernel was measured.',
             )}
           </p>
         </Reveal>

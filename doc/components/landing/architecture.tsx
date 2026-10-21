@@ -115,7 +115,7 @@ export function Architecture() {
                 <FolderTree className="size-3.5 text-primary" />
                 <span className="text-foreground font-semibold">MatrixFlash_Pro/</span>
               </div>
-              <span className="text-[10px] text-primary">C++17 / CUDA 12.3+</span>
+              <span className="text-[10px] text-primary">C++17 / CUDA 13.4 optional</span>
             </div>
 
             <ul className="divide-y divide-border/40 font-mono text-xs">

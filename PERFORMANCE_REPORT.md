@@ -1,13 +1,63 @@
 # MatrixFlash-Pro: optimizasyon ve rakip benchmark raporu
 
+Bu yazılım ekosistemi Bursa Teknik Üniversitesi Bilgisayar Mühendisliği 1. sınıf öğrencisi Muhammed Fatih Şahin tarafından yapay zeka destekli olarak geliştirilmiştir.
+
+## 0. Güncel CPU çekirdeği — 21 Ekim 2026 akşamı
+
+Bu bölüm güncel CPU GEMM’i anlatır. Aşağıdaki 1 Ekim 2026 gövdesi ayrı bir GPU
+protokolüdür (RTX 3070 Laptop, cuBLAS / cuBLASLt). O tablolar dünya sıralaması
+değildir ve silinmiş CPU denemelerini güncel çekirdek gibi göstermez.
+
+**Makine:** AMD Ryzen 7 5800H. Bu işlemcide AVX-512 yoktur ve AVX-512 seçilmez.
+Seri AVX-512 çekirdeği satırları dağıtmaz; AVX2 ve FMA varken `gemm_f32` onu
+seçmez. `gemm_kernel_name()` bu makinede `avx2-4x16` döner.
+
+**Tutulan çekirdek:** `avx2-4x16`. B paneli bir kez paketlenir.
+
+**Silindi, daha yavaştı, güncel değil:**
+
+- A’yı yeniden paketleyen `Nc` karosu
+- MASM 6×16
+- `N=512` hibrit GEMM
+
+Heterogeneous scheduler (CPU satırları `gemm_f32`, GPU satırları `cublasSgemm`)
+ayrı bir yoldur. `N=512` hibrit GEMM denemesi değildir.
+
+**GEMM `N=2048`, aynı akşam protokolü.** Başka GFLOPS yazılmaz.
+
+| Ölçüm | GFLOPS |
+|---|---:|
+| Nexus | 330 |
+| Nexus | 362 |
+| Nexus | 369 |
+| TensorFlow | 389 |
+
+**cuDNN zorla kapalı.** `tools/build_local.py` `-DMATRIX_PRO_ENABLE_CUDNN=OFF`
+geçirir. Ölçülen conv2d, `src/nn/conv.cu` içindeki CUDA çekirdeğidir.
+
+**Conv, bu makine, Nexus CPU conv ile.** Şekil `8×3×32×32`, 16 filtre, `3×3`,
+dolgu 1. Bu CUDA sayısı PyTorch ile karşılaştırılmaz.
+
+| Yol | GFLOPS |
+|---|---:|
+| Nexus CPU conv | 6.39 |
+| Cihazda duran CUDA çekirdeği | 48.7 |
+| Host gidiş-dönüş | 19.0 |
+
+Cihaz GEMM cuBLAS’tır: `hw::cuda_gemm` `cublasSgemm` çağırır. `GemmPlan` büyük
+şekillerde cuBLAS veya cuBLASLt kullanır.
+
+## 1 Ekim 2026 GPU protokolü
+
 **Tarih:** 1 Ekim 2026. **Ölçülen donanım:** RTX 3070 Laptop, Windows.
 
 Bu çalışma, mevcut matris API'sini ve host/device aynası sözleşmesini koruyarak
 GEMM yürütme maliyetlerini azalttı; tekrar kullanılabilir GEMM ve LU planları,
 açık hassasiyet politikaları ve daha kararlı ileri doğrusal cebir ekledi.
 Sonuçlar yalnızca aşağıdaki donanım, boyutlar ve ölçüm kapsamı için geçerlidir.
-Tek bir laptopta yapılan ölçüm, “dünyanın en hızlı/en güçlü kütüphanesi” sonucunu
-kanıtlamaz. İyileşmeyen ve gerileyen durumlar tablolarda özellikle bırakılmıştır.
+Tek bir laptopta yapılan ölçüm bir dünya sıralaması değildir. İyileşmeyen ve
+gerileyen durumlar tablolarda özellikle bırakılmıştır. Bu bölümdeki GFLOPS
+değerleri o günün CUDA-event ölçümleridir; bölüm 0’daki CPU protokolüne eklenmez.
 
 Ölçülen en belirgin kazanım, `1×4096 · 4096×1024` default çarpımında
 **185.824 → 46.656 µs (3.98×)**. `31×19 · 19×47` default
@@ -318,8 +368,12 @@ default ölçümü yapabilir. Bu rapor onlar hakkında performans iddiası içer
 - `LUFactorization` constructor'ı singularity ve signed logdet için senkronize
   eder; `solve_into` preallocated RHS kapasitesinde tahsis yapmaz. `solve` çıktı
   oluşturur. RHS ile output aynı buffer olabilir; önce internal scratch'e kopyalanır.
-- Çoklu GPU, Hopper/Blackwell, Linux ve cuDNN yolları bu çalışmada test edilmedi.
-  Mevcut tüm ileri operasyonlar için evrensel stabilite/performance garantisi yoktur.
+- Çoklu GPU, Hopper/Blackwell ve Linux yolları bu 1 Ekim çalışmasında test edilmedi.
+  cuDNN zorla kapalıdır; o çalışmanın conv sayıları yoktur. 21 Ekim conv
+  sayıları bölüm 0’dadır ve PyTorch ile karşılaştırılmaz.
+  Mevcut tüm ileri operasyonlar için evrensel stabilite veya performans garantisi yoktur.
+- AVX-512 bu CPU’da seçilmez. Silinen `Nc` (A yeniden paketleme), MASM 6×16 ve
+  `N=512` hibrit GEMM güncel çekirdek değildir. Tutulan çekirdek `avx2-4x16`.
 - Fused epilogue, LU reuse, sparse dönüşüm ve matrix-exp için bu çalışmada ayrı
   hız tabloları üretilmedi; bu alanlarda ölçülmemiş hız katsayısı iddiası yapılmaz.
 

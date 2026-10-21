@@ -2,6 +2,15 @@
 // Kapsam sahibi .cu dosyasında açılır; bu dosya tek başına derlenmez.
 // Görev: Tek sahiplik haritası, cihaz etiketleri ve power-of-two sınıfları.
 
+struct PoolSpin {
+    void lock() noexcept {
+        while (flag.test_and_set(std::memory_order_acquire)) {
+        }
+    }
+    void unlock() noexcept { flag.clear(std::memory_order_release); }
+    std::atomic_flag flag = ATOMIC_FLAG_INIT;
+};
+
 struct DeviceMemoryPool {
     static constexpr std::size_t max_reuse_per_size = 32;
 
@@ -13,7 +22,7 @@ struct DeviceMemoryPool {
         cudaEvent_t ready_event = nullptr;
     };
 
-    std::mutex mutex;
+    PoolSpin mutex;
     // device -> size class -> reusable blocks
     std::unordered_map<int, std::unordered_map<std::size_t, std::vector<void*>>> free_blocks;
     std::unordered_map<void*, BlockInfo> block_info;
@@ -35,8 +44,10 @@ struct DeviceMemoryPool {
     }
 
     static DeviceMemoryPool& instance() {
-        static DeviceMemoryPool pool;
-        return pool;
+        // Fonksiyon-içi mutex, Python pyd'sinde ilk kurulumda erişim ihlali yapar.
+        // Havuz süreç boyunca kalır; DLL kapanırken cudaFree çağrılmaz.
+        static DeviceMemoryPool* pool = new DeviceMemoryPool();
+        return *pool;
     }
 };
 

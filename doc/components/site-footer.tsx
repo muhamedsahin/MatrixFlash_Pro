@@ -75,12 +75,16 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-6 sm:flex-row">
+        <p className="mt-10 text-sm leading-relaxed text-muted-foreground">
+          Bu yazılım ekosistemi Bursa Teknik Üniversitesi Bilgisayar Mühendisliği 1. sınıf öğrencisi Muhammed Fatih Şahin tarafından yapay zeka destekli olarak geliştirilmiştir.
+        </p>
+
+        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-6 sm:flex-row">
           <p className="font-mono text-xs text-muted-foreground">
-            © {new Date().getFullYear()} MatrixFlash-Pro · {site.author} · Open Source
+            © {new Date().getFullYear()} MatrixFlash-Pro · {site.author} · Apache-2.0
           </p>
           <p className="font-mono text-xs text-primary/80">
-            {t('GPU Hızında Yüksek Performanslı Matris Motoru', 'High-Performance GPU-Native Matrix Engine')}
+            {t('avx2-4x16 · cihaz GEMM cuBLAS', 'avx2-4x16 · device GEMM is cuBLAS')}
           </p>
         </div>
       </div>

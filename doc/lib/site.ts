@@ -1,17 +1,17 @@
 export const site = {
   name: 'MatrixFlash-Pro',
   tagline: {
-    tr: 'cuBLAS-sınıfı hızda C++17 GPU matris & tensör motoru',
-    en: 'C++17 GPU matrix & tensor engine at cuBLAS-class speed',
+    tr: 'C++17 matris kütüphanesi: AVX2 GEMM ve cuBLAS',
+    en: 'C++17 matrix library: AVX2 GEMM and cuBLAS',
   },
   description: {
-    tr: 'Shape-aware GEMM, TF32 Tensor Core, fused gemm+bias+act, Autograd, cuSOLVER, seyrek CSR ve stream havuzu — NVIDIA GPU’da ölçülmüş performans.',
-    en: 'Shape-aware GEMM, TF32 Tensor Cores, fused gemm+bias+act, Autograd, cuSOLVER, sparse CSR and a stream pool — measured on NVIDIA GPUs.',
+    tr: 'Bu makinede seçilen CPU çekirdeği avx2-4x16. Cihaz GEMM cuBLAS kullanır. cuDNN zorla kapalıdır. Lisans Apache-2.0.',
+    en: 'On this machine the selected CPU kernel is avx2-4x16. Device GEMM uses cuBLAS. cuDNN is force-disabled. License Apache-2.0.',
   },
   github: 'https://github.com/muhamedsahin/MatrixFlash_Pro',
   author: 'Muhammed Fatih Şahin',
   cpp: 'C++17',
-  cuda: 'CUDA 12.3+',
+  cuda: 'CUDA 13.4 optional',
   version: '2.1.0-PRO',
 }
 
@@ -101,6 +101,7 @@ export const docsNav: DocSection[] = [
   {
     title: { tr: 'Performans Karşılaştırma', en: 'Benchmark Comparison' },
     items: [
+      { label: { tr: 'CPU GEMM, 21 Ekim 2026', en: 'CPU GEMM, 21 Oct 2026' }, href: '/docs/performans#cpu-2026-10-21' },
       { label: { tr: 'Metodoloji (1 Ekim 2026)', en: 'Methodology (1 Oct 2026)' }, href: '/docs/performans#metodoloji' },
       { label: { tr: 'Eski vs yeni varsayılan', en: 'Old vs new default' }, href: '/docs/performans#eski-yeni' },
       { label: { tr: 'FP32 vs cuBLAS / cuBLASLt', en: 'FP32 vs cuBLAS / cuBLASLt' }, href: '/docs/performans#gemm', badge: 'ölçüldü' },

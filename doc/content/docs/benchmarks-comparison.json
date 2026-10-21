@@ -3,21 +3,79 @@
   "meta": {
     "eyebrow": { "tr": "PERFORMANS KARŞILAŞTIRMA", "en": "PERFORMANCE COMPARISON" },
     "title": {
-      "tr": "1 Ekim 2026 — MatrixFlash-Pro, cuBLAS, cuBLASLt ve NumPy",
-      "en": "1 October 2026 — MatrixFlash-Pro, cuBLAS, cuBLASLt and NumPy"
+      "tr": "21 Ekim 2026 CPU GEMM ve 1 Ekim 2026 GPU protokolü",
+      "en": "21 October 2026 CPU GEMM and the 1 October 2026 GPU protocol"
     },
     "description": {
-      "tr": "RTX 3070 Laptop üzerinde aynı hassasiyette ölçülmüş GEMM. FP32 ve TF32 ayrıdır. PyTorch ve CuPy bu turda kurulu olmadığı için süreleri yoktur.",
-      "en": "Same-precision GEMM on an RTX 3070 Laptop. FP32 and TF32 are separate. PyTorch and CuPy were not installed, so they have no times."
+      "tr": "Ryzen 7 5800H, AVX-512 seçilmez, çekirdek avx2-4x16. N=2048: Nexus 330, 362 ve 369 GFLOPS; TensorFlow 389. 1 Ekim GPU tabloları ayrı bir cuBLAS protokolüdür ve dünya sıralaması değildir.",
+      "en": "Ryzen 7 5800H, AVX-512 is not selected, kernel avx2-4x16. N=2048: Nexus 330, 362 and 369 GFLOPS; TensorFlow 389. The 1 October GPU tables are a separate cuBLAS protocol and are not a world ranking."
     }
   },
   "sections": [
     {
+      "id": "cpu-2026-10-21",
+      "title": { "tr": "CPU GEMM — 21 Ekim 2026 akşamı", "en": "CPU GEMM — evening of 21 October 2026" },
+      "intro": {
+        "tr": "Makine: AMD Ryzen 7 5800H. AVX-512 yoktur ve seçilmez. Tutulan çekirdek avx2-4x16. Cihaz GEMM cuBLAS’tır (hw::cuda_gemm cublasSgemm çağırır). cuDNN zorla kapalıdır. Bu bölüm dünya sıralaması kurmaz ve başka GFLOPS yazmaz.",
+        "en": "Machine: AMD Ryzen 7 5800H. AVX-512 is absent and is not selected. The kept kernel is avx2-4x16. Device GEMM is cuBLAS (hw::cuda_gemm calls cublasSgemm). cuDNN is force-disabled. This section does not set a world ranking and does not add other GFLOPS figures."
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "GEMM N=2048", "en": "GEMM N=2048" },
+            { "tr": "GFLOPS", "en": "GFLOPS" }
+          ],
+          "rows": [
+            [{ "tr": "Nexus", "en": "Nexus" }, { "tr": "330", "en": "330" }],
+            [{ "tr": "Nexus", "en": "Nexus" }, { "tr": "362", "en": "362" }],
+            [{ "tr": "Nexus", "en": "Nexus" }, { "tr": "369", "en": "369" }],
+            [{ "tr": "TensorFlow", "en": "TensorFlow" }, { "tr": "389", "en": "389" }]
+          ]
+        },
+        {
+          "type": "table",
+          "headers": [
+            { "tr": "Conv 8×3×32×32, 16 filtre, 3×3, dolgu 1", "en": "Conv 8×3×32×32, 16 filters, 3×3, pad 1" },
+            { "tr": "GFLOPS", "en": "GFLOPS" }
+          ],
+          "rows": [
+            [{ "tr": "Nexus CPU conv", "en": "Nexus CPU conv" }, { "tr": "6.39", "en": "6.39" }],
+            [{ "tr": "Cihazda duran CUDA çekirdeği", "en": "Device-resident CUDA kernel" }, { "tr": "48.7", "en": "48.7" }],
+            [{ "tr": "Host gidiş-dönüş", "en": "Host round-trip" }, { "tr": "19.0", "en": "19.0" }]
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "tr": "Silindi ve güncel değil: A’yı yeniden paketleyen Nc karosu, MASM 6×16, N=512 hibrit GEMM. Üçü de daha yavaştı.",
+              "en": "Deleted and not current: an Nc tile that repacks A, MASM 6×16, and hybrid GEMM at N=512. All three were slower."
+            },
+            {
+              "tr": "Heterogeneous scheduler güncel CPU+GPU satır bölmesidir. Silinen N=512 hibrit GEMM denemesi değildir.",
+              "en": "The heterogeneous scheduler is the current CPU+GPU row split. It is not the deleted hybrid GEMM experiment at N=512."
+            },
+            {
+              "tr": "Conv tablosundaki CUDA sayısı PyTorch ile yan yana konmaz.",
+              "en": "The CUDA number in the conv table is not placed next to PyTorch."
+            }
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "gemm_f32.cpp",
+          "code": "#include \"matrix_pro/cpu/gemm.hpp\"\n\nvoid product(const float* a, const float* b, float* c, int n) {\n    matrix_pro::gemm_f32(n, n, n, a, n, b, n, c, n, 1.f, 0.f);\n}"
+        }
+      ]
+    },
+    {
       "id": "metodoloji",
       "title": { "tr": "Metodoloji", "en": "Methodology" },
       "intro": {
-        "tr": "Cihaz: NVIDIA GeForce RTX 3070 Laptop, 8 GiB, SM 86. CPU: AMD Ryzen 7 5800H. Windows 11 WDDM, sürücü 610.88, CUDA 13.4, MSVC 14.44, Release, native SM 86, cuDNN kapalı. Tarih: 1 Ekim 2026.",
-        "en": "Device: NVIDIA GeForce RTX 3070 Laptop, 8 GiB, SM 86. CPU: AMD Ryzen 7 5800H. Windows 11 WDDM, driver 610.88, CUDA 13.4, MSVC 14.44, Release, native SM 86, cuDNN off. Date: 1 October 2026."
+        "tr": "Aşağıdaki grafik ve tablolar 1 Ekim 2026 GPU protokolüdür, bölüm cpu-2026-10-21’deki CPU GEMM değildir. Cihaz: NVIDIA GeForce RTX 3070 Laptop, 8 GiB, SM 86. CPU: AMD Ryzen 7 5800H. Windows 11 WDDM, sürücü 610.88, CUDA 13.4, MSVC 14.44, Release, native SM 86, cuDNN zorla kapalı. Dünya sıralaması yoktur.",
+        "en": "The chart and tables below are the 1 October 2026 GPU protocol, not the CPU GEMM in section cpu-2026-10-21. Device: NVIDIA GeForce RTX 3070 Laptop, 8 GiB, SM 86. CPU: AMD Ryzen 7 5800H. Windows 11 WDDM, driver 610.88, CUDA 13.4, MSVC 14.44, Release, native SM 86, cuDNN force-disabled. There is no world ranking."
       },
       "blocks": [
         {
@@ -134,10 +192,10 @@
         {
           "type": "callout",
           "variant": "info",
-          "title": { "tr": "FP32'de okunacak satır", "en": "The FP32 row that matters" },
+          "title": { "tr": "1 Ekim FP32 satırları", "en": "1 October FP32 rows" },
           "text": {
-            "tr": "1024³ strict FP32'de tuned plan 277 µs, ham cuBLAS 343 µs: yaklaşık 1.24×. 2048³'te 2041 µs'e karşı 2389 µs, yaklaşık 1.17×. Bu, algoritma seçiminin (en fazla 16 aday) vendor'ın ilk heuristic'inden hızlı olabildiğini gösterir. 16³–64³ başlatma maliyetinin altında kalır; orada GFLOPS sıralaması anlamsızdır. Üstteki grafik 14 şeklin tamamını çizer.",
-            "en": "At 1024³ strict FP32 the tuned plan is 277 µs and raw cuBLAS is 343 µs: about 1.24×. At 2048³, 2041 µs versus 2389 µs, about 1.17×. Algorithm selection (at most 16 candidates) can beat the vendor's first heuristic. 16³–64³ sit under launch overhead, so a GFLOPS ranking there is meaningless. The chart above draws all 14 shapes."
+            "tr": "Yalnızca 1 Ekim 2026 GPU protokolü: 1024³ strict FP32’de tuned plan 277 µs, ham cuBLAS 343 µs (yaklaşık 1.24×). 2048³’te 2041 µs ve 2389 µs (yaklaşık 1.17×). 16³–64³ başlatma maliyetinin altında kalır. Bu satırlar 21 Ekim CPU GEMM’i değildir ve dünya sıralaması değildir.",
+            "en": "1 October 2026 GPU protocol only: at 1024³ strict FP32 the tuned plan is 277 µs and raw cuBLAS is 343 µs (about 1.24×). At 2048³ the times are 2041 µs and 2389 µs (about 1.17×). 16³–64³ sit under launch overhead. These rows are not the 21 October CPU GEMM and they are not a world ranking."
           }
         }
       ]
@@ -172,8 +230,8 @@
         {
           "type": "p",
           "text": {
-            "tr": "TF32 1024³'te en hızlı ham cuBLAS'tır (169 µs). Tuned plan 176 µs, yani yaklaşık %96'sı. 2048³'te tuned plan 1307 µs, ham Lt 1304 µs: pratikte aynı bant, bu turun en yüksek verimi yaklaşık 13.1 TFLOPS. Dikdörtgen 1024×64×512'de tuned plan 16.3 µs ile ham Lt'nin 32.8 µs'ini açık ara geçer; her şekilde aynı sıralama yoktur.",
-            "en": "At TF32 1024³ raw cuBLAS is the fastest (169 µs). The tuned plan is 176 µs, about 96% of that. At 2048³ the tuned plan is 1307 µs and raw Lt is 1304 µs: the same band in practice, and the highest throughput of this run, about 13.1 TFLOPS. On the rectangular 1024×64×512 the tuned plan at 16.3 µs clearly beats raw Lt at 32.8 µs; the ranking is not the same on every shape."
+            "tr": "Bu satırlar yalnızca 1 Ekim 2026 GPU protokolüdür. TF32 1024³’te ham cuBLAS 169 µs, tuned plan 176 µs. 2048³’te tuned plan 1307 µs, ham Lt 1304 µs. Dikdörtgen 1024×64×512’de tuned plan 16.3 µs, ham Lt 32.8 µs. Şekilden şekle sıra değişir. Bu bir dünya sıralaması değildir.",
+            "en": "These rows are only the 1 October 2026 GPU protocol. At TF32 1024³ raw cuBLAS is 169 µs and the tuned plan is 176 µs. At 2048³ the tuned plan is 1307 µs and raw Lt is 1304 µs. On 1024×64×512 the tuned plan is 16.3 µs and raw Lt is 32.8 µs. The order changes with the shape. This is not a world ranking."
           }
         }
       ]
@@ -208,8 +266,8 @@
         {
           "type": "p",
           "text": {
-            "tr": "PyTorch ve CuPy GPU'da cuBLAS çağırır. Kurulu olsalar da tepe bant bu sayfadaki ham cuBLAS satırının civarında olur; Python gönderim maliyeti küçük çekirdeklerde eklenir. O cümle bir ölçüm değildir. tools/bench_rivals_fair.py onlar kurulunca FP32/TF32 CUDA-event ölçebilir.",
-            "en": "PyTorch and CuPy call cuBLAS on the GPU. If they were installed, their peak band would sit near the raw cuBLAS row on this page; Python launch overhead adds on small kernels. That sentence is not a measurement. tools/bench_rivals_fair.py can time FP32/TF32 CUDA events once they are installed."
+            "tr": "PyTorch ve CuPy bu 1 Ekim turunda kurulu değildi. Bu sayfa onlar için GEMM süresi tahmin etmez. Conv CUDA sayısı da PyTorch ile karşılaştırılmaz.",
+            "en": "PyTorch and CuPy were not installed for the 1 October round. This page does not estimate GEMM times for them. The CUDA conv figure is not compared with PyTorch either."
           }
         }
       ]
@@ -297,8 +355,8 @@
               "en": "Pick the precision first. Do not place a TF32 row on top of an FP32 row."
             },
             {
-              "tr": "Büyük kare TF32'de kütüphane ham cuBLAS ile aynı banttır. Üstünlük iddiası, FP32 tuned planın 1024³ ve 2048³ satırları ile dikdörtgen tuned satırlarındadır.",
-              "en": "On large TF32 squares the library is in the same band as raw cuBLAS. The advantage claim is the FP32 tuned plan at 1024³ and 2048³, plus the rectangular tuned rows."
+              "tr": "1 Ekim GPU protokolünde büyük kare TF32 satırları ham cuBLAS sürelerine yakındır. Bu yakınlık bir dünya sıralaması değildir. CPU GEMM için 21 Ekim tablosuna bakın.",
+              "en": "On the 1 October GPU protocol the large TF32 square rows are close to the raw cuBLAS times. That closeness is not a world ranking. For CPU GEMM, use the 21 October table."
             },
             {
               "tr": "Kütüphanenin kendi eski haline karşı en net kazanım 1×1024×4096 varsayılan yoldur: 3.98×, FP32 korunarak.",

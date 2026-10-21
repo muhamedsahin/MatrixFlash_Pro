@@ -27,23 +27,23 @@ export function Hero() {
           <div className="animate-fade-up lg:col-span-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3.5 py-1.5 font-mono text-xs font-semibold text-primary shadow-[0_0_28px_oklch(0.84_0.2_145_/_0.22)]">
               <Sparkles className="size-3.5" />
-              <span>v{site.version} · cuBLAS-class · Fused GEMM</span>
+              <span>v{site.version} · avx2-4x16 · cuBLAS</span>
             </div>
 
             <h1 className="fluid-display mt-7 text-balance font-display">
               <span className="mb-3 block font-mono text-[0.42em] uppercase tracking-[0.08em] text-primary text-glow">
                 MatrixFlash-Pro
               </span>
-              {t('GPU’da dünya sınıfı', 'World-class on the GPU')}{' '}
+              {t('AVX2 ve cuBLAS', 'AVX2 and cuBLAS')}{' '}
               <span className="bg-gradient-to-r from-primary via-emerald-200 to-accent bg-clip-text text-transparent animate-gradient-x">
-                {t('matris motoru', 'matrix engine')}
+                {t('matris kütüphanesi', 'matrix library')}
               </span>
             </h1>
 
             <p className="mt-5 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
               {t(
-                'Shape-aware GEMM, GemmPlan, TF32 ve cuSOLVER. 1 Ekim 2026, RTX 3070 Laptop: FP32 tuned plan 1024²’de ham cuBLAS’tan 1.24× hızlı; TF32 2048²’de aynı bant, tepe 13.1 TFLOPS.',
-                'Shape-aware GEMM, GemmPlan, TF32 and cuSOLVER. 1 October 2026, RTX 3070 Laptop: the FP32 tuned plan is 1.24× faster than raw cuBLAS at 1024²; TF32 at 2048² is the same band, peak 13.1 TFLOPS.',
+                'Ryzen 7 5800H, AVX-512 yok ve seçilmiyor. 21 Ekim 2026 akşamı, GEMM N=2048: Nexus 330, 362 ve 369 GFLOPS; TensorFlow 389 GFLOPS. Tutulan çekirdek avx2-4x16. Cihaz GEMM cuBLAS’tır.',
+                'Ryzen 7 5800H, no AVX-512, and AVX-512 is not selected. Evening of 21 October 2026, GEMM N=2048: Nexus 330, 362 and 369 GFLOPS; TensorFlow 389 GFLOPS. The kept kernel is avx2-4x16. Device GEMM is cuBLAS.',
               )}
             </p>
 
@@ -62,7 +62,7 @@ export function Hero() {
                 className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-all shadow-[0_0_20px_rgba(16,185,129,0.15)]"
               >
                 <BookOpen className="size-4 text-emerald-400" />
-                {t('Teknik Manuel (57s PDF)', 'Technical Manual (57p PDF)')}
+                {t('Mevcut PDF (değişmedi)', 'Existing PDF (unchanged)')}
               </a>
               <Link
                 href="/docs/performans"
@@ -77,7 +77,7 @@ export function Hero() {
             <div className="mt-10 flex flex-wrap items-center gap-5 border-t border-border/60 pt-6 font-mono text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Cpu className="size-4 text-primary" />
-                <span>NVIDIA CUDA 12.3+</span>
+                <span>CUDA 13.4 optional</span>
               </div>
               <span className="size-1 rounded-full bg-border" />
               <div className="flex items-center gap-2">

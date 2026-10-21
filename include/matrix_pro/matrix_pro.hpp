@@ -28,6 +28,10 @@
 //  Consumers need the CUDA toolkit include paths (propagated automatically by
 //  the CMake target `matrix_pro`).
 
+#include "matrix_pro/hardware.hpp"
+
+#if defined(MATRIX_PRO_ENABLE_CUDA)
+
 #include "matrix_pro/core/cuda_utils.hpp"
 #include "matrix_pro/core/dtype.hpp"
 #include "matrix_pro/core/errors.hpp"
@@ -58,4 +62,6 @@
 #include "matrix_pro/streams/stream_pool.hpp"
 #include "matrix_pro/streams/execution.hpp"
 #include "matrix_pro/view/view.hpp"
+
+#endif  // MATRIX_PRO_ENABLE_CUDA
 

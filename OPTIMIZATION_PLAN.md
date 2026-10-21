@@ -1,7 +1,39 @@
 # MatrixFlash-Pro performance and capability roadmap
 
+Bu yazılım ekosistemi Bursa Teknik Üniversitesi Bilgisayar Mühendisliği 1. sınıf öğrencisi Muhammed Fatih Şahin tarafından yapay zeka destekli olarak geliştirilmiştir.
+
+## Current kernel (evening of 2026-10-21)
+
+Machine: AMD Ryzen 7 5800H. AVX-512 is not present and is not selected.
+`gemm_f32` keeps `avx2-4x16` when AVX2 and FMA exist, because the serial
+AVX-512 kernel does not distribute rows. `gemm_kernel_name()` on this CPU is
+`avx2-4x16`.
+
+Deleted experiments were slower. They are not current kernels:
+
+- an `Nc` tile that repacks A
+- MASM 6×16
+- hybrid GEMM at `N=512`
+
+The heterogeneous scheduler (CPU rows through `gemm_f32`, GPU rows through
+`cublasSgemm`) is still the row-split path. It is not the deleted `N=512`
+hybrid GEMM.
+
+Square GEMM, `N=2048`, this evening: Nexus 330, 362 and 369 GFLOPS; TensorFlow
+389 GFLOPS. No world ranking. No other GFLOPS are added here.
+
+cuDNN is force-disabled (`tools/build_local.py` passes
+`-DMATRIX_PRO_ENABLE_CUDNN=OFF`). Device GEMM is cuBLAS. The CUDA conv kernel
+was measured on this machine against Nexus CPU conv (shape `8×3×32×32`, 16
+filters, `3×3`, pad 1): CPU 6.39 GFLOPS, device-resident kernel 48.7 GFLOPS,
+host round-trip 19.0 GFLOPS. Those conv figures are not compared with PyTorch.
+
+## Earlier GPU plan (2026-10-01)
+
 Date: 2026-10-01. Existing public APIs and host-mirror semantics are preserved.
 No global fastest-library claim is justified by a single GPU or GEMM benchmark.
+The items below describe the cuBLAS plan work. They do not revive the deleted
+CPU kernels above, and they do not select AVX-512 on this CPU.
 
 ## Ordered delivery
 

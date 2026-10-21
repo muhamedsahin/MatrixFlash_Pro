@@ -19,3 +19,5 @@ option(MATRIX_PRO_INSTALL
        "Generate install/export rules (find_package(matrix_pro) support)" ON)
 option(MATRIX_PRO_FAST_MATH
        "Build CUDA kernels with -use_fast_math (faster SFU math, slightly lower ULP accuracy)" OFF)
+option(MATRIX_PRO_ENABLE_CUDA
+       "Compile the CUDA backend. OFF builds the CPU GEMM, collectives and scheduler only." ON)

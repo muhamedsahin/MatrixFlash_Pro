@@ -83,10 +83,30 @@ function FairChart() {
   return (
     <div className="mb-8 space-y-6">
       <section className="rounded-2xl border border-border/80 bg-card/50 p-6 shadow-2xl backdrop-blur-xl">
+        <div className="border-b border-border/60 pb-3">
+          <span className="font-mono text-xs font-bold text-foreground">
+            {t('CPU GEMM — 21 Ekim 2026 akşamı', 'CPU GEMM — evening of 21 October 2026')}
+          </span>
+          <p className="mt-1 max-w-3xl font-mono text-[10px] leading-relaxed text-muted-foreground">
+            {t(
+              'Ryzen 7 5800H. AVX-512 yok ve seçilmiyor. Çekirdek avx2-4x16. N=2048: Nexus 330, 362 ve 369 GFLOPS; TensorFlow 389 GFLOPS. Silinen Nc (A yeniden paketler), MASM 6×16 ve N=512 hibrit GEMM güncel değildir. cuDNN zorla kapalı. Conv 8×3×32×32, 16 filtre, 3×3, dolgu 1: CPU 6.39, cihaz çekirdeği 48.7, host gidiş-dönüş 19.0 GFLOPS.',
+              'Ryzen 7 5800H. AVX-512 is absent and is not selected. Kernel avx2-4x16. N=2048: Nexus 330, 362 and 369 GFLOPS; TensorFlow 389 GFLOPS. The deleted Nc tile (repacks A), MASM 6×16 and hybrid GEMM at N=512 are not current. cuDNN is force-disabled. Conv 8×3×32×32, 16 filters, 3×3, pad 1: CPU 6.39, device kernel 48.7, host round-trip 19.0 GFLOPS.',
+            )}
+          </p>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <WallCard label="Nexus N=2048" ms={330} unit="GFLOPS" digits={0} />
+          <WallCard label="Nexus N=2048" ms={362} unit="GFLOPS" digits={0} />
+          <WallCard label="Nexus N=2048" ms={369} unit="GFLOPS" digits={0} />
+          <WallCard label="TensorFlow N=2048" ms={389} unit="GFLOPS" digits={0} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border/80 bg-card/50 p-6 shadow-2xl backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3">
           <div>
             <span className="font-mono text-xs font-bold text-foreground">
-              {t('Aynı hassasiyette GEMM — 1 Ekim 2026', 'Same-precision GEMM — 1 October 2026')}
+              {t('GPU cuBLAS protokolü — 1 Ekim 2026', 'GPU cuBLAS protocol — 1 October 2026')}
             </span>
             <p className="mt-1 max-w-xl font-mono text-[10px] leading-relaxed text-muted-foreground">
               {t(
@@ -183,12 +203,24 @@ function FairChart() {
   )
 }
 
-function WallCard({ label, ms, emphasize }: { label: string; ms: number; emphasize?: boolean }) {
+function WallCard({
+  label,
+  ms,
+  emphasize,
+  unit = 'ms',
+  digits = 3,
+}: {
+  label: string
+  ms: number
+  emphasize?: boolean
+  unit?: string
+  digits?: number
+}) {
   return (
     <div className="rounded-xl border border-border/70 bg-background/40 p-4">
       <div className="font-mono text-[11px] text-muted-foreground">{label}</div>
       <div className={emphasize ? 'mt-1 font-mono text-lg font-bold text-primary' : 'mt-1 font-mono text-lg font-bold text-foreground'}>
-        {ms.toFixed(3)} ms
+        {ms.toFixed(digits)} {unit}
       </div>
     </div>
   )

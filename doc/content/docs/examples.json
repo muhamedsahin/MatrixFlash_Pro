@@ -238,8 +238,8 @@
         "en": "2D CNN (Conv2D & MaxPool)"
       },
       "intro": {
-        "tr": "Rank-4 NCHW tensörler üzerinde çapraz-korelasyon konvolüsyonu ve havuzlama. cuDNN bulunuyorsa arka uç ona delege edilir; API ve sonuçlar her iki yolda aynıdır. Ters geçiş, maksimum konumlarını ileri girdiden yeniden bulur — indeks tamponu saklamanız gerekmez.",
-        "en": "Cross-correlation convolution and pooling over rank-4 NCHW tensors. When cuDNN is present the backend delegates to it; the API and results are identical on both paths. The backward pass re-locates the maxima from the forward input — no index buffer has to be stored."
+        "tr": "Rank-4 NCHW tensörler üzerinde çapraz-korelasyon. cuDNN zorla kapalıdır; çalışan yol CUDA `conv2d_kernel`. Aynı protokol şekli 8×3×32×32, 16 filtre, 3×3, dolgu 1: CPU 6.39 GFLOPS, cihazda duran çekirdek 48.7 GFLOPS, host gidiş-dönüş 19.0 GFLOPS. Bu sayı PyTorch ile karşılaştırılmaz. Ters geçiş, maksimum konumlarını ileri girdiden yeniden bulur.",
+        "en": "Cross-correlation over rank-4 NCHW tensors. cuDNN is force-disabled; the path that runs is the CUDA `conv2d_kernel`. Same protocol shape 8×3×32×32, 16 filters, 3×3, pad 1: CPU 6.39 GFLOPS, device-resident kernel 48.7 GFLOPS, host round-trip 19.0 GFLOPS. That figure is not compared with PyTorch. The backward pass re-locates maxima from the forward input."
       },
       "blocks": [
         {

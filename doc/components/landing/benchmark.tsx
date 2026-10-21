@@ -9,44 +9,63 @@ export function Benchmark() {
   const { lang, t } = useLanguage()
 
   const stats = [
-    { value: '13.1', label: { tr: 'TFLOPS TF32 @ 2048²', en: 'TFLOPS TF32 @ 2048²' } },
-    { value: '1.24×', label: { tr: 'FP32 tuned vs cuBLAS @ 1024²', en: 'FP32 tuned vs cuBLAS @ 1024²' } },
-    { value: '3.98×', label: { tr: 'Uzun vektör, eski sürüme göre', en: 'Long vector vs previous build' } },
-    { value: '13×', label: { tr: '1024² FP32 plan vs NumPy duvar', en: '1024² FP32 plan vs NumPy wall' } },
+    { value: '330', label: { tr: 'Nexus GEMM N=2048, GFLOPS', en: 'Nexus GEMM N=2048, GFLOPS' } },
+    { value: '362', label: { tr: 'Nexus GEMM N=2048, GFLOPS', en: 'Nexus GEMM N=2048, GFLOPS' } },
+    { value: '369', label: { tr: 'Nexus GEMM N=2048, GFLOPS', en: 'Nexus GEMM N=2048, GFLOPS' } },
+    { value: '389', label: { tr: 'TensorFlow, aynı N, GFLOPS', en: 'TensorFlow, same N, GFLOPS' } },
   ]
 
-  const benchCode = `python tools/build_local.py --reconfigure --jobs 4
-.\\build\\perf-release\\benchmarks\\matrix_pro_bench_gemm_fair.exe --output benchmarks/results/run.json --warmup 10 --repeats 30 --batch 32
-python tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json --warmup 10 --repeats 30 --batch 32`
+  const benchCode = `python tools/build_local.py --reconfigure --jobs 4`
 
   const comparisonData = [
     {
-      name: t('NumPy @ OpenBLAS (1024², CPU duvar)', 'NumPy @ OpenBLAS (1024², CPU wall)'),
-      time: '4.91 ms',
-      speedup: 'CPU',
-      width: 4,
-      color: 'from-zinc-500 to-zinc-400',
-    },
-    {
-      name: t('MatrixFlash-Pro tuned plan (1024² TF32)', 'MatrixFlash-Pro tuned plan (1024² TF32)'),
-      time: '0.176 ms / 12185 GFLOPS',
-      speedup: '%96 cuBLAS',
-      width: 96,
+      name: t('Nexus GEMM N=2048', 'Nexus GEMM N=2048'),
+      time: '330 GFLOPS',
+      speedup: 'avx2-4x16',
+      width: 85,
       color: 'from-emerald-500 to-primary',
     },
     {
-      name: t('Ham cuBLASLt (1024² TF32)', 'Raw cuBLASLt (1024² TF32)'),
-      time: '0.171 ms / 12524 GFLOPS',
-      speedup: '%99',
-      width: 99,
+      name: t('Nexus GEMM N=2048', 'Nexus GEMM N=2048'),
+      time: '362 GFLOPS',
+      speedup: 'avx2-4x16',
+      width: 93,
+      color: 'from-emerald-500 to-primary',
+    },
+    {
+      name: t('Nexus GEMM N=2048', 'Nexus GEMM N=2048'),
+      time: '369 GFLOPS',
+      speedup: 'avx2-4x16',
+      width: 95,
+      color: 'from-emerald-500 to-primary',
+    },
+    {
+      name: 'TensorFlow N=2048',
+      time: '389 GFLOPS',
+      speedup: t('aynı protokol', 'same protocol'),
+      width: 100,
+      color: 'from-cyan-500 to-cyan-300',
+    },
+  ]
+
+  const convData = [
+    {
+      name: t('Nexus CPU conv', 'Nexus CPU conv'),
+      time: '6.39 GFLOPS',
+      width: 13,
+      color: 'from-zinc-500 to-zinc-400',
+    },
+    {
+      name: t('Host gidiş-dönüş', 'Host round-trip'),
+      time: '19.0 GFLOPS',
+      width: 39,
       color: 'from-violet-500 to-violet-300',
     },
     {
-      name: t('Ham cuBLAS (1024² TF32)', 'Raw cuBLAS (1024² TF32)'),
-      time: '0.169 ms / 12694 GFLOPS',
-      speedup: t('en hızlı TF32', 'fastest TF32'),
+      name: t('Cihazda duran CUDA çekirdeği', 'Device-resident CUDA kernel'),
+      time: '48.7 GFLOPS',
       width: 100,
-      color: 'from-cyan-500 to-cyan-300',
+      color: 'from-emerald-500 to-primary',
     },
   ]
 
@@ -57,18 +76,18 @@ python tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json -
           <Reveal>
             <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-primary">
               <Gauge className="size-3.5" />
-              <span>{t('1 EKİM 2026 — AYNI HASSASİYET', '1 OCTOBER 2026 — SAME PRECISION')}</span>
+              <span>{t('21 EKİM 2026 AKŞAMI — BU MAKİNE', '21 OCTOBER 2026 EVENING — THIS MACHINE')}</span>
             </div>
             <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
               {t(
-                'TF32 büyük karelerde cuBLAS ile aynı bant',
-                'Same band as cuBLAS on large TF32 squares',
+                'Ryzen 7 5800H, çekirdek avx2-4x16',
+                'Ryzen 7 5800H, kernel avx2-4x16',
               )}
             </h2>
             <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
               {t(
-                'RTX 3070 Laptop, önceden ayrılmış tampon. TF32 1024²’de ham cuBLAS 0.169 ms; tuned plan 0.176 ms. FP32 1024²’de tuned plan ham cuBLAS’tan 1.24× hızlı. PyTorch ve CuPy bu turda kurulu değildi.',
-                'RTX 3070 Laptop, preallocated buffers. At TF32 1024² raw cuBLAS is 0.169 ms and the tuned plan is 0.176 ms. At FP32 1024² the tuned plan is 1.24× faster than raw cuBLAS. PyTorch and CuPy were not installed this round.',
+                'AVX-512 bu CPU’da yok ve seçilmiyor. GEMM N=2048: Nexus 330, 362 ve 369 GFLOPS; TensorFlow 389 GFLOPS. Silinen denemeler (A’yı yeniden paketleyen Nc, MASM 6×16, N=512 hibrit GEMM) güncel çekirdek değildir. cuDNN zorla kapalıdır. Conv şekli 8×3×32×32, 16 filtre, 3×3, dolgu 1: CPU 6.39, cihazda duran çekirdek 48.7, host gidiş-dönüş 19.0 GFLOPS. Bu conv sayısı PyTorch ile karşılaştırılmaz.',
+                'AVX-512 is absent on this CPU and is not selected. GEMM N=2048: Nexus 330, 362 and 369 GFLOPS; TensorFlow 389 GFLOPS. Deleted experiments (an Nc tile that repacks A, MASM 6×16, hybrid GEMM at N=512) are not the current kernel. cuDNN is force-disabled. Conv shape 8×3×32×32, 16 filters, 3×3, pad 1: CPU 6.39, device-resident kernel 48.7, host round-trip 19.0 GFLOPS. That conv figure is not compared with PyTorch.',
               )}
             </p>
 
@@ -94,10 +113,10 @@ python tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json -
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <span className="flex items-center gap-2 font-mono text-xs font-bold text-foreground">
                   <Cpu className="size-4 text-primary" />
-                  {t('1024² TF32 GEMM (ölçüldü)', '1024² TF32 GEMM (measured)')}
+                  {t('GEMM N=2048 (ölçüldü)', 'GEMM N=2048 (measured)')}
                 </span>
                 <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
-                  RTX 3070 Laptop · sm_86
+                  Ryzen 7 5800H · no AVX-512
                 </span>
               </div>
 
@@ -121,14 +140,37 @@ python tools/bench_rivals_fair.py --output benchmarks/results/rivals_fair.json -
               </div>
 
               <div className="mt-6 space-y-3 border-t border-border/50 pt-4">
-                <CodeBlock code={benchCode} filename="benchmark.ps1" />
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {t(
+                    'Conv 8×3×32×32, 16 filtre, 3×3, dolgu 1',
+                    'Conv 8×3×32×32, 16 filters, 3×3, pad 1',
+                  )}
+                </p>
+                {convData.map((item, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex items-center justify-between font-mono text-xs">
+                      <span className="max-w-[280px] truncate text-foreground">{item.name}</span>
+                      <span className="font-bold text-primary">{item.time}</span>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
+                        style={{ width: `${item.width}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 space-y-3 border-t border-border/50 pt-4">
+                <CodeBlock code={benchCode} filename="build.ps1" />
                 <a
                   href="/docs/performans"
                   className="inline-flex items-center gap-2 font-mono text-xs font-bold text-primary hover:underline"
                 >
                   {t(
-                    'Detaylı tablo + rakip motorlar: /docs/performans',
-                    'Full table + rival engines: /docs/performans',
+                    '21 Ekim CPU tablosu ve 1 Ekim GPU protokolü',
+                    '21 October CPU table and the 1 October GPU protocol',
                   )}
                 </a>
               </div>

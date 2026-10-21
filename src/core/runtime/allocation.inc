@@ -8,7 +8,7 @@ void* allocate_device_memory(std::size_t bytes) {
     int device = 0;
     cudaGetDevice(&device);
     auto& pool = DeviceMemoryPool::instance();
-    std::lock_guard<std::mutex> lock(pool.mutex);
+    std::lock_guard lock(pool.mutex);
 
     const std::size_t cl = size_class(bytes);
     auto& bucket = pool.free_blocks[device][cl];
@@ -47,7 +47,7 @@ void free_device_memory(void* pointer) {
     if (pointer == nullptr)
         return;
     auto& pool = DeviceMemoryPool::instance();
-    std::lock_guard<std::mutex> lock(pool.mutex);
+    std::lock_guard lock(pool.mutex);
 
     auto info_it = pool.block_info.find(pointer);
     if (info_it == pool.block_info.end()) {

@@ -32,8 +32,8 @@ export function Cta() {
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
                 {t(
-                  'C++17 ve CUDA 12.3+ ile sıfırdan yazılmış, cuBLAS ve Autograd destekli modern matris motoru.',
-                  'Built from scratch in modern C++17 and CUDA 12.3+, powered by cuBLAS and an Autograd tape engine.',
+                  'C++17, Visual Studio 2022 ve isteğe bağlı CUDA 13.4. Cihaz GEMM cuBLAS. Lisans Apache-2.0.',
+                  'C++17, Visual Studio 2022 and optional CUDA 13.4. Device GEMM is cuBLAS. License Apache-2.0.',
                 )}
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">

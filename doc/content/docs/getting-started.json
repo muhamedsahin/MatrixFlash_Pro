@@ -10,8 +10,8 @@
       "en": "Installation, Architecture and Your First GPU Program"
     },
     "description": {
-      "tr": "MatrixFlash-Pro'yu CMake preset'leri ile derleyin, bellek modlarını ve fail-fast sözleşmesini öğrenin, ilk cuBLAS GEMM programınızı 30 satırda çalıştırın.",
-      "en": "Build MatrixFlash-Pro with CMake presets, learn the memory-mode and fail-fast contracts, and run your first cuBLAS GEMM program in under 30 lines."
+        "tr": "CMake ve Visual Studio 2022 ile derleyin. CUDA 13.4 isteğe bağlıdır. Host GEMM gemm_f32 (bu makinede avx2-4x16), cihaz GEMM cuBLAS. Lisans Apache-2.0. cuDNN zorla kapalıdır.",
+        "en": "Build with CMake and Visual Studio 2022. CUDA 13.4 is optional. Host GEMM is gemm_f32 (avx2-4x16 on this machine), device GEMM is cuBLAS. License Apache-2.0. cuDNN is force-disabled."
     }
   },
   "sections": [
@@ -22,8 +22,8 @@
         "en": "Overview & Module Map"
       },
       "intro": {
-        "tr": "MatrixFlash-Pro, C++17 ile yazılmış GPU hesaplama kütüphanesidir. Tek bir şemsiye başlık (`matrix_pro/matrix_pro.hpp`) tüm genel API'yi açar; ağır CUDA çekirdekleri kütüphane içinde derlenir ve istemci koduna sızmaz.",
-        "en": "MatrixFlash-Pro is a GPU compute library written in C++17. A single umbrella header (`matrix_pro/matrix_pro.hpp`) exposes the entire public API; the heavy CUDA kernels are compiled inside the library and never leak into client code."
+        "tr": "MatrixFlash-Pro, C++17 matris kütüphanesidir. Lisans Apache-2.0. Host GEMM `gemm_f32`; bu makinede (Ryzen 7 5800H) seçilen çekirdek `avx2-4x16` ve AVX-512 seçilmez. Cihaz GEMM cuBLAS’tır. cuDNN zorla kapalıdır.",
+        "en": "MatrixFlash-Pro is a C++17 matrix library. License Apache-2.0. Host GEMM is `gemm_f32`; on this machine (Ryzen 7 5800H) the selected kernel is `avx2-4x16` and AVX-512 is not selected. Device GEMM is cuBLAS. cuDNN is force-disabled."
       },
       "blocks": [
         {
@@ -34,8 +34,8 @@
               "en": "**11 Core Engine Systems (v1.1)** — Tensor Engine (N-D strided), Math Engine, Extended LinAlg (LU/TRSM), Memory Engine, Backend Engine, Extended RNG, Autograd Engine (NoGrad/Checkpoint), Sparse Formats (COO/CSC/SpGEMM), Execution Engine (CUDA Graph/Pipeline), Serialization (Checkpoint/Tensor I/O), and Testing/Benchmarking."
             },
             {
-              "tr": "**Shape-aware GEMM** — mikro / GEMV / algo-cache’li cublasLt. Uzun vektör yolunda eski sürüme göre 3.98× (1 Ekim 2026, FP32 korunarak).",
-              "en": "**Shape-aware GEMM** — micro / GEMV / algo-cached cublasLt. 3.98× on the long-vector path versus the previous build (1 October 2026, FP32 preserved)."
+              "tr": "**Host GEMM** — `gemm_f32`, tutulan çekirdek `avx2-4x16`. 21 Ekim 2026 akşamı, N=2048: 330, 362 ve 369 GFLOPS; TensorFlow 389. Silinen Nc, MASM 6×16 ve N=512 hibrit GEMM güncel değildir.",
+              "en": "**Host GEMM** — `gemm_f32`, kept kernel `avx2-4x16`. Evening of 21 October 2026, N=2048: 330, 362 and 369 GFLOPS; TensorFlow 389. The deleted Nc tile, MASM 6×16 and N=512 hybrid GEMM are not current."
             },
             {
               "tr": "**GemmPlan** — tekrar kullanılan, tahsissiz sıcak GEMM. Açık FP32 veya TF32, transpose, alpha/beta, bias+ReLU/GELU, isteğe bağlı tune.",
@@ -50,8 +50,8 @@
               "en": "**Fused epilogue** — `gemm_bias_relu` / `gemm_bias_gelu` as one cuBLASLt call. This round did not publish a separate speedup."
             },
             {
-              "tr": "**cuBLAS GEMM** — TF32 Tensor Core hızlı yolu, boyut eşiği aşıldığında otomatik.",
-              "en": "**cuBLAS GEMM** — TF32 Tensor Core fast path activates automatically once size crosses the threshold."
+              "tr": "**Cihaz GEMM cuBLAS** — `hw::cuda_gemm` `cublasSgemm` çağırır. `GemmPlan` varsayılanı strict FP32’dir; TF32 açık bir `GemmPrecision` seçeneğidir.",
+              "en": "**Device GEMM is cuBLAS** — `hw::cuda_gemm` calls `cublasSgemm`. `GemmPlan` defaults to strict FP32; TF32 is an explicit `GemmPrecision` option."
             },
             {
               "tr": "**Autograd tape motoru** — `Variable` ve `VarTensor` ile ters-mod otomatik türev; CNN ve batched GEMM dahil.",
@@ -318,8 +318,8 @@
         "en": "Prerequisites"
       },
       "intro": {
-        "tr": "Kütüphane CUDA araç zincirine sıkı sıkıya bağlıdır: `__global__` çekirdekleri barındırır ve cuBLAS, cuSOLVER, opsiyonel cuDNN ile cuSPARSE kullanır. Aşağıdaki minimumlar test edilmiş konfigürasyondur.",
-        "en": "The library is tightly coupled to the CUDA toolchain: it ships `__global__` kernels and uses cuBLAS, cuSOLVER, optionally cuDNN and cuSPARSE. The minimums below are the tested configuration."
+        "tr": "CPU GEMM, CUDA olmadan da derlenir. CUDA açıksa cihaz GEMM cuBLAS kullanır. Ölçülen yapılandırma CUDA 13.4 ve Visual Studio 2022’dir; cuDNN zorla kapalıdır (`-DMATRIX_PRO_ENABLE_CUDNN=OFF`).",
+        "en": "CPU GEMM also builds without CUDA. When CUDA is on, device GEMM uses cuBLAS. The measured configuration is CUDA 13.4 and Visual Studio 2022; cuDNN is force-disabled (`-DMATRIX_PRO_ENABLE_CUDNN=OFF`)."
       },
       "blocks": [
         {
@@ -359,12 +359,12 @@
                 "en": "CUDA Toolkit"
               },
               {
-                "tr": "12.3",
-                "en": "12.3"
+                "tr": "13.4, isteğe bağlı",
+                "en": "13.4, optional"
               },
               {
-                "tr": "TF32 GEMM ve modern cuSOLVER API'leri için; `nvcc` PATH'te olmalı",
-                "en": "Required for TF32 GEMM and the modern cuSOLVER APIs; `nvcc` must be on PATH"
+                "tr": "Ölçülen toolkit. CPU GEMM için gerekmez. `nvcc` yalnızca CUDA açıkken PATH’te olmalıdır",
+                "en": "The toolkit that was measured. Not required for CPU GEMM. `nvcc` must be on PATH only when CUDA is enabled"
               }
             ],
             [
@@ -387,12 +387,12 @@
                 "en": "Compiler"
               },
               {
-                "tr": "MSVC 19.3x / GCC 12 / Clang 16",
-                "en": "MSVC 19.3x / GCC 12 / Clang 16"
+                "tr": "Visual Studio 2022",
+                "en": "Visual Studio 2022"
               },
               {
-                "tr": "Windows'ta Visual Studio 2022 Build Tools önerilir",
-                "en": "Visual Studio 2022 Build Tools is recommended on Windows"
+                "tr": "Bu ağaçta kullanılan host derleyici MSVC’dir",
+                "en": "The host compiler used for this tree is MSVC"
               }
             ],
             [
@@ -411,16 +411,16 @@
             ],
             [
               {
-                "tr": "cuDNN (opsiyonel)",
-                "en": "cuDNN (optional)"
+                "tr": "cuDNN",
+                "en": "cuDNN"
               },
               {
-                "tr": "9.x",
-                "en": "9.x"
+                "tr": "zorla kapalı",
+                "en": "force-disabled"
               },
               {
-                "tr": "Bulunursa `MATRIX_PRO_HAS_CUDNN` tanımlanır ve conv2d cuDNN'e delege edilir",
-                "en": "When present, `MATRIX_PRO_HAS_CUDNN` is defined and conv2d delegates to cuDNN"
+                "tr": "`tools/build_local.py` `-DMATRIX_PRO_ENABLE_CUDNN=OFF` geçirir. Ölçülen conv2d CUDA çekirdeğidir",
+                "en": "`tools/build_local.py` passes `-DMATRIX_PRO_ENABLE_CUDNN=OFF`. The measured conv2d path is the CUDA kernel"
               }
             ]
           ]
@@ -440,8 +440,8 @@
         {
           "type": "p",
           "text": {
-            "tr": "Bir çarpımın toplam aritmetik yükü yukarıdaki formülle hesaplanır. cuBLAS sürücüsü bu değer belirli bir eşiğin altında kaldığında paylaşımlı bellek tabanlı SIMT yolunu seçer; üstünde TF32 Tensor Core yolu devreye girer. Dolayısıyla `64x64x64` gibi küçük matrislerde TF32 kazancı görmezsiniz — bu bir hata değil, bilinçli bir geçiş kararıdır.",
-            "en": "The total arithmetic workload of a product is given above. When it stays below a certain threshold the cuBLAS driver picks the shared-memory SIMT path; above it, the TF32 Tensor Core path engages. That is why you will not observe a TF32 speedup on tiny `64x64x64` products — this is not a bug but a deliberate crossover decision."
+            "tr": "FLOP sayısı `2·m·n·k` ile yazılır. Cihaz GEMM cuBLAS veya cuBLASLt’dir. `GemmPlan` varsayılanı strict FP32’dir; TF32 ayrı bir seçenektir. Bu sayfa bir FLOP eşiği veya dünya sıralaması yazmaz.",
+            "en": "The flop count is `2·m·n·k`. Device GEMM is cuBLAS or cuBLASLt. `GemmPlan` defaults to strict FP32; TF32 is a separate option. This page does not state a flop threshold or a world ranking."
           }
         },
         {
@@ -465,8 +465,8 @@
         "en": "Build & Installation"
       },
       "intro": {
-        "tr": "Depo, `CMakePresets.json` ile dört hazır konfigürasyon sunar. Hiçbir uzun `-D` bayrağı yazmadan, tek satırda yapılandırıp derleyebilirsiniz.",
-        "en": "The repository ships four ready-made configurations in `CMakePresets.json`. You can configure and build in a single command without typing a wall of `-D` flags."
+        "tr": "Host derleyici Visual Studio 2022. `cmake --preset release` CUDA toolkit PATH’teyse onu kullanır. Ölçülen performans derlemesi `python tools/build_local.py` ile cuDNN’i zorla kapatır. CUDA 13.4 isteğe bağlıdır.",
+        "en": "The host compiler is Visual Studio 2022. `cmake --preset release` uses the CUDA toolkit when it is on PATH. The measured performance build force-disables cuDNN via `python tools/build_local.py`. CUDA 13.4 is optional."
       },
       "blocks": [
         {
@@ -578,8 +578,8 @@
                 "en": "`lib-only`"
               },
               {
-                "tr": "Yalnızca kütüphane; CI/üretim için hızlı",
-                "en": "Library only; fastest for CI and production"
+                "tr": "Yalnızca kütüphane; test, benchmark ve örnek kapalı",
+                "en": "Library only; tests, benchmarks and examples off"
               },
               {
                 "tr": "Tüm `MATRIX_PRO_BUILD_*` seçenekleri `OFF`",
@@ -651,7 +651,27 @@
           "type": "code",
           "lang": "cpp",
           "filename": "quickstart.cpp",
-          "code": "#include \"matrix_pro/matrix_pro.hpp\"\n#include <iostream>\n\nint main() {\n    using matrix_pro::Matrix;\n\n    // 1) Host'ta kur, cihaza otomatik yukle\n    Matrix a{{1.0f, -2.0f}, {3.0f, 4.0f}};\n\n    // 2) Fabrika metotlari GPU uzerinde uretir (host trafigi yok)\n    Matrix b = Matrix::identity(2);\n\n    // 3) cuBLAS GEMM + ReLU + skaler cikarma, hepsi GPU'da\n    Matrix c = (a * b).relu().add_scalar(-0.5f);\n\n    // 4) Fail-fast kurali: download() olmadan host okumasi yapilamaz\n    c.download();\n\n    std::cout << \"shape: \" << c.rows() << \"x\" << c.cols() << \"\\n\";\n    std::cout << \"sum  : \" << c.sum() << \"\\n\";\n    std::cout << \"c(0,0): \" << c.at(0, 0) << \"\\n\";\n    return 0;\n}"
+          "code": "#include \"matrix_pro/matrix_pro.hpp\"\n#include <iostream>\n\nint main() {\n    using matrix_pro::Matrix;\n\n    // 1) Host'ta kur, cihaza otomatik yukle\n    Matrix a{{1.0f, -2.0f}, {3.0f, 4.0f}};\n\n    // 2) Fabrika metotlari GPU uzerinde uretir (host trafigi yok)\n    Matrix b = Matrix::identity(2);\n\n    // 3) Cihaz GEMM cuBLAS'tir; sonra ReLU ve skaler cikarma\n    Matrix c = (a * b).relu().add_scalar(-0.5f);\n\n    // 4) Fail-fast kurali: download() olmadan host okumasi yapilamaz\n    c.download();\n\n    std::cout << \"shape: \" << c.rows() << \"x\" << c.cols() << \"\\n\";\n    std::cout << \"sum  : \" << c.sum() << \"\\n\";\n    std::cout << \"c(0,0): \" << c.at(0, 0) << \"\\n\";\n    return 0;\n}"
+        },
+        {
+          "type": "h3",
+          "text": {
+            "tr": "Host gemm_f32",
+            "en": "Host gemm_f32"
+          }
+        },
+        {
+          "type": "p",
+          "text": {
+            "tr": "İmza `include/matrix_pro/cpu/gemm.hpp` içindedir: `gemm_f32(m, n, k, a, lda, b, ldb, c, ldc, alpha, beta)`. Satır-major `C = alpha*A*B + beta*C`. Bu makinede çekirdek `avx2-4x16`. Cihaz kancası `matrix_pro::hw::cuda_gemm(device, m, n, k, a, lda, b, ldb, c, ldc, alpha, beta)` ve gövdesi `cublasSgemm` çağırır.",
+            "en": "The signature is in `include/matrix_pro/cpu/gemm.hpp`: `gemm_f32(m, n, k, a, lda, b, ldb, c, ldc, alpha, beta)`. Row-major `C = alpha*A*B + beta*C`. On this machine the kernel is `avx2-4x16`. The device hook is `matrix_pro::hw::cuda_gemm(device, m, n, k, a, lda, b, ldb, c, ldc, alpha, beta)` and its body calls `cublasSgemm`."
+          }
+        },
+        {
+          "type": "code",
+          "lang": "cpp",
+          "filename": "gemm_f32.cpp",
+          "code": "#include \"matrix_pro/cpu/gemm.hpp\"\n\n#include <vector>\n\nint main() {\n    const int m = 2;\n    const int n = 2;\n    const int k = 2;\n    const std::vector<float> a{1.f, 2.f, 3.f, 4.f};\n    const std::vector<float> b{5.f, 6.f, 7.f, 8.f};\n    std::vector<float> c(static_cast<std::size_t>(m * n), 0.f);\n    matrix_pro::gemm_f32(m, n, k, a.data(), k, b.data(), n, c.data(), n, 1.f, 0.f);\n}"
         },
         {
           "type": "h3",
@@ -679,8 +699,8 @@
               "en": "`Matrix::identity(2)` — the factory generates on the GPU and never touches the host."
             },
             {
-              "tr": "`a * b` — `operator*` sürücüyü seçer: boyut yeterince büyükse Tensor Core yolu, değilse SIMT yolu.",
-              "en": "`a * b` — `operator*` picks the driver path: the Tensor Core route when the size is large enough, SIMT otherwise."
+              "tr": "`a * b` — Matrix çarpımı cihaz GEMM’idir ve cuBLAS / cuBLASLt kullanır. Host `gemm_f32` ayrı imzadır.",
+              "en": "`a * b` — a Matrix product is device GEMM and uses cuBLAS / cuBLASLt. Host `gemm_f32` is a separate signature."
             },
             {
               "tr": "`.relu()` ve `.add_scalar()` — zincirlenebilir konfor metotları; her biri tek bir GPU çekirdeği çalıştırır.",
@@ -786,7 +806,7 @@
             [{ "tr": "`ops/factorization.hpp` + `src/ops/factorization.cu`", "en": "`ops/factorization.hpp` + `src/ops/factorization.cu`" }, { "tr": "Tekrar kullanılan LU, solve_into, slogdet.", "en": "Reusable LU, solve_into, slogdet." }],
             [{ "tr": "`ops/linalg.hpp` + `src/ops/linalg.cu`", "en": "`ops/linalg.hpp` + `src/ops/linalg.cu`" }, { "tr": "QR, SVD, özdeğer, Cholesky, pinv, least squares.", "en": "QR, SVD, eigen, Cholesky, pinv, least squares." }],
             [{ "tr": "`ops/linalg_extended.hpp`", "en": "`ops/linalg_extended.hpp`" }, { "tr": "Tek atışlık lu, trsm, trmm, matrix_power, matrix_exp, batch_*.", "en": "One-shot lu, trsm, trmm, matrix_power, matrix_exp, batch_*." }],
-            [{ "tr": "`nn/conv.hpp` + `src/nn/conv.cu`", "en": "`nn/conv.hpp` + `src/nn/conv.cu`" }, { "tr": "NCHW conv ve pooling. cuDNN varsa vendor, yoksa CUDA yedek.", "en": "NCHW conv and pooling. Vendor cuDNN when present, CUDA fallback otherwise." }],
+            [{ "tr": "`nn/conv.hpp` + `src/nn/conv.cu`", "en": "`nn/conv.hpp` + `src/nn/conv.cu`" }, { "tr": "NCHW conv ve pooling. cuDNN zorla kapalı; ölçülen yol `conv2d_kernel`.", "en": "NCHW conv and pooling. cuDNN is force-disabled; the measured path is `conv2d_kernel`." }],
             [{ "tr": "`autograd/autograd.hpp`", "en": "`autograd/autograd.hpp`" }, { "tr": "Variable / VarTensor tape, NoGrad, checkpoint.", "en": "Variable / VarTensor tape, NoGrad, checkpoint." }],
             [{ "tr": "`sparse/sparse_formats.hpp`", "en": "`sparse/sparse_formats.hpp`" }, { "tr": "COO birleştirme, CSC↔CSR, sparse_add. Bir kısmı host sıralaması yapar.", "en": "COO coalescing, CSC↔CSR, sparse_add. Some paths sort on the host." }],
             [{ "tr": "`streams/execution.hpp`", "en": "`streams/execution.hpp`" }, { "tr": "CUDA Graph ve Pipeline. Plan capture’dan önce kurulur.", "en": "CUDA Graph and Pipeline. Build the plan before capture." }],
